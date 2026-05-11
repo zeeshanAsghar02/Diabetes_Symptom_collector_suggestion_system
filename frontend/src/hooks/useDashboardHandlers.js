@@ -1,0 +1,286 @@
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { logout, getCurrentUser } from '../utils/auth';
+import { updateUserProfile, fetchMyDiseaseData } from '../utils/api';
+import axiosInstance from '../utils/axiosInstance';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
+
+/**
+ * Custom hook for all Dashboard event handlers
+ * Manages callbacks, navigation, and user interactions
+ */
+const useDashboardHandlers = ({
+  // State setters
+  setExpandedSections,
+  setHealthGoals,
+  setNewGoal,
+  setShowAddGoalDialog,
+  setSelectedDayData,
+  setShowDayDetailsModal,
+  setExportMenuAnchor,
+  setShowDiagnosisPopup,
+  setShowAssessmentPopup,
+  setUser,
+  setShowEditModal,
+  setRefreshTrigger,
+  setSavingProfile,
+  setProfileError,
+  // State values
+  expandedSections,
+  healthGoals,
+  newGoal,
+  planUsageAnalytics,
+  refreshTrigger,
+  user,
+  // Refs
+  refs,
+}) => {
+  const navigate = useNavigate();
+
+  // Toggle section expansion
+  const toggleSection = useCallback((section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  }, [setExpandedSections]);
+
+  // Scroll to section
+  const scrollToSection = useCallback((ref) => {
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  // Add new health goal
+  const handleAddGoal = useCallback(() => {
+    if (!newGoal.title || !newGoal.target) {
+      toast.error('Please fill in all goal fields');
+      return;
+    }
+
+    const goal = {
+      id: Date.now(),
+      ...newGoal,
+      current: parseFloat(newGoal.current) || 0,
+      target: parseFloat(newGoal.target),
+      createdAt: new Date().toISOString()
+    };
+
+    setHealthGoals(prev => [...prev, goal]);
+    setNewGoal({ title: '', target: '', current: 0, unit: '' });
+    setShowAddGoalDialog(false);
+    toast.success('Goal added successfully!');
+  }, [newGoal, setHealthGoals, setNewGoal, setShowAddGoalDialog]);
+
+  // Delete health goal
+  const handleDeleteGoal = useCallback((id) => {
+    setHealthGoals(prev => prev.filter(g => g.id !== id));
+    toast.success('Goal removed');
+  }, [setHealthGoals]);
+
+  // Update goal progress
+  const handleUpdateGoalProgress = useCallback((id, progress) => {
+    setHealthGoals(prev => prev.map(g => 
+      g.id === id ? { ...g, current: parseFloat(progress) } : g
+    ));
+  }, [setHealthGoals]);
+
+  // Handle chart point click
+  const handleChartPointClick = useCallback((data) => {
+    if (!data) return;
+    setSelectedDayData(data);
+    setShowDayDetailsModal(true);
+  }, [setSelectedDayData, setShowDayDetailsModal]);
+
+  // Export to PDF
+  const handleExportPDF = useCallback(() => {
+    toast.info('PDF export feature - Install html2canvas and jsPDF for full implementation');
+    setExportMenuAnchor(null);
+  }, [setExportMenuAnchor]);
+
+  // Export to CSV
+  const handleExportCSV = useCallback(() => {
+    if (!planUsageAnalytics?.dailySeries) return;
+    
+    const headers = ['Date', 'Diet Calories', 'Carbs (g)', 'Exercise Minutes', 'Exercise Calories'];
+    const rows = planUsageAnalytics.dailySeries.map(day => [
+      day.label,
+      day.dietCalories || 0,
+      day.dietCarbs || 0,
+      day.exerciseMinutes || 0,
+      day.exerciseCalories || 0
+    ]);
+    
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `health-data-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Data exported successfully!');
+    setExportMenuAnchor(null);
+  }, [planUsageAnalytics, setExportMenuAnchor]);
+
+  // Get trend icon
+  const getTrendIcon = useCallback((trend) => {
+    if (trend > 0) return <TrendingUpIcon fontSize="small" />;
+    if (trend < 0) return <TrendingDownIcon fontSize="small" />;
+    return <TrendingFlatIcon fontSize="small" />;
+  }, []);
+
+  // Calculate trend
+  const calculateTrend = useCallback((current, previous) => {
+    if (!previous || previous === 0) return { value: 0, percentage: 0 };
+    const diff = current - previous;
+    const percentage = ((diff / previous) * 100).toFixed(1);
+    return { value: diff, percentage: parseFloat(percentage) };
+  }, []);
+
+  // Handle logout
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/signin');
+  }, [navigate]);
+
+  // Handle diagnosis answer
+  const handleDiagnosisAnswer = useCallback(async (answer) => {
+    try {
+      await axiosInstance.patch('/api/auth/update-diagnosis', {
+        diabetes_diagnosed: answer
+      });
+      
+      const updatedUser = await getCurrentUser();
+      setUser(updatedUser);
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setShowDiagnosisPopup(false);
+      
+      toast.success('Profile updated successfully');
+      
+      if (answer === 'yes') {
+        navigate('/personalized-suggestions/personal-medical');
+      }
+    } catch (err) {
+      console.error('Error updating diagnosis:', err);
+      toast.error('Failed to update profile');
+    }
+  }, [navigate, setUser, setShowDiagnosisPopup]);
+
+  // Handle assessment popup answer
+  const handleAssessmentPopupAnswer = useCallback((answer) => {
+    const diagnosisMapping = {
+      'yes-diagnosed': 'yes',
+      'no-healthy': 'no',
+      'assess-now': null
+    };
+    
+    if (diagnosisMapping[answer] !== undefined) {
+      if (diagnosisMapping[answer] !== null) {
+        handleDiagnosisAnswer(diagnosisMapping[answer]);
+      } else {
+        navigate('/assessment');
+      }
+    }
+    
+    setShowAssessmentPopup(false);
+  }, [navigate, handleDiagnosisAnswer, setShowAssessmentPopup]);
+
+  // Handle edit disease data
+  const handleEditDiseaseData = useCallback(() => {
+    setShowEditModal(true);
+  }, [setShowEditModal]);
+
+  // Handle close edit modal
+  const handleCloseEditModal = useCallback(() => {
+    setShowEditModal(false);
+  }, [setShowEditModal]);
+
+  // Handle data updated
+  const handleDataUpdated = useCallback(async () => {
+    setShowEditModal(false);
+    try {
+      const data = await fetchMyDiseaseData();
+      setRefreshTrigger(prev => prev + 1);
+      toast.success('Disease data updated successfully');
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+    }
+  }, [setShowEditModal, setRefreshTrigger]);
+
+  // Handle save profile
+  const handleSaveProfile = useCallback(async (e) => {
+    e?.preventDefault();
+    setSavingProfile(true);
+    setProfileError('');
+    
+    try {
+      // Get form data or use user state
+      const formData = new FormData(e?.target);
+      const profileData = {
+        fullName: formData.get('fullName') || user?.fullName,
+        email: formData.get('email') || user?.email,
+        phone_number: formData.get('phone_number') || user?.phone_number,
+        country: formData.get('country') || user?.country,
+        date_of_birth: formData.get('date_of_birth') || user?.date_of_birth,
+        gender: formData.get('gender') || user?.gender,
+      };
+      
+      await updateUserProfile(user.id, profileData);
+      const updatedUser = await getCurrentUser();
+      setUser(updatedUser);
+      toast.success('Profile updated successfully');
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      setProfileError('Failed to save profile');
+      toast.error('Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [setSavingProfile, setProfileError, setUser, user]);
+
+  return {
+    // Section Management
+    toggleSection,
+    scrollToSection,
+    
+    // Goal Management
+    handleAddGoal,
+    handleDeleteGoal,
+    handleUpdateGoalProgress,
+    
+    // Chart Interactions
+    handleChartPointClick,
+    
+    // Export Functions
+    handleExportPDF,
+    handleExportCSV,
+    
+    // Trend Helpers
+    getTrendIcon,
+    calculateTrend,
+    
+    // Navigation
+    handleLogout,
+    
+    // Diagnosis & Assessment
+    handleDiagnosisAnswer,
+    handleAssessmentPopupAnswer,
+    
+    // Disease Data
+    handleEditDiseaseData,
+    handleCloseEditModal,
+    handleDataUpdated,
+    
+    // Account
+    handleSaveProfile,
+  };
+};
+
+export default useDashboardHandlers;

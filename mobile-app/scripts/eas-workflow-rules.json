@@ -1,0 +1,41 @@
+{
+  "requiresBuild": [
+    {
+      "pattern": "mobile-app/app.json",
+      "reason": "Expo app config changed"
+    },
+    {
+      "pattern": "mobile-app/eas.json",
+      "reason": "EAS build/update channel configuration changed"
+    },
+    {
+      "pattern": "mobile-app/package.json",
+      "reason": "Dependencies/scripts may include native module changes"
+    },
+    {
+      "pattern": "mobile-app/package-lock.json",
+      "reason": "Lockfile changed and may affect native dependency graph"
+    },
+    {
+      "pattern": "mobile-app/android/**",
+      "reason": "Android native project changed"
+    },
+    {
+      "pattern": "mobile-app/ios/**",
+      "reason": "iOS native project changed"
+    },
+    {
+      "pattern": "mobile-app/plugins/**",
+      "reason": "Custom Expo plugin behavior changed"
+    },
+    {
+      "pattern": "mobile-app/babel.config.js",
+      "reason": "Bundler/transforms changed"
+    }
+  ],
+  "usuallySafeForOta": [
+    "mobile-app/app/**",
+    "mobile-app/src/**",
+    "mobile-app/assets/**"
+  ]
+}

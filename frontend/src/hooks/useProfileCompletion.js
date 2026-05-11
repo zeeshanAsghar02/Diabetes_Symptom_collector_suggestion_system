@@ -1,0 +1,80 @@
+import { useCallback } from 'react';
+
+/**
+ * Custom hook for profile completion calculations
+ * Determines what percentage of personal and medical information is complete
+ */
+const useProfileCompletion = () => {
+  // Field definitions
+  const personalFields = ['fullName', 'date_of_birth', 'gender', 'phone_number'];
+  const medicalFields = ['diabetes_type', 'diagnosis_date'];
+
+  /**
+   * Helper to check if a value is valid and not encrypted
+   */
+  const isValidValue = (value) => {
+    if (!value) return false;
+    if (value === null || value === undefined || value === '') return false;
+    // Check if the value looks like an encrypted string (contains ':' and looks like hex)
+    if (typeof value === 'string' && value.includes(':') && value.length > 50) {
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * Calculate completion percentage based on filled fields
+   */
+  const calculateCompletion = useCallback((personalData, medicalData) => {
+    const total = personalFields.length + medicalFields.length;
+    
+    const completed = [...personalFields, ...medicalFields].reduce((count, field) => {
+      const source = personalFields.includes(field) ? personalData : medicalData;
+      return source && isValidValue(source[field]) ? count + 1 : count;
+    }, 0);
+
+    return total ? Math.round((completed / total) * 100) : 0;
+  }, []);
+
+  /**
+   * Check if a specific field is complete
+   */
+  const isFieldComplete = useCallback((field, data) => {
+    const value = data && data[field];
+    return isValidValue(value);
+  }, []);
+
+  /**
+   * Get list of incomplete fields
+   */
+  const getIncompleteFields = useCallback((personalData, medicalData) => {
+    const incomplete = [];
+
+    personalFields.forEach(field => {
+      if (!isFieldComplete(field, personalData)) {
+        incomplete.push({ field, category: 'personal' });
+      }
+    });
+
+    medicalFields.forEach(field => {
+      if (!isFieldComplete(field, medicalData)) {
+        incomplete.push({ field, category: 'medical' });
+      }
+    });
+
+    return incomplete;
+  }, [isFieldComplete]);
+
+  return {
+    // Field Definitions
+    personalFields,
+    medicalFields,
+
+    // Calculation Functions
+    calculateCompletion,
+    isFieldComplete,
+    getIncompleteFields,
+  };
+};
+
+export default useProfileCompletion;

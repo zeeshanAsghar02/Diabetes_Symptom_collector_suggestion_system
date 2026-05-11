@@ -1,0 +1,114 @@
+{
+  "width": {
+    "expanded": "260px",
+    "collapsed": "72px",
+    "mobile": "280px"
+  },
+  "spacing": {
+    "padding": {
+      "vertical": "24px",
+      "horizontal": "16px",
+      "horizontalCollapsed": "8px"
+    },
+    "gap": {
+      "menuItems": "4px",
+      "sections": "24px"
+    },
+    "itemPadding": {
+      "vertical": "10px",
+      "horizontal": "12px",
+      "horizontalCollapsed": "16px"
+    }
+  },
+  "borderRadius": {
+    "menuItem": "12px",
+    "avatar": "12px",
+    "container": "0px"
+  },
+  "iconSize": {
+    "menu": "20px",
+    "avatar": "40px"
+  },
+  "fontSize": {
+    "menuItem": "14px",
+    "menuItemSmall": "13px",
+    "username": "14px",
+    "role": "11px",
+    "sectionHeader": "11px"
+  },
+  "fontWeight": {
+    "menuItem": 500,
+    "menuItemActive": 600,
+    "username": 600,
+    "role": 500,
+    "sectionHeader": 600
+  },
+  "colors": {
+    "light": {
+      "background": "#ffffff",
+      "border": "#e5e7eb",
+      "text": {
+        "primary": "#1f2937",
+        "secondary": "#6b7280",
+        "tertiary": "#9ca3af"
+      },
+      "menuItem": {
+        "default": {
+          "background": "transparent",
+          "text": "#6b7280",
+          "icon": "#9ca3af"
+        },
+        "hover": {
+          "background": "#f3f4f6",
+          "text": "#1f2937",
+          "icon": "#6b7280"
+        },
+        "active": {
+          "background": "#eff6ff",
+          "text": "#2563eb",
+          "icon": "#2563eb"
+        }
+      },
+      "divider": "#e5e7eb",
+      "userSection": {
+        "background": "#f9fafb",
+        "border": "#e5e7eb"
+      }
+    },
+    "dark": {
+      "background": "#0f172a",
+      "border": "#1e293b",
+      "text": {
+        "primary": "#f1f5f9",
+        "secondary": "#94a3b8",
+        "tertiary": "#64748b"
+      },
+      "menuItem": {
+        "default": {
+          "background": "transparent",
+          "text": "#94a3b8",
+          "icon": "#64748b"
+        },
+        "hover": {
+          "background": "#1e293b",
+          "text": "#f1f5f9",
+          "icon": "#94a3b8"
+        },
+        "active": {
+          "background": "#1e3a8a",
+          "text": "#60a5fa",
+          "icon": "#60a5fa"
+        }
+      },
+      "divider": "#1e293b",
+      "userSection": {
+        "background": "#1e293b",
+        "border": "#334155"
+      }
+    }
+  },
+  "transition": {
+    "duration": "300ms",
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)"
+  }
+}

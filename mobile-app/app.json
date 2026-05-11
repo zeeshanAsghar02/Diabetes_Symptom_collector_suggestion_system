@@ -1,0 +1,89 @@
+{
+  "expo": {
+    "name": "Diavise",
+    "slug": "diavise",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "diabetesapp",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563eb"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.diabeteshealth.mobile",
+      "jsEngine": "hermes",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "We need access to your health data to provide personalized recommendations.",
+        "NSHealthUpdateUsageDescription": "We need to update your health data to track your progress."
+      }
+    },
+    "android": {
+      "package": "com.diabeteshealth.mobile",
+      "jsEngine": "hermes",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563eb"
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_NETWORK_STATE",
+        "INTERNET",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_HEART_RATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-health-connect",
+        {
+          "isSdkExtensionEnabled": true
+        }
+      ],
+      "./plugins/with-health-connect-delegate",
+      "./plugins/with-health-connect-queries"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "81ced150-a953-41a9-a697-ddee681a72c4"
+      }
+    },
+    "owner": "zeeshanx02s-organization"
+  }
+}

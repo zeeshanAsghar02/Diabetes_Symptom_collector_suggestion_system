@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug - Check SessionStorage</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #00ff00; }
+        .section { margin: 20px 0; padding: 15px; background: #2a2a2a; border: 1px solid #00ff00; }
+        h2 { color: #00ff00; }
+        pre { background: #000; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background: #00ff00; color: #000; border: none; cursor: pointer; }
+        button:hover { background: #00cc00; }
+        .error { color: #ff0000; }
+        .success { color: #00ff00; }
+    </style>
+</head>
+<body>
+    <h1>🔍 SessionStorage Debug Tool</h1>
+    
+    <div class="section">
+        <h2>1. Check SessionStorage</h2>
+        <button onclick="checkSessionStorage()">Check Now</button>
+        <pre id="sessionResult"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>2. Simulate Answer Save</h2>
+        <button onclick="simulateSaveAnswers()">Simulate Saving Answers</button>
+        <pre id="simulateResult"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>3. Clear SessionStorage</h2>
+        <button onclick="clearSession()">Clear All</button>
+        <pre id="clearResult"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>4. Test API Call</h2>
+        <input type="email" id="testEmail" placeholder="Enter your email" style="padding: 8px; width: 300px;">
+        <button onclick="testBatchSaveAPI()">Test Batch Save API</button>
+        <pre id="apiResult"></pre>
+    </div>
+
+    <script>
+        function checkSessionStorage() {
+            const result = document.getElementById('sessionResult');
+            result.innerHTML = '🔍 Checking sessionStorage...\n\n';
+            
+            const pending = sessionStorage.getItem('pendingOnboardingAnswers');
+            const returnFlag = sessionStorage.getItem('returnToSymptomAssessment');
+            const savedFlag = sessionStorage.getItem('answersSavedAfterLogin');
+            
+            result.innerHTML += `pendingOnboardingAnswers: ${pending ? 'EXISTS' : 'NOT FOUND'}\n`;
+            result.innerHTML += `returnToSymptomAssessment: ${returnFlag || 'NOT SET'}\n`;
+            result.innerHTML += `answersSavedAfterLogin: ${savedFlag || 'NOT SET'}\n\n`;
+            
+            if (pending) {
+                try {
+                    const parsed = JSON.parse(pending);
+                    result.innerHTML += `✅ Successfully parsed!\n`;
+                    result.innerHTML += `Symptom ID: ${parsed.symptomId}\n`;
+                    result.innerHTML += `Symptom Name: ${parsed.symptomName}\n`;
+                    result.innerHTML += `Answer Count: ${parsed.answers ? Object.keys(parsed.answers).length : 0}\n`;
+                    result.innerHTML += `Last Updated: ${parsed.lastUpdated}\n\n`;
+                    result.innerHTML += `📦 Raw data:\n${JSON.stringify(parsed, null, 2)}`;
+                } catch (e) {
+                    result.innerHTML += `❌ Failed to parse: ${e.message}\n`;
+                }
+            } else {
+                result.innerHTML += `⚠️  No pending answers found!\n`;
+                result.innerHTML += `This means either:\n`;
+                result.innerHTML += `1. User hasn't answered questions yet\n`;
+                result.innerHTML += `2. QuestionList.jsx didn't save to sessionStorage\n`;
+                result.innerHTML += `3. sessionStorage was cleared\n`;
+            }
+        }
+        
+        function simulateSaveAnswers() {
+            const result = document.getElementById('simulateResult');
+            result.innerHTML = '💾 Simulating answer save...\n\n';
+            
+            // Simulate what QuestionList.jsx should do
+            const testAnswers = {
+                '507f1f77bcf86cd799439011': 'Yes',  // Sample question ID
+                '507f1f77bcf86cd799439012': 'No',
+                '507f1f77bcf86cd799439013': 'Yes'
+            };
+            
+            const dataToSave = {
+                answers: testAnswers,
+                symptomId: '507f1f77bcf86cd799439014',
+                symptomName: 'Test Symptom',
+                lastUpdated: new Date().toISOString()
+            };
+            
+            sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(dataToSave));
+            result.innerHTML += '✅ Saved test data to sessionStorage!\n\n';
+            result.innerHTML += JSON.stringify(dataToSave, null, 2);
+        }
+        
+        function clearSession() {
+            const result = document.getElementById('clearResult');
+            sessionStorage.removeItem('pendingOnboardingAnswers');
+            sessionStorage.removeItem('returnToSymptomAssessment');
+            sessionStorage.removeItem('answersSavedAfterLogin');
+            result.innerHTML = '✅ Cleared all session storage items!';
+        }
+        
+        async function testBatchSaveAPI() {
+            const result = document.getElementById('apiResult');
+            const email = document.getElementById('testEmail').value;
+            
+            if (!email) {
+                result.innerHTML = '❌ Please enter your email first!';
+                return;
+            }
+            
+            result.innerHTML = '📡 Testing API call...\n\n';
+            
+            // First, get token by logging in
+            try {
+                result.innerHTML += `1. Logging in as ${email}...\n`;
+                const loginRes = await fetch('http://localhost:5000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        email, 
+                        password: 'yourpassword'  // You'll need to enter correct password
+                    })
+                });
+                
+                const loginData = await loginRes.json();
+                if (!loginData.data?.accessToken) {
+                    result.innerHTML += `❌ Login failed: ${loginData.message}\n`;
+                    return;
+                }
+                
+                result.innerHTML += `✅ Login successful!\n`;
+                const token = loginData.data.accessToken;
+                
+                // Now try batch save
+                const testAnswers = [
+                    { questionId: '507f1f77bcf86cd799439011', answerText: 'Yes' },
+                    { questionId: '507f1f77bcf86cd799439012', answerText: 'No' }
+                ];
+                
+                result.innerHTML += `\n2. Calling batch-save-answers...\n`;
+                const saveRes = await fetch('http://localhost:5000/api/v1/questions/batch-save-answers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ answers: testAnswers })
+                });
+                
+                const saveData = await saveRes.json();
+                result.innerHTML += `\n✅ API Response:\n${JSON.stringify(saveData, null, 2)}`;
+                
+            } catch (error) {
+                result.innerHTML += `\n❌ Error: ${error.message}`;
+            }
+        }
+        
+        // Auto-check on load
+        window.onload = checkSessionStorage;
+    </script>
+</body>
+</html>

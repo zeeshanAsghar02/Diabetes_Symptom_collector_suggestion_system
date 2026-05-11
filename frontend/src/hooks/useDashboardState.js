@@ -1,0 +1,140 @@
+import { useState, useRef } from 'react';
+
+/**
+ * Custom hook to manage all Dashboard state
+ * Centralizes all useState declarations and refs
+ */
+const useDashboardState = () => {
+  // Core State
+  const [user, setUser] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [diseaseData, setDiseaseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Modal/Popup States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDiagnosisPopup, setShowDiagnosisPopup] = useState(false);
+  const [showAssessmentPopup, setShowAssessmentPopup] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [openCardModal, setOpenCardModal] = useState(null);
+
+  // Profile/Medical Data
+  const [personalInfoCompletion, setPersonalInfoCompletion] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [personalInfo, setPersonalInfo] = useState(null);
+  const [medicalInfo, setMedicalInfo] = useState(null);
+  const [dietHistory, setDietHistory] = useState([]);
+  const [exerciseHistory, setExerciseHistory] = useState([]);
+  const [lifestyleHistory, setLifestyleHistory] = useState([]);
+  const [assessmentSummary, setAssessmentSummary] = useState(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
+
+  // UI State
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Dynamic Features State (with localStorage initialization)
+  const [chartTimeRange, setChartTimeRange] = useState(() => {
+    try {
+      return localStorage.getItem('dashboardChartTimeRange') || '7days';
+    } catch {
+      return '7days';
+    }
+  });
+
+  const [expandedSections, setExpandedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardExpandedSections');
+      return saved ? JSON.parse(saved) : { nutrition: true, exercise: true, labs: false, goals: false };
+    } catch {
+      return { nutrition: true, exercise: true, labs: false, goals: false };
+    }
+  });
+
+  const [healthGoals, setHealthGoals] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardHealthGoals');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [showGoalDialog, setShowGoalDialog] = useState(false);
+  const [showAddGoalDialog, setShowAddGoalDialog] = useState(false);
+  const [newGoal, setNewGoal] = useState({ title: '', target: '', current: 0, unit: '' });
+  const [selectedDayData, setSelectedDayData] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [showDayDetailsModal, setShowDayDetailsModal] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [animatedValues, setAnimatedValues] = useState({});
+
+  // Refs
+  const diagnosisRef = useRef(null);
+  const labsRef = useRef(null);
+  const analyticsRef = useRef(null);
+  const plansRef = useRef(null);
+  const assessmentRef = useRef(null);
+
+  // Account State
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState('');
+
+  return {
+    // User & Core State
+    user, setUser,
+    selectedIndex, setSelectedIndex,
+    diseaseData, setDiseaseData,
+    loading, setLoading,
+    error, setError,
+
+    // Modal/Popup States
+    showEditModal, setShowEditModal,
+    showDiagnosisPopup, setShowDiagnosisPopup,
+    showAssessmentPopup, setShowAssessmentPopup,
+    showFeedbackForm, setShowFeedbackForm,
+    openCardModal, setOpenCardModal,
+
+    // Profile/Medical Data
+    personalInfoCompletion, setPersonalInfoCompletion,
+    refreshTrigger, setRefreshTrigger,
+    personalInfo, setPersonalInfo,
+    medicalInfo, setMedicalInfo,
+    dietHistory, setDietHistory,
+    exerciseHistory, setExerciseHistory,
+    lifestyleHistory, setLifestyleHistory,
+    assessmentSummary, setAssessmentSummary,
+    assessmentLoading, setAssessmentLoading,
+
+    // UI State
+    sidebarOpen, setSidebarOpen,
+    mobileOpen, setMobileOpen,
+
+    // Dynamic Features State
+    chartTimeRange, setChartTimeRange,
+    expandedSections, setExpandedSections,
+    healthGoals, setHealthGoals,
+    showGoalDialog, setShowGoalDialog,
+    showAddGoalDialog, setShowAddGoalDialog,
+    newGoal, setNewGoal,
+    selectedDayData, setSelectedDayData,
+    selectedDay, setSelectedDay,
+    showDayDetailsModal, setShowDayDetailsModal,
+    exportMenuAnchor, setExportMenuAnchor,
+    showKeyboardShortcuts, setShowKeyboardShortcuts,
+    showShortcutsDialog, setShowShortcutsDialog,
+    animatedValues, setAnimatedValues,
+
+    // Refs
+    refs: { diagnosisRef, labsRef, analyticsRef, plansRef, assessmentRef },
+
+    // Account State
+    savingProfile, setSavingProfile,
+    profileError, setProfileError,
+  };
+};
+
+export default useDashboardState;

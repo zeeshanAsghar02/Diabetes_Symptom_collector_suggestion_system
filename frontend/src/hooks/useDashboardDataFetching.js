@@ -1,0 +1,253 @@
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../utils/auth';
+import { fetchMyDiseaseData } from '../utils/api';
+import axiosInstance from '../utils/axiosInstance';
+import useProfileCompletion from './useProfileCompletion';
+
+/**
+ * Custom hook for all data fetching operations
+ * Manages useEffect hooks for user, disease data, assessment, and profile info
+ */
+const useDashboardDataFetching = ({
+  // State setters from useDashboardState
+  setUser,
+  setLoading,
+  setError,
+  setDiseaseData,
+  setAssessmentSummary,
+  setAssessmentLoading,
+  setPersonalInfo,
+  setMedicalInfo,
+  setDietHistory,
+  setExerciseHistory,
+  setLifestyleHistory,
+  setPersonalInfoCompletion,
+  setShowDiagnosisPopup,
+  setShowAssessmentPopup,
+  setShowFeedbackForm,
+  setSelectedIndex,
+  setAnimatedValues,
+  setExpandedSections,
+  setHealthGoals,
+  setChartTimeRange,
+  // State values
+  user,
+  selectedIndex,
+  refreshTrigger,
+  chartTimeRange,
+  expandedSections,
+  healthGoals,
+  // Section info
+  currentSection,
+}) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { calculateCompletion } = useProfileCompletion();
+
+  // Initial user fetch with retry logic
+  useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const fetchUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        if (userData) {
+          setUser(userData);
+        } else {
+          navigate('/signin');
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        if (err.response?.status === 401) {
+          navigate('/signin');
+        } else if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(fetchUser, 1000 * retryCount);
+        } else {
+          setError('Failed to load user data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+    
+    return () => {
+      retryCount = maxRetries;
+    };
+  }, [navigate, setUser, setLoading, setError, setShowDiagnosisPopup, setShowAssessmentPopup]);
+
+  // Feedback navigation handler
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('showFeedback') === 'true') {
+      const feedbackIndex = user?.diabetes_diagnosed === 'yes' ? 4 : 4;
+      setSelectedIndex(feedbackIndex);
+      setShowFeedbackForm(true);
+      
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [location.search, user, setSelectedIndex, setShowFeedbackForm]);
+
+  // Disease data fetching
+  useEffect(() => {
+    if (currentSection === 'Insights' || currentSection === 'My Disease Data') {
+      const loadDiseaseData = async () => {
+        try {
+          const data = await fetchMyDiseaseData();
+          setDiseaseData(data);
+        } catch (err) {
+          console.error('Error fetching disease data:', err);
+          setError('Failed to load disease data');
+        }
+      };
+      loadDiseaseData();
+    }
+  }, [currentSection, refreshTrigger, setDiseaseData, setError]);
+
+  // Assessment summary fetching
+  useEffect(() => {
+    if (currentSection === 'Insights' && user?.diabetes_diagnosed !== 'yes') {
+      const fetchAssessment = async () => {
+        setAssessmentLoading(true);
+        try {
+          const response = await axiosInstance.get('/api/ml/assess-risk');
+          const data = response.data?.data || response.data;
+          
+          if (data) {
+            const summary = {
+              risk_level: data.risk_level || data.riskLevel || 'unknown',
+              probability: data.probability || data.riskProbability || 0,
+              symptoms_present: data.symptoms_present || data.symptomsPresent || [],
+              feature_importance: data.feature_importance || data.featureImportance || {}
+            };
+            setAssessmentSummary(summary);
+          }
+        } catch (err) {
+          console.error('Error fetching assessment:', err);
+        } finally {
+          setAssessmentLoading(false);
+        }
+      };
+      
+      fetchAssessment();
+    }
+  }, [currentSection, user, setAssessmentSummary, setAssessmentLoading]);
+
+  // Personal/Medical info and completion fetching (for diagnosed users)
+  useEffect(() => {
+    if (user?.diabetes_diagnosed === 'yes' && 
+        (currentSection === 'Personalized Suggestions' || currentSection === 'Insights')) {
+      
+      const fetchProfileData = async () => {
+        try {
+          const [personalRes, medicalRes, dietRes, exerciseRes, lifestyleRes] = await Promise.all([
+            axiosInstance.get('/api/user/personal-info'),
+            axiosInstance.get('/api/user/medical-info'),
+            axiosInstance.get('/api/diet/history').catch(() => ({ data: { data: [] } })),
+            axiosInstance.get('/api/exercise/history').catch(() => ({ data: { data: [] } })),
+            axiosInstance.get('/api/lifestyle/history').catch(() => ({ data: { data: [] } })),
+          ]);
+
+          const personalData = personalRes.data?.data || {};
+          const medicalData = medicalRes.data?.data || {};
+          
+          setPersonalInfo(personalData);
+          setMedicalInfo(medicalData);
+          setDietHistory(dietRes.data?.data || []);
+          setExerciseHistory(exerciseRes.data?.data || []);
+          setLifestyleHistory(lifestyleRes.data?.data || []);
+
+          const completion = calculateCompletion(personalData, medicalData);
+          setPersonalInfoCompletion(completion);
+          
+        } catch (err) {
+          console.error('Error fetching profile data:', err);
+        }
+      };
+
+      fetchProfileData();
+    }
+  }, [
+    user,
+    currentSection,
+    refreshTrigger,
+    setPersonalInfo,
+    setMedicalInfo,
+    setDietHistory,
+    setExerciseHistory,
+    setLifestyleHistory,
+    setPersonalInfoCompletion,
+    calculateCompletion
+  ]);
+
+  // Save chart time range to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardChartTimeRange', chartTimeRange);
+  }, [chartTimeRange]);
+
+  // Save expanded sections to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardExpandedSections', JSON.stringify(expandedSections));
+  }, [expandedSections]);
+
+  // Save health goals to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardHealthGoals', JSON.stringify(healthGoals));
+  }, [healthGoals]);
+
+  // Animate progress bars on load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedValues({
+        bmi: true,
+        hba1c: true,
+        glucose: true,
+        bp: true
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [setAnimatedValues]);
+
+  // Keyboard shortcuts listener
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case '1':
+            e.preventDefault();
+            setSelectedIndex(0);
+            break;
+          case '2':
+            e.preventDefault();
+            setSelectedIndex(1);
+            break;
+          case '3':
+            e.preventDefault();
+            setSelectedIndex(2);
+            break;
+          case '4':
+            e.preventDefault();
+            setSelectedIndex(3);
+            break;
+          case '?':
+            e.preventDefault();
+            // Show shortcuts dialog if needed
+            break;
+          default:
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [setSelectedIndex]);
+};
+
+export default useDashboardDataFetching;
