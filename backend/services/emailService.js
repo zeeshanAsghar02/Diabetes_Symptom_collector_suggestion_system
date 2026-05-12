@@ -2,13 +2,20 @@ import nodemailer from 'nodemailer';
 import { cleanupTemporaryFile } from './pdfGenerationService.js';
 
 export async function sendActivationEmail(email, token) {
+  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
+  const smtpPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
+  const smtpSecureRaw = process.env.SMTP_SECURE || process.env.EMAIL_SECURE;
+  const smtpSecure = typeof smtpSecureRaw === 'string' ? smtpSecureRaw.toLowerCase() === 'true' : true;
+  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT, 10),
-        secure: process.env.SMTP_SECURE === 'true',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+      user: smtpUser,
+      pass: smtpPass,
         },
     });
     const activationUrl = `${process.env.FRONTEND_URL}/activate/${token}`;
@@ -36,13 +43,20 @@ export async function sendActivationEmail(email, token) {
 }
 
 export async function sendResetPasswordEmail(email, token) {
+  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
+  const smtpPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
+  const smtpSecureRaw = process.env.SMTP_SECURE || process.env.EMAIL_SECURE;
+  const smtpSecure = typeof smtpSecureRaw === 'string' ? smtpSecureRaw.toLowerCase() === 'true' : true;
+  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT, 10),
-        secure: process.env.SMTP_SECURE === 'true',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+      user: smtpUser,
+      pass: smtpPass,
         },
     });
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;

@@ -679,7 +679,10 @@ export const assessDiabetes = async (req, res) => {
       // we still return assessment results and simply skip the email job.
       const emailAddress = updatedUser?.email;
       const isEmailFormatValid = typeof emailAddress === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
-      const isEmailServiceConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+      const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+      const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+      const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+      const isEmailServiceConfigured = !!(smtpHost && smtpUser && smtpPass);
 
       // Generate and send risk assessment report email in background (ONLY if no recent duplicate)
       if (shouldSendEmail && isEmailFormatValid && isEmailServiceConfigured) {
