@@ -1,0 +1,16 @@
+node_modules
+.git
+.github
+.env
+.env.*
+uploads
+chroma_db
+coverage
+temp
+logs
+*.log
+*.pdf
+*.md
+Dockerfile
+.DS_Store
+Thumbs.db

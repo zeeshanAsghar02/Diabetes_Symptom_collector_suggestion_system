@@ -1,36 +1,24 @@
-# Use Node.js 20
-FROM node:20-slim
+FROM node:20-slim AS base
 
-# Install Python3 and ML dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-dev \
-    build-essential \
-    && pip3 install --no-cache-dir --break-system-packages \
-    numpy \
-    pandas \
-    scikit-learn \
-    joblib \
-    xgboost \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+ENV NODE_ENV=production
+ENV PORT=5000
 
-# Install dependencies
-RUN npm install --production
+FROM base AS deps
 
-# Copy the rest of the backend code
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM base AS runtime
+
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Expose the port (Gradio/HF default is 7860)
-ENV PORT=7860
-EXPOSE 7860
+RUN chown -R node:node /app
 
-# Start the application
+USER node
+
+EXPOSE 5000
+
 CMD ["node", "server.js"]

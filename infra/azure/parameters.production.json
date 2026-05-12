@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectName": {
+      "value": "diavise"
+    },
+    "environmentName": {
+      "value": "production"
+    },
+    "location": {
+      "value": "centralindia"
+    },
+    "logRetentionDays": {
+      "value": 60
+    },
+    "uploadShareQuotaGiB": {
+      "value": 100
+    },
+    "backendImageName": {
+      "value": "diavise-backend"
+    },
+    "backendImageTag": {
+      "value": "production"
+    },
+    "backendContainerPort": {
+      "value": 5000
+    },
+    "frontendOrigin": {
+      "value": "https://your-frontend.azurestaticapps.net"
+    },
+    "allowedOrigins": {
+      "value": "https://your-frontend.azurestaticapps.net,http://localhost:5173"
+    }
+  }
+}

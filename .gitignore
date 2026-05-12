@@ -91,3 +91,6 @@ ecosystem.config.js
 
 # Ignore documentation trash
 _repo_cleanup_trash/
+
+# Ignore Copilot/agent workspace artifacts
+.agents/

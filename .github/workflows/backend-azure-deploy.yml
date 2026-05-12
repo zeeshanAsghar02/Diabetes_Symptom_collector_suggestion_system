@@ -1,0 +1,137 @@
+name: Backend Azure Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Azure environment
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-azure-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify server syntax
+        run: node --check server.js
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    env:
+      PROJECT_NAME: diavise
+      BACKEND_IMAGE_NAME: diavise-backend
+      BACKEND_CONTAINER_PORT: 5000
+      BACKEND_IMAGE_TAG: ${{ github.sha }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      QDRANT_URL: ${{ secrets.QDRANT_URL }}
+      QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+      LLM_API_URL: ${{ secrets.LLM_API_URL }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      EMAIL_USER: ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
+      ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Azure foundation
+        id: foundation
+        run: |
+          DEPLOYMENT_NAME="${PROJECT_NAME}-${{ inputs.environment }}-foundation-${GITHUB_RUN_ID}"
+          az deployment group create \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/azure/main.bicep \
+            --parameters @infra/azure/parameters.${{ inputs.environment }}.json \
+            --parameters \
+              backendImageName="$BACKEND_IMAGE_NAME" \
+              backendImageTag="$BACKEND_IMAGE_TAG" \
+              backendContainerPort="$BACKEND_CONTAINER_PORT" \
+              mongoUri="$MONGO_URI" \
+              jwtSecret="$JWT_SECRET" \
+              refreshTokenSecret="$REFRESH_TOKEN_SECRET" \
+              jinaApiKey="$JINA_API_KEY" \
+              qdrantUrl="$QDRANT_URL" \
+              qdrantApiKey="$QDRANT_API_KEY" \
+              llmApiUrl="$LLM_API_URL" \
+              googleClientId="$GOOGLE_CLIENT_ID" \
+              emailUser="$EMAIL_USER" \
+              emailPass="$EMAIL_PASS" \
+              frontendOrigin="$FRONTEND_ORIGIN" \
+              allowedOrigins="$ALLOWED_ORIGINS" \
+            --query properties.outputs.containerRegistryLoginServer.value -o tsv
+
+      - name: Build backend image
+        run: |
+          ACR_NAME="${PROJECT_NAME}${{ inputs.environment }}acr"
+          ACR_NAME="${ACR_NAME//-/}"
+          LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+          echo "LOGIN_SERVER=$LOGIN_SERVER" >> "$GITHUB_ENV"
+          docker build -t "$LOGIN_SERVER/$BACKEND_IMAGE_NAME:$BACKEND_IMAGE_TAG" ./backend
+
+      - name: Push backend image
+        run: |
+          ACR_NAME="${PROJECT_NAME}${{ inputs.environment }}acr"
+          ACR_NAME="${ACR_NAME//-/}"
+          az acr login --name "$ACR_NAME"
+          docker push "$LOGIN_SERVER/$BACKEND_IMAGE_NAME:$BACKEND_IMAGE_TAG"
+
+      - name: Refresh backend revision
+        run: |
+          BACKEND_APP_NAME="${PROJECT_NAME}-${{ inputs.environment }}-api"
+          az containerapp update \
+            --name "$BACKEND_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$LOGIN_SERVER/$BACKEND_IMAGE_NAME:$BACKEND_IMAGE_TAG"
+
+          az containerapp revision restart \
+            --name "$BACKEND_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP"

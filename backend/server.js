@@ -60,6 +60,32 @@ import { hasPermission } from './utils/permissionUtils.js';
 
 const app = express();
 
+const defaultAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:4173',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:4173',
+  'http://127.0.0.1:5173',
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+];
+
+function getAllowedOrigins() {
+  const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins;
+  }
+
+  return defaultAllowedOrigins;
+}
+
+const allowedOrigins = new Set(getAllowedOrigins());
+
 // Helper function to get local IP address
 function getLocalIPAddress() {
   const interfaces = os.networkInterfaces();
@@ -78,7 +104,15 @@ function getLocalIPAddress() {
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: true, // Accept all origins (for mobile app development)
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
