@@ -94,3 +94,7 @@ _repo_cleanup_trash/
 
 # Ignore Copilot/agent workspace artifacts
 .agents/
+
+# Ignore generated/temporary infra artifacts
+infra/azure/main.json
+assign-roles.ps1
