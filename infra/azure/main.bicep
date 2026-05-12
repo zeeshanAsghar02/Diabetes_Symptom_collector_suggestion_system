@@ -349,15 +349,6 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-resource backendAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: containerRegistry
-  name: guid(resourceGroup().id, containerRegistry.name, 'AcrPull')
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-    principalId: backendApp.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
 
 output resourceGroupLocation string = location
 output logAnalyticsWorkspaceId string = logAnalytics.id
