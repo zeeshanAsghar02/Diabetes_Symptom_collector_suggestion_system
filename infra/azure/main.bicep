@@ -230,10 +230,6 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: llmApiUrl
         }
         {
-          name: 'google-client-id'
-          value: googleClientId
-        }
-        {
           name: 'email-user'
           value: emailUser
         }
@@ -295,7 +291,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'GOOGLE_CLIENT_ID'
-              secretRef: 'google-client-id'
+              value: googleClientId
             }
             {
               name: 'EMAIL_USER'
