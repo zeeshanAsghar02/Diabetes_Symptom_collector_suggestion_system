@@ -1,6 +1,12 @@
 name: Frontend Azure Deploy
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-azure-deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
