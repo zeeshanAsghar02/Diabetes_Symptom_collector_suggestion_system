@@ -1,3 +1,5 @@
+// Deployment Ready: May 13, 2026 20:25 - Triggering backend staging build
+
 // Load environment variables FIRST using ESM-friendly entry
 import dotenv from 'dotenv';
 import path from 'path';
