@@ -33,12 +33,12 @@ jobs:
         working-directory: frontend
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            frontend
-          sparse-checkout-cone-mode: false
+      - name: Download source archive
+        run: |
+          curl -L "https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${GITHUB_SHA}" -o source.tar.gz
+          tar -xzf source.tar.gz
+          SOURCE_DIR="$(find . -maxdepth 1 -type d -name "*-${GITHUB_SHA}" -print -quit)"
+          cp -R "$SOURCE_DIR/frontend" ./frontend
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -59,12 +59,12 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            frontend
-          sparse-checkout-cone-mode: false
+      - name: Download source archive
+        run: |
+          curl -L "https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${GITHUB_SHA}" -o source.tar.gz
+          tar -xzf source.tar.gz
+          SOURCE_DIR="$(find . -maxdepth 1 -type d -name "*-${GITHUB_SHA}" -print -quit)"
+          cp -R "$SOURCE_DIR/frontend" ./frontend
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
