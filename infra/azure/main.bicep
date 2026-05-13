@@ -243,7 +243,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'api'
-          image: '${containerRegistry.properties.loginServer}/${backendImageName}:${backendImageTag}'
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
             cpu: json('1.0')
             memory: '2Gi'
