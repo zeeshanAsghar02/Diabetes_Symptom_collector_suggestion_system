@@ -134,17 +134,28 @@ jobs:
       - name: Refresh backend revision
         run: |
           BACKEND_APP_NAME="${PROJECT_NAME}-${DEPLOY_ENVIRONMENT}-api"
+          
+          # Update container app with new image
           az containerapp update \
             --name "$BACKEND_APP_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --image "$LOGIN_SERVER/$BACKEND_IMAGE_NAME:$BACKEND_IMAGE_TAG"
 
+          # Update ingress target port
           az containerapp ingress update \
             --name "$BACKEND_APP_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --target-port "$BACKEND_CONTAINER_PORT"
 
-          az containerapp revision restart \
+          # Get the latest revision and restart it
+          LATEST_REVISION=$(az containerapp revision list \
             --name "$BACKEND_APP_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --latest-revision
+            --query "[0].name" -o tsv)
+          
+          if [ -n "$LATEST_REVISION" ]; then
+            az containerapp revision restart \
+              --name "$BACKEND_APP_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --revision "$LATEST_REVISION"
+          fi
