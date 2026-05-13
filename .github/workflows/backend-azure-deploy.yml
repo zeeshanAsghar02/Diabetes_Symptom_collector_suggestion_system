@@ -146,4 +146,5 @@ jobs:
 
           az containerapp revision restart \
             --name "$BACKEND_APP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP"
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --latest-revision
