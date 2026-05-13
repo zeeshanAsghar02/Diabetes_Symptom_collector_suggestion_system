@@ -130,6 +130,7 @@ jobs:
           az containerapp update \
             --name "$BACKEND_APP_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
+            --target-port "$BACKEND_CONTAINER_PORT" \
             --image "$LOGIN_SERVER/$BACKEND_IMAGE_NAME:$BACKEND_IMAGE_TAG"
 
           az containerapp revision restart \
