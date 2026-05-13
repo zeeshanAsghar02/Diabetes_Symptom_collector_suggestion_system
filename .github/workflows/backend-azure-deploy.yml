@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+    # Keep push-based redeploys aligned with backend and workflow changes.
     paths:
       - 'backend/**'
       - '.github/workflows/backend-azure-deploy.yml'
