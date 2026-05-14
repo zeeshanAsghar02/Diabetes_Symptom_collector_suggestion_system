@@ -20,7 +20,6 @@
     "@mui/material": "^7.2.0",
     "@mui/x-date-pickers": "^8.7.0",
     "apexcharts": "^4.0.0",
-    "appwrite": "^25.0.0",
     "axios": "^1.10.0",
     "chart.js": "^4.4.4",
     "chartjs-adapter-date-fns": "^3.0.0",
