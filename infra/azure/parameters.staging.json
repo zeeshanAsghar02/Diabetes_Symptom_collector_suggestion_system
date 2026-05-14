@@ -30,7 +30,7 @@
       "value": "https://staging.diavise.live"
     },
     "allowedOrigins": {
-      "value": "https://staging.diavise.live,http://localhost:5173"
+      "value": "https://red-cliff-05e0a0a00.7.azurestaticapps.net,https://staging.diavise.live,http://localhost:5173"
     }
   }
 }
