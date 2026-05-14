@@ -48,6 +48,9 @@ Thumbs.db
 **/*.sqlite3
 **/*.db
 
+# Ignore embedded git repositories
+hf-space-diavise-backend/
+
 # Ignore ChromaDB data (vector database)
 chroma_db/
 **/chroma_db/
