@@ -1,4 +1,4 @@
-// Fixed: removed embedded git repository that was breaking GitHub Actions
+// Fixed: removed embedded git repository and submodule config
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter/wght.css'
