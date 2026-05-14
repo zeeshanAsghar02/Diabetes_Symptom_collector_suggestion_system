@@ -27,10 +27,10 @@
       "value": 5000
     },
     "frontendOrigin": {
-      "value": "https://staging-your-frontend.azurestaticapps.net"
+      "value": "https://staging.diavise.live"
     },
     "allowedOrigins": {
-      "value": "https://staging-your-frontend.azurestaticapps.net,http://localhost:5173"
+      "value": "https://staging.diavise.live,http://localhost:5173"
     }
   }
 }
