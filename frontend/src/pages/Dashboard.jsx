@@ -34,13 +34,13 @@ import MobileDrawer from '../layout/MobileDrawer';
 import GoalDialog from '../components/modals/GoalDialog';
 import DayDetailsModal from '../components/modals/DayDetailsModal';
 import ShortcutsDialog from '../components/modals/ShortcutsDialog';
-import AccountSection from '../components/dashboard/sections/AccountSection';
-import DiseaseDataSection from '../components/dashboard/sections/DiseaseDataSection';
-import CheckRiskSection from '../components/dashboard/sections/CheckRiskSection';
-import FeedbackSection from '../components/dashboard/sections/FeedbackSection';
-import DiagnosedInsightsView from '../components/dashboard/views/DiagnosedInsightsView';
-import UndiagnosedInsightsView from '../components/dashboard/views/UndiagnosedInsightsView';
-import PersonalizedSuggestionsView from '../components/dashboard/views/PersonalizedSuggestionsView';
+import AccountSection from '../components/Dashboard/sections/AccountSection';
+import DiseaseDataSection from '../components/Dashboard/sections/DiseaseDataSection';
+import CheckRiskSection from '../components/Dashboard/sections/CheckRiskSection';
+import FeedbackSection from '../components/Dashboard/sections/FeedbackSection';
+import DiagnosedInsightsView from '../components/Dashboard/views/DiagnosedInsightsView';
+import UndiagnosedInsightsView from '../components/Dashboard/views/UndiagnosedInsightsView';
+import PersonalizedSuggestionsView from '../components/Dashboard/views/PersonalizedSuggestionsView';
 import dashboardTheme from '../theme/dashboardTheme';
 
 // Custom Hooks
