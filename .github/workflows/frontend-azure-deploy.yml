@@ -30,12 +30,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download source archive
-        run: |
-          git clone --depth 1 --no-checkout "https://github.com/${GITHUB_REPOSITORY}.git" source
-          cd source
-          git checkout "$GITHUB_SHA" -- frontend
-          cp -R frontend "$GITHUB_WORKSPACE/frontend"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          clean: false
+          sparse-checkout: |
+            frontend
+          sparse-checkout-cone-mode: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -58,12 +59,13 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
-      - name: Download source archive
-        run: |
-          git clone --depth 1 --no-checkout "https://github.com/${GITHUB_REPOSITORY}.git" source
-          cd source
-          git checkout "$GITHUB_SHA" -- frontend
-          cp -R frontend "$GITHUB_WORKSPACE/frontend"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          clean: false
+          sparse-checkout: |
+            frontend
+          sparse-checkout-cone-mode: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
