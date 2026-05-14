@@ -46,6 +46,10 @@ jobs:
         working-directory: frontend
         run: npm install
 
+      - name: Install Rollup native binary
+        working-directory: frontend
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu@4.44.2
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
@@ -71,6 +75,10 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm install
+
+      - name: Install Rollup native binary
+        working-directory: frontend
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu@4.44.2
 
       - name: Build frontend
         working-directory: frontend
