@@ -74,11 +74,8 @@ jobs:
       QDRANT_URL: ${{ secrets.QDRANT_URL }}
       QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
       LLM_API_URL: ${{ secrets.LLM_API_URL }}
-      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASS: ${{ secrets.SMTP_PASS }}
-      FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
-      ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
 
     steps:
       - name: Checkout repository
@@ -111,11 +108,8 @@ jobs:
               qdrantUrl="$QDRANT_URL" \
               qdrantApiKey="$QDRANT_API_KEY" \
               llmApiUrl="$LLM_API_URL" \
-              googleClientId="$GOOGLE_CLIENT_ID" \
               emailUser="$SMTP_USER" \
               emailPass="$SMTP_PASS" \
-              frontendOrigin="$FRONTEND_ORIGIN" \
-              allowedOrigins="$ALLOWED_ORIGINS" \
             --query properties.outputs.containerRegistryLoginServer.value -o tsv
 
       - name: Build backend image
