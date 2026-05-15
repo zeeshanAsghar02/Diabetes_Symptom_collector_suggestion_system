@@ -29,8 +29,11 @@
     "frontendOrigin": {
       "value": "https://staging.diavise.live"
     },
+    "googleClientId": {
+      "value": "642577753239-tl252kmg8p9lce84788tu4612mjg96fo.apps.googleusercontent.com"
+    },
     "allowedOrigins": {
-      "value": "https://red-cliff-05e0a0a00.7.azurestaticapps.net,https://staging.diavise.live,http://localhost:5173"
+      "value": "https://red-cliff-05e0a0a00.7.azurestaticapps.net,https://staging.diavise.live,https://diavise.live,https://www.diavise.live,http://localhost:5173"
     }
   }
 }
