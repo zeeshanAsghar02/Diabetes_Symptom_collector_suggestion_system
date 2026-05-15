@@ -79,11 +79,29 @@ function getAllowedOrigins() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  if (configuredOrigins.length > 0) {
-    return configuredOrigins;
+  // Expand configured origins with common variations to avoid simple mismatches
+  const baseList = configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
+  const expanded = new Set(baseList);
+
+  for (const o of baseList) {
+    try {
+      const url = new URL(o);
+      expanded.add(url.origin);
+      expanded.add(url.host);
+    } catch (e) {
+      // not a full URL, add common protocol variants
+      expanded.add(o);
+    }
+
+    // add protocol variants and trailing-slash variants
+    const noSlash = o.replace(/\/$/, '');
+    expanded.add(noSlash);
+    expanded.add(`https://${noSlash}`);
+    expanded.add(`http://${noSlash}`);
+    expanded.add(noSlash + '/');
   }
 
-  return defaultAllowedOrigins;
+  return Array.from(expanded).filter(Boolean);
 }
 
 const allowedOrigins = new Set(getAllowedOrigins());
@@ -107,18 +125,55 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow non-browser requests (no Origin header)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.has(origin)) {
-      return callback(null, true);
+    let normalized;
+    try {
+      normalized = new URL(origin).origin.replace(/\/$/, '');
+    } catch (e) {
+      normalized = origin.replace(/\/$/, '');
     }
 
-    return callback(new Error(`CORS origin not allowed: ${origin}`));
+    // Accept if exact match, host-only match, or canonical origin
+    try {
+      const host = new URL(origin).host;
+      if (allowedOrigins.has(normalized) || allowedOrigins.has(host) || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      if (allowedOrigins.has(normalized) || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+    }
+
+    console.warn('CORS blocked origin:', origin);
+    return callback(null, false);
   },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 }));
+
+// Ensure OPTIONS preflight always returns proper CORS headers for allowed origins
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (!origin) return res.sendStatus(204);
+  try {
+    const normalized = new URL(origin).origin.replace(/\/$/, '');
+    const host = new URL(origin).host;
+    if (allowedOrigins.has(normalized) || allowedOrigins.has(host) || allowedOrigins.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+      return res.sendStatus(204);
+    }
+  } catch (e) {
+    // fallthrough
+  }
+  return res.sendStatus(403);
+});
 
 // Global API rate limiter (100 requests/min per IP)
 app.use('/api/', apiLimiter);
