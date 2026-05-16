@@ -39,6 +39,9 @@ param emailUser string
 @secure()
 param emailPass string
 
+@secure()
+param encryptionKey string
+
 param frontendOrigin string
 param allowedOrigins string
 
@@ -190,7 +193,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 80
+        targetPort: backendContainerPort
         transport: 'auto'
         allowInsecure: false
       }
@@ -236,6 +239,10 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
         {
           name: 'email-pass'
           value: emailPass
+        }
+        {
+          name: 'encryption-key'
+          value: encryptionKey
         }
       ]
     }
@@ -300,6 +307,30 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'EMAIL_PASS'
               secretRef: 'email-pass'
+            }
+            {
+              name: 'SMTP_USER'
+              secretRef: 'email-user'
+            }
+            {
+              name: 'SMTP_PASS'
+              secretRef: 'email-pass'
+            }
+            {
+              name: 'SMTP_HOST'
+              value: 'smtp.gmail.com'
+            }
+            {
+              name: 'SMTP_PORT'
+              value: '465'
+            }
+            {
+              name: 'SMTP_SECURE'
+              value: 'true'
+            }
+            {
+              name: 'ENCRYPTION_KEY'
+              secretRef: 'encryption-key'
             }
             {
               name: 'AUTH_COOKIE_CROSS_SITE'

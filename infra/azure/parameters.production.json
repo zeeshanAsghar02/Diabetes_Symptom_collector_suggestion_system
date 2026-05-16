@@ -29,6 +29,9 @@
     "frontendOrigin": {
       "value": "https://diavise.live"
     },
+    "googleClientId": {
+      "value": "642577753239-tl252kmg8p9lce84788tu4612mjg96fo.apps.googleusercontent.com"
+    },
     "allowedOrigins": {
       "value": "https://diavise.live,https://www.diavise.live,http://localhost:5173"
     }

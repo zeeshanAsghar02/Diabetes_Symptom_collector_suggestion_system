@@ -76,6 +76,7 @@ jobs:
       LLM_API_URL: ${{ secrets.LLM_API_URL }}
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout repository
@@ -110,6 +111,7 @@ jobs:
               llmApiUrl="$LLM_API_URL" \
               emailUser="$SMTP_USER" \
               emailPass="$SMTP_PASS" \
+              encryptionKey="$ENCRYPTION_KEY" \
             --query properties.outputs.containerRegistryLoginServer.value -o tsv
 
       - name: Build backend image

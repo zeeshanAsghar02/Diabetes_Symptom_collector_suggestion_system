@@ -1,5 +1,3 @@
-// Deployment Ready: May 13, 2026 20:25 - Triggering backend staging build
-
 // Load environment variables FIRST using ESM-friendly entry
 import dotenv from 'dotenv';
 import path from 'path';
@@ -9,15 +7,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.join(__dirname, '.env');
-console.log('Loading .env from', envPath);
 import fs from 'fs';
-console.log('.env exists:', fs.existsSync(envPath));
-const result = dotenv.config({ path: envPath });
-if (result.error) console.warn('dotenv.load error:', result.error);
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 // Show presence of critical secrets (do not log actual secrets)
-console.log('ENV: JWT_SECRET set=', !!process.env.JWT_SECRET);
-console.log('ENV: REFRESH_TOKEN_SECRET set=', !!process.env.REFRESH_TOKEN_SECRET);
+console.log('JWT_SECRET set=', !!process.env.JWT_SECRET);
+console.log('REFRESH_TOKEN_SECRET set=', !!process.env.REFRESH_TOKEN_SECRET);
 
 import express from 'express';
 import mongoose from 'mongoose';

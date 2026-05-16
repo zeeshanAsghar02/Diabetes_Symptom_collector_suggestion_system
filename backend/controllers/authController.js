@@ -234,25 +234,18 @@ export const login = async (req, res) => {
         
         // Normalize email (lowercase and trim) before lookup
         const normalizedEmail = normalizeEmail(email);
-        console.log('🔍 Login attempt for email:', normalizedEmail);
+        console.log('🔍 Login attempt for:', normalizedEmail);
         
         // Only find ACTIVE users (not soft-deleted)
         const user = await User.findOne({ email: normalizedEmail, deleted_at: null });
         if (!user) {
-            console.log('❌ User not found or is soft-deleted:', normalizedEmail);
             return res.status(400).json({ 
                 success: false,
                 message: 'Invalid email or password.' 
             });
         }
         
-        console.log('✅ User found:', normalizedEmail);
-        console.log('📋 User authProvider:', user.authProvider);
-        console.log('🔐 Password field exists:', !!user.password);
-        console.log('🔐 Password field length:', user.password ? user.password.length : 0);
-        
         if (!user.password) {
-            console.log('⚠️ User has no password (possibly Google OAuth only):', normalizedEmail);
             return res.status(400).json({ 
                 success: false,
                 message: 'Invalid email or password.' 
@@ -260,17 +253,13 @@ export const login = async (req, res) => {
         }
         
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log('🔐 Password match result:', isMatch);
         
         if (!isMatch) {
-            console.log('❌ Password mismatch for user:', normalizedEmail);
             return res.status(400).json({ 
                 success: false,
                 message: 'Invalid email or password.' 
             });
         }
-        
-        console.log('✅ Password matched for user:', normalizedEmail);
         
         // Fetch user roles
         let roles = [];
@@ -443,10 +432,6 @@ export const getCurrentUser = async (req, res) => {
     try {
         const user = req.user;
         
-        console.log('User ID:', user._id);
-        console.log('Date of birth from User:', user.date_of_birth);
-        console.log('Gender from User:', user.gender);
-        
         return res.status(200).json({
             success: true,
             data: {
@@ -548,17 +533,30 @@ export const changePassword = async (req, res) => {
     const userId = req.user.id;
 
     try {
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: 'Both old and new passwords are required.' });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 8 characters.' });
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const isMatch = await user.matchPassword(oldPassword);
+        if (!user.password) {
+            return res.status(400).json({ success: false, message: 'Cannot change password for OAuth-only accounts.' });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ success: false, message: 'Invalid old password' });
         }
 
-        user.password = newPassword;
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
         await user.save();
 
         // Log password change to audit trail

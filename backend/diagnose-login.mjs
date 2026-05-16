@@ -4,12 +4,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const testEmail = 'zeeshanasghar1502@gmail.com';
-const testPassword = 'mcmlh@468';
+const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+const testEmail = process.env.DIAGNOSE_EMAIL || process.argv[2];
+const testPassword = process.env.DIAGNOSE_PASSWORD || process.argv[3];
 
 if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI not set in environment');
+    console.error('❌ MONGO_URI not set in environment');
+    process.exit(1);
+}
+
+if (!testEmail || !testPassword) {
+    console.error('❌ Missing credentials for diagnosis.');
+    console.error('Usage: node diagnose-login.mjs <email> <password>');
+    console.error('Or set DIAGNOSE_EMAIL and DIAGNOSE_PASSWORD in environment.');
     process.exit(1);
 }
 

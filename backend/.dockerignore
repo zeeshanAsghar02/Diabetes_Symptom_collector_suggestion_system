@@ -14,3 +14,14 @@ logs
 Dockerfile
 .DS_Store
 Thumbs.db
+
+# Debug & test scripts — not needed in production image
+diagnose-login.mjs
+compare-models.mjs
+probe-hf.mjs
+probe-hf2.mjs
+probe-qdrant.mjs
+test-hf-dietplan.mjs
+scripts/
+DiabetesModel/
+Python/
