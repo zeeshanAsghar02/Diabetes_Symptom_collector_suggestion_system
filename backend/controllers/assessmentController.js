@@ -121,10 +121,14 @@ export const getLatestDiabetesAssessment = async (req, res) => {
     }).sort({ assessment_date: -1 }).lean();
 
     if (!latestReport) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: 'No previous assessment found. Please complete your first assessment.',
-        has_assessment: false
+        data: {
+          has_assessment: false,
+          is_cached: false,
+          first_assessment_required: true,
+        }
       });
     }
 

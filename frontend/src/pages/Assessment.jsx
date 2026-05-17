@@ -113,19 +113,18 @@ const Assessment = () => {
       } else {
         // Try to get cached assessment first
         console.log('📊 Attempting to fetch cached assessment...');
-        try {
-          response = await getLatestDiabetesAssessment();
-          console.log('✅ Cached assessment found:', response);
-        } catch (cacheError) {
-          // If no cached assessment exists, automatically run first assessment
+        response = await getLatestDiabetesAssessment();
+
+        if (response?.has_assessment === false) {
           console.log('⚠️ No cached assessment found. Running first assessment...');
-          console.log('Cache error:', cacheError.response?.data || cacheError.message);
           response = await assessDiabetesRisk(false);
           console.log('✅ First assessment completed:', response);
           // Allow showing assessment insight popup once when user returns to dashboard
           if (response && response.is_cached === false) {
             sessionStorage.setItem('assessmentPopupPostLogin', 'true');
           }
+        } else {
+          console.log('✅ Cached assessment found:', response);
         }
       }
       

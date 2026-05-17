@@ -23,5 +23,4 @@ probe-hf2.mjs
 probe-qdrant.mjs
 test-hf-dietplan.mjs
 scripts/
-DiabetesModel/
 Python/

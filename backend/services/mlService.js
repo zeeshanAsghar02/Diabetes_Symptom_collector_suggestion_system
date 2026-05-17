@@ -1,21 +1,25 @@
 import { spawn } from 'child_process';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Runs the Python risk assessment script with provided feature payload
 export function assessDiabetesRiskPython(features) {
   return new Promise((resolve, reject) => {
-    // DiabetesModel is in the backend directory
-    const projectRoot = path.resolve(process.cwd());
-    const scriptPath = path.resolve(process.cwd(), 'services', 'ml', 'diabetes_assess.py');
+    // Resolve paths from this file location instead of process cwd for runtime safety.
+    const projectRoot = path.resolve(__dirname, '..');
+    const scriptPath = path.resolve(__dirname, 'ml', 'diabetes_assess.py');
 
     console.log('Project root:', projectRoot);
     console.log('Script path:', scriptPath);
     console.log('Current working directory:', process.cwd());
 
-    const pythonCmd = process.env.PYTHON_BIN || 'python3';
+    const pythonCmd = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
 
     const child = spawn(pythonCmd, [scriptPath], {
-      cwd: path.resolve(process.cwd()),
+      cwd: projectRoot,
       env: {
         ...process.env,
         PROJECT_ROOT: projectRoot,
