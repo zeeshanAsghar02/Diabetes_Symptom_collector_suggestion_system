@@ -23,6 +23,7 @@ export function assessDiabetesRiskPython(features) {
       env: {
         ...process.env,
         PROJECT_ROOT: projectRoot,
+        PYTHONUNBUFFERED: '1'
       }
     });
 

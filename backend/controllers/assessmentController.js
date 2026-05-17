@@ -37,7 +37,13 @@ export const getNextQuestion = async (req, res) => {
         }
 
         // Get options for the question
-        const options = await Answer.find({ /* logic to find answers for this question if applicable */ });
+        // Find answers associated with this question through QuestionsAnswers
+        const questionAnswers = await QuestionsAnswers.find({ 
+            question_id: nextQuestion._id,
+            deleted_at: null 
+        }).populate('answer_id');
+        
+        const options = questionAnswers.map(qa => qa.answer_id).filter(a => a != null);
 
         // Check if this is the last question
         const remainingQuestions = await Question.countDocuments({

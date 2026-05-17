@@ -4,7 +4,8 @@ import { getApiBaseUrl } from '../config/apiBase';
 const API_URL = getApiBaseUrl();
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}/api/v1`
+  baseURL: `${API_URL}/api/v1`,
+  withCredentials: true,
 });
 
 // Request interceptor: Attach access token

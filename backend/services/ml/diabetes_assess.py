@@ -14,11 +14,22 @@ if PROJECT_ROOT:
 else:
     # Fallback: try to find the model directory relative to current script
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent.parent.parent
-    model_path = str(project_root / 'DiabetesModel')
-    sys.path.append(model_path)
-    PROJECT_ROOT = str(project_root)
-    print(f"Using fallback path: {model_path}", file=sys.stderr)
+    repo_root = script_dir.parent.parent.parent
+    backend_root = script_dir.parent.parent
+    possible_model_dirs = [repo_root / 'DiabetesModel', backend_root / 'DiabetesModel']
+    model_dir = next((p for p in possible_model_dirs if p.exists()), None)
+
+    if model_dir is not None:
+        model_path = str(model_dir)
+        sys.path.append(model_path)
+        PROJECT_ROOT = str(model_dir.parent)
+        print(f"Using fallback path: {model_path}", file=sys.stderr)
+    else:
+        project_root = repo_root
+        model_path = str(project_root / 'DiabetesModel')
+        sys.path.append(model_path)
+        PROJECT_ROOT = str(project_root)
+        print(f"Using fallback path: {model_path}", file=sys.stderr)
 
 # Try multiple import methods
 DiabetesRiskAssessmentSystem = None

@@ -111,11 +111,17 @@ const Assessment = () => {
           sessionStorage.setItem('assessmentPopupPostLogin', 'true');
         }
       } else {
-        // Try to get cached assessment first
+        // Try to get cached assessment first (gracefully handle 404 from older backend)
         console.log('📊 Attempting to fetch cached assessment...');
-        response = await getLatestDiabetesAssessment();
+        let cacheError = false;
+        try {
+          response = await getLatestDiabetesAssessment();
+        } catch (cacheErr) {
+          console.warn('⚠️ Cache endpoint failed (may be older backend), falling through to run assessment:', cacheErr?.response?.status, cacheErr?.message);
+          cacheError = true;
+        }
 
-        if (response?.has_assessment === false) {
+        if (cacheError || response?.has_assessment === false) {
           console.log('⚠️ No cached assessment found. Running first assessment...');
           response = await assessDiabetesRisk(false);
           console.log('✅ First assessment completed:', response);
