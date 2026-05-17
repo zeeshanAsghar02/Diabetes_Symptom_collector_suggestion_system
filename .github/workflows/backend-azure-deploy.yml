@@ -93,6 +93,13 @@ jobs:
         id: foundation
         run: |
           DEPLOYMENT_NAME="${PROJECT_NAME}-${DEPLOY_ENVIRONMENT}-foundation-${GITHUB_RUN_ID}"
+          
+          # Fix MONGO_URI if it's missing /Diavise
+          FIXED_MONGO_URI="$MONGO_URI"
+          if [[ "$FIXED_MONGO_URI" != *"/Diavise?"* ]]; then
+            FIXED_MONGO_URI="${FIXED_MONGO_URI/\.net\/\?/\.net\/Diavise\?}"
+          fi
+          
           az deployment group create \
             --name "$DEPLOYMENT_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -102,7 +109,7 @@ jobs:
               backendImageName="$BACKEND_IMAGE_NAME" \
               backendImageTag="$BACKEND_IMAGE_TAG" \
               backendContainerPort="$BACKEND_CONTAINER_PORT" \
-              mongoUri="$MONGO_URI" \
+              mongoUri="$FIXED_MONGO_URI" \
               jwtSecret="$JWT_SECRET" \
               refreshTokenSecret="$REFRESH_TOKEN_SECRET" \
               jinaApiKey="$JINA_API_KEY" \
