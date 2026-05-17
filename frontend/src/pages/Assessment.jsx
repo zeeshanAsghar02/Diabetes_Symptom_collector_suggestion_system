@@ -211,7 +211,7 @@ const Assessment = () => {
         <Card sx={{ p: 4, maxWidth: 500 }}>
           <Typography variant="h6" color="error" gutterBottom>Error Loading Assessment</Typography>
           <Typography>{error || 'No data available'}</Typography>
-          <Button variant="contained" onClick={() => navigate('/questionnaire')} sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={() => navigate('/symptom-assessment')} sx={{ mt: 2 }}>
             Return to Questionnaire
           </Button>
         </Card>
