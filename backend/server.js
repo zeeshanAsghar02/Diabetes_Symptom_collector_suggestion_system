@@ -63,9 +63,13 @@ const defaultAllowedOrigins = [
   'http://localhost:3000',
   'http://localhost:4173',
   'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:4173',
   'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
   'http://localhost:8081',
   'http://127.0.0.1:8081',
 ];
@@ -130,6 +134,11 @@ app.use(cors({
       normalized = new URL(origin).origin.replace(/\/$/, '');
     } catch (e) {
       normalized = origin.replace(/\/$/, '');
+    }
+
+    // Allow any localhost or 127.0.0.1 origin on any port in local/dev scenarios.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) {
+      return callback(null, true);
     }
 
     // Accept if exact match, host-only match, or canonical origin
