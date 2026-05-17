@@ -55,6 +55,7 @@ import BlogSection from '../components/Common/BlogSection';
 import ArticleModal from '../components/Common/ArticleModal';
 import TestimonialsSection from '../components/Common/TestimonialsSection';
 import { useSettings } from '../context/SettingsContext';
+import { getCurrentUser } from '../utils/auth';
 
 const MotionDiv = motion.div;
 
@@ -113,7 +114,25 @@ const LandingPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkAuth = () => setIsAuthenticated(!!localStorage.getItem('accessToken'));
+    const checkAuth = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await getCurrentUser();
+        setIsAuthenticated(true);
+      } catch (error) {
+        localStorage.removeItem('accessToken');
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     checkAuth();
     window.addEventListener('storage', checkAuth);
     return () => window.removeEventListener('storage', checkAuth);
@@ -337,7 +356,7 @@ const LandingPage = () => {
                             },
                           }}
                         >
-                          {isAuthenticated ? 'Go to Dashboard' : 'Start assessment'}
+                          {isAuthenticated ? 'Go to Dashboard' : 'Start your assessment'}
                         </Button>
                         <Button
                           variant="outlined"
