@@ -613,7 +613,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         month,
         year
       }, {
-        timeout: 30000
+        timeout: 240000
       });
 
       if (!response.data?.success) {
