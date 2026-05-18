@@ -16,6 +16,7 @@ import {
   Alert,
   Stack,
   Divider,
+  Popover,
   alpha,
 } from '@mui/material';
 import {
@@ -25,6 +26,7 @@ import {
   Assessment as AssessmentIcon,
   Login,
   Visibility,
+  HelpOutline,
 } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrentUser } from '../utils/auth';
@@ -46,6 +48,7 @@ const SymptomAssessment = () => {
   const [userAge, setUserAge] = useState(null);
   const [userGender, setUserGender] = useState(null);
   const [canProceed, setCanProceed] = useState(false);
+  const [helpInfoOpen, setHelpInfoOpen] = useState(false);
   const questionListRef = useRef();
 
   useEffect(() => {
@@ -247,8 +250,15 @@ const SymptomAssessment = () => {
     }
   };
 
+  const handleHelpInfoOpen = (event) => {
+    setHelpInfoOpen(true);
+  };
+
+  const handleHelpInfoClose = () => {
+    setHelpInfoOpen(false);
+  };
+
   const handleNext = async () => {
-    if (!symptoms.length) return;
 
     // Auto-save answers before proceeding (only for logged in users)
     if (questionListRef.current && activeStep === 0 && isLoggedIn) {
@@ -375,11 +385,11 @@ const SymptomAssessment = () => {
       sx={{
         background: pageBg,
         position: 'relative',
-        overflow: 'hidden',
+        overflowY: 'auto',
       }}
     >
       <AuthBackground />
-      <Container maxWidth="lg" sx={{ height: '100vh', py: { xs: 0, md: 0 }, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Fade in timeout={500}>
           <Box textAlign="center" mb={{ xs: 3, md: 4 }}>
@@ -529,71 +539,118 @@ const SymptomAssessment = () => {
               {activeStep === 0 && currentSymptom && (
                 <Fade in timeout={500} key={currentSymptomIndex}>
                   <Box>
-                    <Box textAlign="center" mb={3}>
-                      <Chip
-                        label={`Topic ${currentSymptomIndex + 1} of ${symptoms.length}`}
-                        sx={{
-                          mb: 1.5,
-                          fontWeight: 600,
-                          fontSize: '0.8125rem',
-                          px: 1,
-                          borderRadius: 2,
-                          bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
-                          color: isDarkMode ? '#67E8F9' : '#0e7490',
-                          border: `1px solid ${alpha('#22D3EE', 0.22)}`,
-                        }}
-                      />
-                      <Typography
-                        variant="overline"
-                        sx={{
-                          display: 'block',
-                          letterSpacing: '0.12em',
-                          color: 'text.secondary',
-                          fontWeight: 700,
-                          mb: 0.75,
-                        }}
-                      >
-                        {currentSymptom._diseaseName || 'Diabetes care'}
-                      </Typography>
-                      <Typography
-                        variant="h5"
-                        fontWeight={800}
-                        gutterBottom
-                        sx={{
-                          mb: 0.5,
-                          fontSize: { xs: '1.35rem', md: '1.6rem' },
-                          letterSpacing: '-0.02em',
-                          color: 'text.primary',
-                        }}
-                      >
-                        {currentSymptom.name}
-                      </Typography>
-                      {currentSymptom.description ? (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65, whiteSpace: 'pre-line' }}
-                        >
-                          {currentSymptom.description}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65 }}>
-                          Use the help button under the questions if you want more context on this topic.
-                        </Typography>
+                   <Box mb={3}>
+                     <Box display="flex" alignItems="center" justifyContent="center" gap={1.25} flexWrap="wrap" mb={1}>
+                       <Chip
+                         label={`Question ${currentSymptomIndex + 1} of ${symptoms.length}`}
+                         sx={{
+                           fontWeight: 600,
+                           fontSize: '0.8125rem',
+                           px: 1,
+                           borderRadius: 2,
+                           bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
+                           color: isDarkMode ? '#67E8F9' : '#0e7490',
+                           border: `1px solid ${alpha('#22D3EE', 0.22)}`,
+                         }}
+                       />
+                       <Typography
+                         variant="overline"
+                         sx={{
+                           letterSpacing: '0.12em',
+                           color: 'text.secondary',
+                           fontWeight: 700,
+                         }}
+                       >
+                         {currentSymptom._diseaseName || 'Diabetes care'}
+                       </Typography>
+                     </Box>
+                     <Divider sx={{ mb: 2, opacity: 0.4 }} />
+                     <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} flexWrap="wrap">
+                       <Typography
+                         variant="h5"
+                         fontWeight={800}
+                         sx={{
+                           fontSize: { xs: '1.25rem', md: '1.5rem' },
+                           letterSpacing: '-0.02em',
+                           color: 'text.primary',
+                         }}
+                       >
+                         {currentSymptom.name}
+                       </Typography>
+                       {currentSymptom.description && (
+                        <>
+                          <Button
+                            onClick={handleHelpInfoOpen}
+                            startIcon={<HelpOutline />}
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                              borderRadius: 1.75,
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              borderColor: alpha('#22D3EE', 0.35),
+                              color: isDarkMode ? '#67E8F9' : '#0e7490',
+                            }}
+                          >
+                            What is this about?
+                          </Button>
+                          <Popover
+                            open={helpInfoOpen}
+                            anchorEl={null}
+                            onClose={handleHelpInfoClose}
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                            transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                            PaperProps={{
+                              sx: {
+                                p: 3,
+                                maxWidth: 500,
+                                maxHeight: '70vh',
+                                overflow: 'auto',
+                                borderRadius: 3,
+                                boxShadow: (theme) => theme.shadows[12],
+                              },
+                            }}
+                          >
+                            <Box display="flex" alignItems="center" mb={2}>
+                              <HelpOutline color="primary" sx={{ mr: 1, fontSize: 28 }} />
+                              <Typography variant="h6" fontWeight={700} color="primary">
+                                {currentSymptom.name}
+                              </Typography>
+                            </Box>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ lineHeight: 1.9, whiteSpace: 'pre-line' }}
+                            >
+                              {currentSymptom.description}
+                            </Typography>
+                            <Box mt={3} display="flex" justifyContent="flex-end">
+                              <Button
+                                onClick={handleHelpInfoClose}
+                                variant="contained"
+                                size="small"
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3 }}
+                              >
+                                Got it!
+                              </Button>
+                            </Box>
+                          </Popover>
+                        </>
                       )}
                     </Box>
-                    <Divider sx={{ mb: 3, opacity: 0.6 }} />
-                    <QuestionList 
-                      ref={questionListRef}
-                      symptomId={currentSymptom._id} 
-                      symptomName={currentSymptom.name}
-                      symptomDescription={currentSymptom.description}
-                      isLoggedIn={isLoggedIn}
-                      onDataUpdated={fetchUserAnsweredQuestions}
-                      onAnswersChange={handleAnswersChange}
-                      userAge={userAge}
-                      userGender={userGender}
-                    />
+                  </Box>
+                     <Divider sx={{ mb: 2, opacity: 0.4 }} />
+                     <QuestionList 
+                       ref={questionListRef}
+                       symptomId={currentSymptom._id} 
+                       symptomName={currentSymptom.name}
+                       isLoggedIn={isLoggedIn}
+                       onDataUpdated={fetchUserAnsweredQuestions}
+                       onAnswersChange={handleAnswersChange}
+                       userAge={userAge}
+                       userGender={userGender}
+                     />
                   </Box>
                 </Fade>
               )}
@@ -709,7 +766,7 @@ const SymptomAssessment = () => {
                     },
                   }}
                 >
-                  {currentSymptomIndex === symptoms.length - 1 ? 'Finish check-in' : 'Next topic'}
+                  {currentSymptomIndex === symptoms.length - 1 ? 'Finish check-in' : 'Next question'}
                 </Button>
               </Box>
             )}

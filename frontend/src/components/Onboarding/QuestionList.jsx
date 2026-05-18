@@ -20,14 +20,13 @@ import {
   Chip,
   alpha,
   IconButton,
-  Popover,
 } from '@mui/material';
 import { HelpOutline } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 import { useTheme } from '../../contexts/useThemeContext';
 
-const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, isLoggedIn, onDataUpdated, onAnswersChange, userAge, userGender }, ref) => {
+const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpdated, onAnswersChange, userAge, userGender }, ref) => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +39,6 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
   const [globalSuccess, setGlobalSuccess] = useState(false);
   const [answeredIds, setAnsweredIds] = useState([]);
   const [heightValues, setHeightValues] = useState({}); // Store feet/inches for each height question
-  const [helpAnchorEl, setHelpAnchorEl] = useState(null); // For help popover
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
 
@@ -526,17 +524,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
       default:
         return <Typography color="error">Unsupported question type: {question.question_type}</Typography>;
     }
-  };
-
-  const handleHelpOpen = (event) => {
-    setHelpAnchorEl(event.currentTarget);
-  };
-
-  const handleHelpClose = () => {
-    setHelpAnchorEl(null);
-  };
-
-  const helpOpen = Boolean(helpAnchorEl);
+   };
 
   if (loading) return <CircularProgress size={24} sx={{ my: 2 }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
@@ -544,105 +532,6 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
 
   return (
     <Stack spacing={2.5} mt={1}>
-      {/* Help — optional context, never required to proceed */}
-      {symptomDescription && (
-        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
-          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, lineHeight: 1.6 }}>
-            Optional: read a plain-language overview of this topic if it helps.
-          </Typography>
-          <Button
-            onClick={handleHelpOpen}
-            startIcon={<HelpOutline />}
-            variant="outlined"
-            size="small"
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              flexShrink: 0,
-              borderColor: alpha('#22D3EE', 0.35),
-            }}
-          >
-            What is this about?
-          </Button>
-        </Box>
-      )}
-      
-      {/* Help Popover */}
-      <Popover
-        open={helpOpen}
-        anchorEl={helpAnchorEl}
-        onClose={handleHelpClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        PaperProps={{
-          sx: {
-            p: 3,
-            maxWidth: 500,
-            maxHeight: '70vh',
-            overflow: 'auto',
-            borderRadius: 3,
-            boxShadow: (theme) => theme.shadows[12],
-          },
-        }}
-      >
-        <Box display="flex" alignItems="center" mb={2}>
-          <HelpOutline color="primary" sx={{ mr: 1, fontSize: 28 }} />
-          <Typography variant="h6" fontWeight={700} color="primary">
-            {symptomName}
-          </Typography>
-        </Box>
-        <Typography 
-          variant="body2" 
-          color="text.secondary" 
-          sx={{ 
-            lineHeight: 1.9,
-            whiteSpace: 'pre-line',
-            '& .section-title': {
-              color: 'primary.main',
-              fontWeight: 700,
-              fontSize: '1rem',
-              display: 'block',
-              marginBottom: 1,
-              marginTop: 2,
-            }
-          }}
-          dangerouslySetInnerHTML={{
-            __html: symptomDescription
-              .split('\n')
-              .map(line => {
-                // Style all-caps lines as section headers
-                if (line.trim() && line.trim() === line.trim().toUpperCase() && line.trim().length > 3) {
-                  return `<span class="section-title">${line.trim()}</span>`;
-                }
-                return line;
-              })
-              .join('\n')
-          }}
-        />
-        <Box mt={3} display="flex" justifyContent="flex-end">
-          <Button 
-            onClick={handleHelpClose} 
-            variant="contained" 
-            size="small"
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-            }}
-          >
-            Got it!
-          </Button>
-        </Box>
-      </Popover>
-
       {questions.map((question, qIndex) => (
         <Paper
           key={question._id}
