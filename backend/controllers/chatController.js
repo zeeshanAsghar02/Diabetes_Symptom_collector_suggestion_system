@@ -144,7 +144,7 @@ CRITICAL SAFETY INSTRUCTIONS:
 
     // Step 2: Get SSE response
     const sseRes = await axios.get(
-      `${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`,
+      `${HF_SPACE_URL}/call/predict/${eventId}`,
       { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
     );
 

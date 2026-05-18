@@ -483,7 +483,7 @@ CRITICAL RESPONSE RULES:
       // event:error detection above exits fast on Gradio validation errors.
       // 120s gives the model enough time to generate the response on CPU.
       const sseRes = await axios.get(
-        `${hfBase}/gradio_api/call/predict/${event_id}`,
+        `${hfBase}/call/predict/${event_id}`,
         { timeout: 120000, responseType: 'text' }
       );
 

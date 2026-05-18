@@ -437,7 +437,7 @@ Return ONLY valid JSON with this structure:
 
       // Step 2: Read SSE stream — 120s timeout
       const sseRes = await axios.get(
-        `${hfBase}/gradio_api/call/predict/${event_id}`,
+        `${hfBase}/call/predict/${event_id}`,
         { timeout: 120000, responseType: 'text' }
       );
 

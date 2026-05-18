@@ -187,7 +187,7 @@ const parseHabitsJson = (rawContent) => {
 
 const callHabitsModel = async (systemPrompt, userPrompt) => {
   console.log('[HABITS] Calling HF Diabetica API...');
-  const submitRes = await fetch(`${HF_SPACE_URL}/gradio_api/call/predict`, {
+  const submitRes = await fetch(`${HF_SPACE_URL}/call/predict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: [systemPrompt, userPrompt, HF_MAX_TOKENS, 0.3] }),

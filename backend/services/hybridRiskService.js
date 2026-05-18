@@ -187,9 +187,9 @@ class HybridRiskService {
       
       console.log(`[LLM] Calling Diabetica HF Space: ${hfBase}`);
 
-      // Gradio 5 API: POST /gradio_api/call/predict → { event_id }
-      //               GET  /gradio_api/call/predict/{event_id} → SSE stream
-      console.log('[LLM] Submitting to Gradio 5 /gradio_api/call/predict ...');
+      // Gradio 4+/5 Blocks API: POST /gradio_api/call/predict → { event_id }
+      //                           GET  /gradio_api/call/predict/{event_id} → SSE stream
+      console.log('[LLM] Submitting to /gradio_api/call/predict ...');
       const submitRes = await fetch(`${hfBase}/gradio_api/call/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,7 +206,7 @@ class HybridRiskService {
       const { event_id } = await submitRes.json();
       console.log(`[LLM] Queued event_id: ${event_id}. Reading SSE (60-120s on CPU)...`);
 
-      const sseRes = await fetch(`${hfBase}/gradio_api/call/predict/${event_id}`);
+      const sseRes = await fetch(`${hfBase}/call/predict/${event_id}`);
       if (!sseRes.ok) throw new Error(`SSE stream error: ${sseRes.status}`);
 
       const sseText = await sseRes.text();

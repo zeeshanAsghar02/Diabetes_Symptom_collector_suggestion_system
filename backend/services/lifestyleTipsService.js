@@ -350,7 +350,7 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
       console.log(`📝 Got event_id: ${eventId}, waiting for SSE response...`);
 
       const sseRes = await axios.get(
-        `${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`,
+        `${HF_SPACE_URL}/call/predict/${eventId}`,
         { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
       );
 
