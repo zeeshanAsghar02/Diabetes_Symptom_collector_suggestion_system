@@ -2,12 +2,11 @@ import monthlyDietPlanService from '../services/monthlyDietPlanService.js';
 import MonthlyDietPlan from '../models/MonthlyDietPlan.js';
 
 /**
- * Generate a new monthly diet plan — FIRE-AND-FORGET (async)
+ * Generate a new monthly diet plan — SYNCHRONOUS (on-demand)
  * POST /api/monthly-diet-plan/generate
  *
- * Returns 202 immediately after creating a 'pending' placeholder doc so that
- * mobile clients don't need to hold a long HTTP connection open while the
- * LLM (3–8 min) runs. Clients poll GET /status/:month/:year until 'complete'.
+ * Generates the plan synchronously and returns the completed plan.
+ * Client waits for generation to complete (typically 30-90 seconds).
  */
 export const generateMonthlyDietPlan = async (req, res) => {
   try {
@@ -46,7 +45,7 @@ export const generateMonthlyDietPlan = async (req, res) => {
           await existing.deleteOne();
           console.warn(`⚠️ Deleted stale pending monthly plan for ${monthNum}/${yearNum} (age ${(ageMs / 60000).toFixed(0)} min)`);
         } else {
-          // Still generating — tell client to keep polling
+          // Still generating — tell client to keep polling (shouldn't happen in sync mode)
           return res.status(202).json({
             success: true,
             status: 'pending',
@@ -68,39 +67,25 @@ export const generateMonthlyDietPlan = async (req, res) => {
       console.log(`🗑️ Deleted failed plan for ${monthNum}/${yearNum}, allowing retry`);
     }
 
-    // Create a thin placeholder so the client can poll its status immediately
-    const placeholder = new MonthlyDietPlan({
-      user_id:           userId,
-      month:             monthNum,
-      year:              yearNum,
-      region:            'Global',       // overwritten by background job
-      total_daily_calories: 0,           // overwritten by background job
-      meal_categories:   [],
-      generation_status: 'pending',
-      status:            'active',
-    });
-    await placeholder.save();
-    console.log(`📌 Created pending placeholder plan ${placeholder._id} for ${monthNum}/${yearNum}`);
-
-    // Return 202 NOW — client no longer waits for LLM
-    res.status(202).json({
+    // Generate the plan synchronously
+    console.log(`🔄 Starting synchronous monthly diet plan generation for user ${userId}, ${monthNum}/${yearNum}`);
+    const result = await monthlyDietPlanService.generateMonthlyDietPlan(userId, monthNum, yearNum);
+    
+    console.log(`✅ Monthly diet plan generated successfully for user ${userId}`);
+    
+    return res.status(200).json({
       success: true,
-      status:  'pending',
-      planId:  placeholder._id,
-      month:   monthNum,
-      year:    yearNum,
-      message: 'Generation started. Poll GET /status/:month/:year for updates.'
+      plan: result.plan,
+      calorie_data: result.calorie_data,
+      region_coverage: result.region_coverage,
+      generation_duration_ms: result.generation_duration_ms
     });
-
-    // Fire-and-forget background generation — no await, response already sent
-    monthlyDietPlanService.runBackgroundGeneration(userId, monthNum, yearNum, placeholder._id)
-      .catch(err => console.error('❌ Unhandled background generation error:', err.message));
 
   } catch (error) {
     console.error('❌ Error in generateMonthlyDietPlan controller:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to start monthly diet plan generation. Please try again.',
+      error: 'Failed to generate monthly diet plan. Please try again.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

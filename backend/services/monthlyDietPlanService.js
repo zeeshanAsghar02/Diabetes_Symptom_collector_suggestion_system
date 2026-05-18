@@ -703,18 +703,18 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
         { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
-        { timeout: 30000 }
+        { timeout: 45000 }
       );
       const { event_id } = submitRes.data;
       if (!event_id) throw new Error('HF Gradio did not return an event_id');
       console.log(`   HF event_id: ${event_id} — waiting for result...`);
 
-      // Step 2: Read SSE stream — 120s timeout per attempt.
+      // Step 2: Read SSE stream — increased timeout for model generation
       // event:error detection above exits fast on Gradio validation errors.
-      // 120s gives the model enough time to generate the response on CPU.
+      // Increased timeout to 180000 ms (3 minutes) for model generation on CPU
       const sseRes = await axios.get(
         `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 120000, responseType: 'text' }
+        { timeout: 180000, responseType: 'text' }
       );
 
       const raw = sseRes.data || '';
