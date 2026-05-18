@@ -50,6 +50,7 @@ const SymptomAssessment = () => {
   const [canProceed, setCanProceed] = useState(false);
   const [helpInfoOpen, setHelpInfoOpen] = useState(false);
   const questionListRef = useRef();
+  const accumulatedQuestionsRef = useRef(new Map());
 
   useEffect(() => {
     console.log('🔍 ========== SYMPTOM ASSESSMENT MOUNTED ==========');
@@ -290,6 +291,13 @@ const SymptomAssessment = () => {
   };
 
   const handleAnswersChange = (answers, questions) => {
+    // 🔑 CRITICAL: Accumulate questions from every symptom into the ref
+    // so the summary step can read and display them (questionListRef only
+    // holds the active symptom's questions, not all of them).
+    if (questions && questions.length > 0) {
+      questions.forEach(q => accumulatedQuestionsRef.current.set(String(q._id), q));
+    }
+
     // Check if all questions have been answered
     // Questions are considered answered if they have a value in answers object
     const allAnswered = questions.every((q) => {
@@ -424,17 +432,11 @@ const SymptomAssessment = () => {
               Calm symptom check-in
             </Typography>
             <Typography
-              variant="body1"
+              variant="body2"
               color="text.secondary"
-              sx={{
-                maxWidth: 560,
-                mx: 'auto',
-                lineHeight: 1.75,
-                fontSize: { xs: '0.95rem', md: '1.02rem' },
-                fontWeight: 400,
-              }}
+              sx={{ maxWidth: 380, mx: 'auto', lineHeight: 1.5 }}
             >
-              A few clear questions at a time. Pause anytime—your answers stay on this step until you move on. Nothing here replaces care from your clinician.
+              Answer at your own pace.
             </Typography>
           </Box>
         </Fade>
@@ -522,16 +524,16 @@ const SymptomAssessment = () => {
               icon={false}
               sx={{
                 mb: 3,
-                borderRadius: 2,
-                py: 1.25,
+                borderRadius: 1.5,
+                py: 1,
                 bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
                 color: 'text.secondary',
                 border: `1px solid ${alpha('#22D3EE', 0.15)}`,
                 '& .MuiAlert-message': { width: '100%' },
               }}
             >
-              <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
-                <strong style={{ color: 'inherit', fontWeight: 700 }}>Take your time.</strong> Answer in your own words where it helps. You can use Back to change a previous topic before finishing.
+              <Typography variant="body2">
+                Take your time — you can go back and adjust any answer before finishing.
               </Typography>
             </Alert>
 
@@ -660,8 +662,8 @@ const SymptomAssessment = () => {
               {/* Step 1: Summary review — show user what they filled before proceeding */}
               {activeStep === 1 && (
                 <Fade in timeout={500}>
-                  <Box>
-                    <Box textAlign="center" mb={4}>
+                  <Box sx={{ mb: 2 }}>
+                    <Box textAlign="center" mb={3}>
                       <Box
                         sx={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -672,67 +674,72 @@ const SymptomAssessment = () => {
                       >
                         <Typography sx={{ fontSize: 28, fontWeight: 900, color: 'info.main' }}>✓</Typography>
                       </Box>
-                      <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 1.5 }}>
-                        Here&apos;s a snapshot of your responses
+                      <Typography variant="h6" fontWeight={800} gutterBottom sx={{ mb: 1 }}>
+                        Your responses
                       </Typography>
-                      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
-                        Take a quick look at what you shared before we run your assessment. Nothing here is a diagnosis—just what you told us. You can always go back and change anything.
+                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', lineHeight: 1.5 }}>
+                        Review before continuing.
                       </Typography>
                     </Box>
 
-                    <Box sx={{ mb: 4 }}>
-
+                    {/* Answer list */}
+                    <Box sx={{ mb: 3 }}>
                       {(() => {
-                        let items = [];
-                        const seenKeys = new Set();
-                        symptoms.forEach((symptom) => {
-                          // Recover answers from the component state (logged-in answers were just saved to DB)
-                          const qList = questionListRef.current?.getQuestions?.() || [];
-                          qList.forEach((q) => {
-                            const aid = String(q._id);
-                            if (seenKeys.has(aid)) return;
-                            seenKeys.add(aid);
-                            items.push({ symptomName: symptom.name, question: q.question_text });
-                          });
-                        });
-                        if (!items.length) {
-                          return <Alert severity="info">Your answers have been saved. No individual question text available to display, but they are on record.</Alert>;
-                        }
-                        return items.map((item, i) => (
-                          <Paper
-                            key={i}
-                            elevation={0}
-                            sx={{
-                              p: { xs: 1.75, sm: 2.25 },
-                              borderRadius: 2,
-                              mb: 1.5,
-                              bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
-                              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-                            }}
-                          >
-                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: '0.07em', display: 'block', mb: 0.5 }}>
-                              {item.symptomName}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                              {item.question}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                              ✓ Saved
-                            </Typography>
-                          </Paper>
-                        ));
-                      })()}
+                        let savedMap = {};
+                        try {
+                          const raw = sessionStorage.getItem('pendingOnboardingAnswers');
+                          if (raw) {
+                            const arr = JSON.parse(raw);
+                            if (Array.isArray(arr)) {
+                              arr.forEach(a => { savedMap[a.questionId] = a.answerText; });
+                            }
+                          }
+                        } catch (_) {}
 
+                        const allQuestions = [...accumulatedQuestionsRef.current.values()];
+                        const unique = allQuestions.filter((q, idx) =>
+                          allQuestions.findIndex(x => String(x._id) === String(q._id)) === idx
+                        );
+
+                        if (!unique.length) {
+                          return <Alert severity="info">Your answers have been recorded.</Alert>;
+                        }
+
+                        return unique.map((q) => {
+                          const answer = savedMap[String(q._id)];
+                          const display = answer && answer.trim() ? answer : 'Not answered';
+                          return (
+                            <Paper
+                              key={String(q._id)}
+                              elevation={0}
+                              sx={{
+                                p: { xs: 1.5, sm: 2 },
+                                borderRadius: 1.5,
+                                mb: 1,
+                                bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
+                                border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>
+                                {q.question_text}
+                              </Typography>
+                              <Typography variant="caption" color={display === 'Not answered' ? 'text.disabled' : 'text.secondary'}>
+                                {display}
+                              </Typography>
+                            </Paper>
+                          );
+                        });
+                      })()}
                     </Box>
 
-                    <Box display="flex" justifyContent="flex-end" mt={3}>
+                    <Box display="flex" justifyContent="flex-end">
                       <Button
                         variant="contained"
                         size="large"
                         endIcon={<Visibility />}
-                        onClick={() => handleViewAssessment()}
+                        onClick={handleViewAssessment}
                         sx={{
-                          px: 5, py: 1.75, fontSize: '1rem', fontWeight: 700, borderRadius: 2.25,
+                          px: 4, py: 1.5, fontSize: '0.95rem', fontWeight: 700, borderRadius: 2.25,
                           textTransform: 'none',
                           background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
                           color: '#fff',
