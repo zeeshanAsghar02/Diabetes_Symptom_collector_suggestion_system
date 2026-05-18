@@ -694,7 +694,7 @@ const SymptomAssessment = () => {
                               arr.forEach(a => { savedMap[a.questionId] = a.answerText; });
                             }
                           }
-                        } catch (_) {}
+                        } catch (_e) { /* ignore sessionStorage parse errors */ }
 
                         const allQuestions = [...accumulatedQuestionsRef.current.values()];
                         const unique = allQuestions.filter((q, idx) =>
