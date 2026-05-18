@@ -154,7 +154,7 @@ const Settings = () => {
                                 value={formData['site_title'] || ''}
                                 onChange={(e) => handleChange('site_title', e.target.value)}
                                 disabled={saving}
-                                placeholder="DiabetesCare"
+                                placeholder="Diavise"
                                 sx={{
                                     '& .MuiOutlinedInput-root': {
                                         bgcolor: 'background.paper',
@@ -217,7 +217,7 @@ const Settings = () => {
                                 value={formData['contact_email'] || ''}
                                 onChange={(e) => handleChange('contact_email', e.target.value)}
                                 disabled={saving}
-                                placeholder="support@diabetescare.com"
+                                placeholder="support@diavise.com"
                                 sx={{
                                     '& .MuiOutlinedInput-root': {
                                         bgcolor: 'background.paper',
@@ -278,7 +278,7 @@ const Settings = () => {
                                 value={formData['admin_email'] || ''}
                                 onChange={(e) => handleChange('admin_email', e.target.value)}
                                 disabled={saving}
-                                placeholder="admin@diabetescare.com"
+                                placeholder="admin@diavise.com"
                                 sx={{
                                     '& .MuiOutlinedInput-root': {
                                         bgcolor: 'background.paper',

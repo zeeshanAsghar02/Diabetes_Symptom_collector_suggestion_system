@@ -23,7 +23,6 @@ import {
   HealthAndSafety,
   AssignmentTurnedIn,
   PersonalVideo,
-  Home,
 } from '@mui/icons-material';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import AuthBackground from '../components/Common/AuthBackground';
@@ -104,77 +103,58 @@ const DiagnosisQuestion = () => {
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
-        py: { xs: 3, md: 5 },
+        justifyContent: 'center',
+        py: 0,
       }}
     >
       <AuthBackground />
-      <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container
+        maxWidth="md"
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+          px: { xs: 1, sm: 2 },
+          py: 0,
+          minHeight: 0,
+        }}
+      >
         {/* Header Actions */}
         <Box
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: { xs: 3, md: 4 },
-            gap: 2,
-            flexWrap: isSmallScreen ? 'wrap' : 'nowrap',
+            position: 'absolute',
+            top: { xs: 14, sm: 18 },
+            left: { xs: 16, sm: 24 },
+            zIndex: 2,
           }}
         >
-          <Tooltip title="Back to Tour" arrow disableInteractive>
+          <Tooltip title="Back" arrow disableInteractive>
             <Button
               variant="outlined"
               onClick={handleBack}
-              startIcon={<Home sx={{ fontSize: { xs: 16, sm: 18 } }} />}
               sx={{
-                textTransform: 'none',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                fontWeight: 600,
+                minWidth: 44,
+                minHeight: 44,
+                p: 0,
+                borderRadius: '50%',
                 color: theme.palette.text.primary,
                 borderColor: alpha(theme.palette.divider, 0.2),
-                px: { xs: 2, sm: 3 },
-                py: { xs: 0.75, sm: 1 },
-                borderRadius: 2,
-                backdropFilter: 'blur(10px)',
-                background: alpha(theme.palette.background.paper, 0.8),
+                background: alpha(theme.palette.background.paper, 0.85),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   borderColor: theme.palette.primary.main,
-                  color: theme.palette.primary.main,
-                  transform: 'translateX(-2px)',
                 },
-                transition: 'all 0.3s ease',
+                transition: 'all 0.25s ease',
               }}
             >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Back</Box>
-            </Button>
-          </Tooltip>
-
-          <Tooltip title="Skip to Assessment" arrow disableInteractive>
-            <Button
-              variant="outlined"
-              onClick={handleSkip}
-              endIcon={<Close sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-              sx={{
-                textTransform: 'none',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                fontWeight: 600,
-                color: theme.palette.primary.main,
-                borderColor: alpha(theme.palette.primary.main, 0.3),
-                px: { xs: 2, sm: 3 },
-                py: { xs: 0.75, sm: 1 },
-                borderRadius: 2,
-                backdropFilter: 'blur(10px)',
-                background: alpha(theme.palette.background.paper, 0.8),
-                '&:hover': {
-                  bgcolor: theme.palette.primary.main,
-                  color: 'white',
-                  borderColor: theme.palette.primary.main,
-                  transform: 'scale(1.02)',
-                },
-                transition: 'all 0.3s ease',
-              }}
-            >
-              Skip
+              <ArrowBack sx={{ fontSize: 20 }} />
             </Button>
           </Tooltip>
         </Box>
@@ -184,14 +164,22 @@ const DiagnosisQuestion = () => {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 3, sm: 4, md: 5 },
-              background: alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.82),
+              width: '100%',
+              maxWidth: 760,
+              maxHeight: 'calc(100vh - 28px)',
+              minHeight: { xs: 360, sm: 400, md: 440 },
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              p: { xs: 1.5, sm: 2, md: 2.5 },
+              pt: { xs: 5, sm: 6 },
+              background: alpha(theme.palette.background.paper, isDarkMode ? 0.72 : 0.96),
               backdropFilter: 'blur(20px) saturate(160%)',
-              borderRadius: { xs: 2, md: 2.25 },
-              border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.14 : 0.12)}`,
+              borderRadius: { xs: 2, md: 2.5 },
+              border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.12 : 0.16)}`,
               boxShadow: isDarkMode
-                ? `0 24px 48px ${alpha('#000', 0.35)}`
-                : `0 20px 40px ${alpha('#0f172a', 0.06)}`,
+                ? `0 24px 60px ${alpha('#000', 0.24)}`
+                : `0 20px 40px ${alpha('#0f172a', 0.08)}`,
             }}
           >
             {/* Icon */}
@@ -200,13 +188,13 @@ const DiagnosisQuestion = () => {
                 sx={{
                   display: 'flex',
                   justifyContent: 'center',
-                  mb: 3,
+                  mb: 1.5,
                 }}
               >
                 <Box
                   sx={{
-                    width: { xs: 80, md: 100 },
-                    height: { xs: 80, md: 100 },
+                    width: { xs: 72, md: 100 },
+                    height: { xs: 72, md: 100 },
                     borderRadius: '50%',
                     background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                     display: 'flex',
@@ -225,11 +213,11 @@ const DiagnosisQuestion = () => {
               <Typography
                 variant="h3"
                 sx={{
-                  fontSize: { xs: '1.6rem', sm: '1.85rem', md: '2.1rem' },
+                  fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.55rem' },
                   fontWeight: 800,
                   textAlign: 'center',
-                  mb: 2,
-                  letterSpacing: '-0.03em',
+                  mb: 1.5,
+                  letterSpacing: '-0.025em',
                   color: 'text.primary',
                 }}
               >
@@ -244,11 +232,11 @@ const DiagnosisQuestion = () => {
                 color="text.secondary"
                 sx={{
                   textAlign: 'center',
-                  fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
-                  maxWidth: 600,
+                  fontSize: { xs: '0.82rem', sm: '0.88rem', md: '0.92rem' },
+                  maxWidth: 620,
                   mx: 'auto',
-                  mb: 5,
-                  lineHeight: 1.7,
+                  mb: 2.5,
+                  lineHeight: 1.55,
                 }}
               >
                 One calm question so we can show the right next steps. You can change your mind later—this only guides what you see in the app.
@@ -256,82 +244,83 @@ const DiagnosisQuestion = () => {
             </Fade>
 
             {/* Answer Options */}
-            <Stack spacing={3} sx={{ mb: 4 }}>
+            <Stack spacing={1.25} sx={{ mb: 1.25, flex: 1, justifyContent: 'center' }}>
               <Zoom in={!isLoading} timeout={1400}>
                 <Card
                   elevation={0}
                   onClick={() => handleAnswer('yes')}
                   sx={{
                     cursor: 'pointer',
-                    border: `2px solid ${
+                    border: `1px solid ${
                       selectedAnswer === 'yes'
                         ? theme.palette.primary.main
-                        : alpha(theme.palette.divider, 0.2)
+                        : alpha(theme.palette.divider, 0.16)
                     }`,
                     background:
                       selectedAnswer === 'yes'
                         ? alpha(theme.palette.primary.main, 0.08)
-                        : alpha(theme.palette.background.paper, 0.6),
+                        : alpha(theme.palette.background.paper, 0.85),
                     borderRadius: 3,
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.25s ease',
+                    minHeight: { xs: 96, md: 112 },
+                    display: 'flex',
+                    alignItems: 'center',
                     '&:hover': {
-                      borderColor: alpha('#22D3EE', 0.55),
-                      background: alpha('#22D3EE', isDarkMode ? 0.08 : 0.05),
-                      boxShadow: `0 6px 20px ${alpha('#22D3EE', 0.12)}`,
+                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                      background: alpha(theme.palette.primary.main, 0.08),
+                      boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   }}
                 >
-                  <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
+                  <CardContent sx={{ p: { xs: 1.5, md: 2 }, display: 'flex', alignItems: 'center', gap: 1.75 }}>
+                    <Box
+                      sx={{
+                        width: { xs: 40, md: 48 },
+                        height: { xs: 40, md: 48 },
+                        borderRadius: '50%',
+                        background:
+                          selectedAnswer === 'yes'
+                            ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 100%)'
+                            : alpha(theme.palette.primary.main, 0.12),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.25s ease',
+                      }}
+                    >
+                      {selectedAnswer === 'yes' ? (
+                        <CheckCircle sx={{ fontSize: { xs: 20, md: 24 }, color: 'white' }} />
+                      ) : (
+                        <AssignmentTurnedIn
+                          sx={{
+                            fontSize: { xs: 20, md: 24 },
+                            color: theme.palette.primary.main,
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="h6"
                         sx={{
-                          width: { xs: 48, md: 56 },
-                          height: { xs: 48, md: 56 },
-                          borderRadius: '50%',
-                          background:
+                          fontSize: { xs: '0.95rem', md: '1.05rem' },
+                          fontWeight: 700,
+                          mb: 0.4,
+                          color:
                             selectedAnswer === 'yes'
-                              ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 50%, #65A30D 100%)'
-                              : alpha('#22D3EE', 0.12),
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.3s ease',
+                              ? theme.palette.primary.main
+                              : theme.palette.text.primary,
                         }}
                       >
-                        {selectedAnswer === 'yes' ? (
-                          <CheckCircle sx={{ fontSize: { xs: 24, md: 28 }, color: 'white' }} />
-                        ) : (
-                          <AssignmentTurnedIn
-                            sx={{
-                              fontSize: { xs: 24, md: 28 },
-                              color: theme.palette.primary.main,
-                            }}
-                          />
-                        )}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontSize: { xs: '1rem', md: '1.2rem' },
-                            fontWeight: 700,
-                            mb: 0.5,
-                            color:
-                              selectedAnswer === 'yes'
-                                ? theme.palette.primary.main
-                                : theme.palette.text.primary,
-                          }}
-                        >
-                          Yes, I have been diagnosed with diabetes
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: { xs: '0.85rem', md: '0.9rem' } }}
-                        >
-                          Access personalized diabetes management tools and insights
-                        </Typography>
-                      </Box>
+                        Yes, I have been diagnosed with diabetes
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.82rem', md: '0.88rem' }, lineHeight: 1.55 }}
+                      >
+                        Access personalized diabetes management tools and insights
+                      </Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -343,75 +332,76 @@ const DiagnosisQuestion = () => {
                   onClick={() => handleAnswer('no')}
                   sx={{
                     cursor: 'pointer',
-                    border: `2px solid ${
+                    border: `1px solid ${
                       selectedAnswer === 'no'
                         ? theme.palette.primary.main
-                        : alpha(theme.palette.divider, 0.2)
+                        : alpha(theme.palette.divider, 0.16)
                     }`,
                     background:
                       selectedAnswer === 'no'
                         ? alpha(theme.palette.primary.main, 0.08)
-                        : alpha(theme.palette.background.paper, 0.6),
+                        : alpha(theme.palette.background.paper, 0.85),
                     borderRadius: 3,
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.25s ease',
+                    minHeight: { xs: 96, md: 112 },
+                    display: 'flex',
+                    alignItems: 'center',
                     '&:hover': {
-                      borderColor: alpha('#22D3EE', 0.55),
-                      background: alpha('#22D3EE', isDarkMode ? 0.08 : 0.05),
-                      boxShadow: `0 6px 20px ${alpha('#22D3EE', 0.12)}`,
+                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                      background: alpha(theme.palette.primary.main, 0.08),
+                      boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   }}
                 >
-                  <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
+                  <CardContent sx={{ p: { xs: 1.5, md: 2 }, display: 'flex', alignItems: 'center', gap: 1.75 }}>
+                    <Box
+                      sx={{
+                        width: { xs: 40, md: 48 },
+                        height: { xs: 40, md: 48 },
+                        borderRadius: '50%',
+                        background:
+                          selectedAnswer === 'no'
+                            ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 100%)'
+                            : alpha(theme.palette.primary.main, 0.12),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.25s ease',
+                      }}
+                    >
+                      {selectedAnswer === 'no' ? (
+                        <CheckCircle sx={{ fontSize: { xs: 20, md: 24 }, color: 'white' }} />
+                      ) : (
+                        <PersonalVideo
+                          sx={{
+                            fontSize: { xs: 20, md: 24 },
+                            color: theme.palette.primary.main,
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="h6"
                         sx={{
-                          width: { xs: 48, md: 56 },
-                          height: { xs: 48, md: 56 },
-                          borderRadius: '50%',
-                          background:
+                          fontSize: { xs: '0.95rem', md: '1.05rem' },
+                          fontWeight: 700,
+                          mb: 0.4,
+                          color:
                             selectedAnswer === 'no'
-                              ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 50%, #65A30D 100%)'
-                              : alpha('#22D3EE', 0.12),
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.3s ease',
+                              ? theme.palette.primary.main
+                              : theme.palette.text.primary,
                         }}
                       >
-                        {selectedAnswer === 'no' ? (
-                          <CheckCircle sx={{ fontSize: { xs: 24, md: 28 }, color: 'white' }} />
-                        ) : (
-                          <PersonalVideo
-                            sx={{
-                              fontSize: { xs: 24, md: 28 },
-                              color: theme.palette.primary.main,
-                            }}
-                          />
-                        )}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontSize: { xs: '1rem', md: '1.2rem' },
-                            fontWeight: 700,
-                            mb: 0.5,
-                            color:
-                              selectedAnswer === 'no'
-                                ? theme.palette.primary.main
-                                : theme.palette.text.primary,
-                          }}
-                        >
-                          No, I am not diagnosed with diabetes
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: { xs: '0.85rem', md: '0.9rem' } }}
-                        >
-                          Take our symptom assessment to evaluate your risk level
-                        </Typography>
-                      </Box>
+                        No, I am not diagnosed with diabetes
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.82rem', md: '0.88rem' }, lineHeight: 1.55 }}
+                      >
+                        Take our symptom assessment to evaluate your risk level
+                      </Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -420,7 +410,7 @@ const DiagnosisQuestion = () => {
 
             {/* Continue Button */}
             <Fade in={!isLoading} timeout={1800}>
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5, pb: { xs: 1, sm: 0 } }}>
                 <Button
                   variant="contained"
                   size="large"
@@ -428,28 +418,29 @@ const DiagnosisQuestion = () => {
                   disabled={!selectedAnswer}
                   endIcon={<ArrowForward />}
                   sx={{
-                    minWidth: { xs: '100%', sm: 200 },
-                    py: { xs: 1.75, sm: 1.5 },
-                    px: { xs: 4, sm: 5 },
-                    fontSize: { xs: '1rem', sm: '1.05rem' },
+                    width: { xs: '100%', sm: 'auto' },
+                    maxWidth: 320,
+                    py: { xs: 1.4, sm: 1.35 },
+                    px: { xs: 3.5, sm: 4 },
+                    fontSize: { xs: '0.9rem', sm: '0.95rem' },
                     fontWeight: 700,
-                    borderRadius: 2.5,
+                    borderRadius: 3,
                     textTransform: 'none',
                     background: selectedAnswer
-                      ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)'
-                      : alpha(theme.palette.action.disabled, 0.12),
+                      ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 95%)'
+                      : alpha(theme.palette.action.disabled, 0.18),
                     color: selectedAnswer ? '#fff' : theme.palette.action.disabled,
-                    boxShadow: selectedAnswer ? `0 10px 28px ${alpha('#22D3EE', 0.35)}` : 'none',
+                    boxShadow: selectedAnswer ? `0 12px 28px ${alpha('#22D3EE', 0.24)}` : 'none',
                     '&:hover': {
                       background: selectedAnswer
-                        ? 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)'
-                        : alpha(theme.palette.action.disabled, 0.12),
-                      boxShadow: selectedAnswer ? `0 14px 36px ${alpha('#22D3EE', 0.42)}` : 'none',
+                        ? 'linear-gradient(135deg, #0284C7 0%, #06B6D4 95%)'
+                        : alpha(theme.palette.action.disabled, 0.18),
+                      boxShadow: selectedAnswer ? `0 14px 34px ${alpha('#22D3EE', 0.28)}` : 'none',
                     },
                     '&:disabled': {
-                      opacity: 0.6,
+                      opacity: 0.7,
                     },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.25s ease',
                   }}
                 >
                   Continue

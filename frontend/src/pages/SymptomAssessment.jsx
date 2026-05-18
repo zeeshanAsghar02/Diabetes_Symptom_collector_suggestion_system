@@ -379,7 +379,7 @@ const SymptomAssessment = () => {
       }}
     >
       <AuthBackground />
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="lg" sx={{ height: '100vh', py: { xs: 0, md: 0 }, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
         {/* Header */}
         <Fade in timeout={500}>
           <Box textAlign="center" mb={{ xs: 3, md: 4 }}>
@@ -433,6 +433,7 @@ const SymptomAssessment = () => {
             elevation={0}
             sx={{
               p: { xs: 2.5, md: 4 },
+              position: 'relative',
               borderRadius: 2.25,
               background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.82),
               backdropFilter: 'blur(20px) saturate(160%)',
@@ -660,7 +661,14 @@ const SymptomAssessment = () => {
                 gap={2}
                 mt={4}
                 pt={3}
-                sx={{ borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}` }}
+                sx={{
+                  borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: { xs: 16, sm: 28 },
+                  px: { xs: 3, md: 6 },
+                }}
               >
                 <Button
                   variant="outlined"

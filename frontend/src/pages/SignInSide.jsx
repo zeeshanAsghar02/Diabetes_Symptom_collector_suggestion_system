@@ -62,7 +62,7 @@ export default function SignInSide() {
               },
             }}
           >
-            {siteTitle || 'DiabetesCare'}
+            {siteTitle || 'Diavise'}
           </Button>
         </Box>
         <Stack

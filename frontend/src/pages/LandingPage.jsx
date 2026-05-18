@@ -1091,11 +1091,11 @@ const LandingPage = () => {
                       <Stack spacing={1.75} sx={{ pl: 0.5, py: 2 }}>
                         <FooterContactRow icon={Email}>
                           <Link
-                            href={`mailto:${contactEmail || 'support@diabetescare.com'}`}
+                            href={`mailto:${contactEmail || 'support@diavise.com'}`}
                             underline="none"
                             sx={footerLinkSx(theme, tc)}
                           >
-                            {contactEmail || 'support@diabetescare.com'}
+                            {contactEmail || 'support@diavise.com'}
                           </Link>
                         </FooterContactRow>
                         <FooterContactRow icon={Phone}>
@@ -1132,11 +1132,11 @@ const LandingPage = () => {
                     <Stack spacing={1.75}>
                       <FooterContactRow icon={Email}>
                         <Link
-                          href={`mailto:${contactEmail || 'support@diabetescare.com'}`}
+                          href={`mailto:${contactEmail || 'support@diavise.com'}`}
                           underline="none"
                           sx={footerLinkSx(theme, tc)}
                         >
-                          {contactEmail || 'support@diabetescare.com'}
+                          {contactEmail || 'support@diavise.com'}
                         </Link>
                       </FooterContactRow>
                       <FooterContactRow icon={Phone}>
@@ -1175,7 +1175,7 @@ const LandingPage = () => {
                   lineHeight: 1.65,
                 }}
               >
-                © {new Date().getFullYear()} {siteTitle || 'DiabetesCare'}. All rights reserved.
+                © {new Date().getFullYear()} {siteTitle || 'Diavise'}. All rights reserved.
                 <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
                   {' '}
                   · Built for better health outcomes

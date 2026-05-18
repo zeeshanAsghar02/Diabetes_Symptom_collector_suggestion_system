@@ -59,7 +59,7 @@ export default function SignUpSide() {
               },
             }}
           >
-            {siteTitle || 'DiabetesCare'}
+            {siteTitle || 'Diavise'}
           </Button>
         </Box>
         <Box
@@ -82,7 +82,7 @@ export default function SignUpSide() {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            {(siteTitle || 'DiabetesCare')} Patient Registration
+            {(siteTitle || 'Diavise')} Patient Registration
           </Typography>
           <Box
             sx={{
@@ -100,7 +100,7 @@ export default function SignUpSide() {
             }}
           >
             <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
-              Welcome to {siteTitle || 'DiabetesCare'}
+              Welcome to {siteTitle || 'Diavise'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Complete your registration to get personalized diabetes insights and recommendations.

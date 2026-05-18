@@ -168,12 +168,12 @@ export default function UniversalHeader() {
   const isLanding = pathname === '/';
   const navIdleColor = theme.palette.mode === 'dark' ? theme.palette.text.primary : brand.navText;
 
-  const normalizedTitle = (siteTitle || 'Diabetes Care').trim();
+  const normalizedTitle = (siteTitle || 'Diavise').trim();
   const titleWords = normalizedTitle.split(/\s+/).filter(Boolean);
-  const brandLine1 = titleWords[0] || 'Diabetes';
+  const brandLine1 = titleWords[0] || 'Diavise';
   const brandLine2 = titleWords.slice(1).join(' ');
   const brandMark = (normalizedTitle[0] || 'D').toUpperCase();
-  const supportEmail = (contactEmail || 'support@diabetescare.com').trim();
+  const supportEmail = (contactEmail || 'support@diavise.com').trim();
   const supportPhone = (contactPhone || '+92 323 300 4420').trim();
   const phoneHref = `tel:${supportPhone.replace(/\s+/g, '')}`;
 

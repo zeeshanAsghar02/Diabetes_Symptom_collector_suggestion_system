@@ -44,7 +44,7 @@ import {
 const ACCENT = {
   welcome: '#22D3EE',
   features: '#38BDF8',
-  benefits: '#A3E635',
+  benefits: '#22D3EE',
 };
 
 /** Vertical pipeline: full-height rail in sidebar with inset from top/bottom */
@@ -196,7 +196,7 @@ const Onboarding = () => {
         background: pageBg,
         display: 'flex',
         flexDirection: 'column',
-        py: { xs: 2, sm: 2.5, md: 3 },
+        py: { xs: 1, sm: 1.25, md: 1.5 },
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -205,13 +205,12 @@ const Onboarding = () => {
 
       <Box
         sx={{
-          position: 'relative',
-          zIndex: 2,
+          position: 'absolute',
+          top: { xs: 8, sm: 12 },
+          left: { xs: 12, sm: 20 },
+          zIndex: 6,
           display: 'flex',
           justifyContent: 'flex-start',
-          pt: { xs: 0, sm: 0.5 },
-          pl: { xs: 2, sm: 3, md: 4 },
-          pr: { xs: 2, sm: 3, md: 4 },
         }}
       >
         <Button
@@ -233,31 +232,35 @@ const Onboarding = () => {
             },
           }}
         >
-          {siteTitle || 'DiabetesCare'}
+          {siteTitle || 'Diavise'}
         </Button>
       </Box>
 
       <Container
         maxWidth="lg"
         sx={{
-          px: { xs: 2, sm: 3, md: 4 },
+          height: '100vh',
+          px: { xs: 1.5, sm: 2.5, md: 3 },
           position: 'relative',
           zIndex: 1,
-          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          pt: { xs: 1, sm: 1.5 },
+          pt: { xs: 0, sm: 0 },
+          overflow: 'hidden',
         }}
       >
-        {/* Top actions — aligned with auth chrome */}
+        {/* Top actions — aligned with auth chrome (moved up) */}
         <Box
           sx={{
+            position: 'absolute',
+            top: { xs: 12, sm: 14 },
+            right: { xs: 12, sm: 24 },
+            zIndex: 6,
             display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
+            flexDirection: 'row',
             justifyContent: 'flex-end',
-            alignItems: { xs: 'stretch', sm: 'center' },
-            gap: 1.25,
-            mb: { xs: 2, md: 2.5 },
+            alignItems: 'center',
+            gap: 0.75,
           }}
         >
           <Tooltip title={isAuthenticated() ? 'Back to Dashboard' : 'Back to Home'} arrow>
@@ -268,20 +271,20 @@ const Onboarding = () => {
               fullWidth={isSmallScreen}
               sx={{
                 textTransform: 'none',
-                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                fontSize: { xs: '0.78rem', sm: '0.85rem' },
                 fontWeight: 600,
                 color: theme.palette.text.secondary,
-                borderColor: alpha(theme.palette.divider, 0.35),
+                borderColor: alpha(theme.palette.divider, 0.28),
                 borderRadius: 2,
-                px: { xs: 2, sm: 2.5 },
-                py: { xs: 0.85, sm: 1 },
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 0.6, sm: 0.75 },
                 ...glass,
                 '&:hover': {
                   borderColor: alpha('#22D3EE', 0.45),
                   color: theme.palette.text.primary,
-                  bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
+                  bgcolor: alpha('#22D3EE', isDarkMode ? 0.06 : 0.05),
                 },
-                transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
+                transition: 'color 0.15s ease, border-color 0.15s ease, background 0.15s ease',
               }}
             >
               {isAuthenticated() ? 'Dashboard' : 'Home'}
@@ -297,23 +300,23 @@ const Onboarding = () => {
                 fullWidth={isSmallScreen}
                 sx={{
                   textTransform: 'none',
-                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                  fontSize: { xs: '0.78rem', sm: '0.85rem' },
                   fontWeight: 600,
                   color: '#0e7490',
-                  borderColor: alpha('#22D3EE', 0.35),
+                  borderColor: alpha('#22D3EE', 0.28),
                   borderRadius: 2,
-                  px: { xs: 2, sm: 2.5 },
-                  py: { xs: 0.85, sm: 1 },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.6, sm: 0.75 },
                   ...glass,
                   ...(isDarkMode && {
                     color: '#67E8F9',
-                    borderColor: alpha('#22D3EE', 0.28),
+                    borderColor: alpha('#22D3EE', 0.24),
                   }),
                   '&:hover': {
-                    borderColor: alpha('#22D3EE', 0.55),
-                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.08),
+                    borderColor: alpha('#22D3EE', 0.45),
+                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.05),
                   },
-                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                  transition: 'border-color 0.15s ease, background 0.15s ease',
                 }}
               >
                 Skip intro
@@ -333,11 +336,11 @@ const Onboarding = () => {
         >
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Hero + vertical pipeline (rail before content) */}
-            <Card
+              <Card
               elevation={0}
               sx={{
-                mb: { xs: 2, sm: 2.5, md: 3 },
-                borderRadius: { xs: 2, md: 2.25 },
+                mb: { xs: 1, sm: 1.5, md: 2 },
+                borderRadius: { xs: 1.5, md: 2 },
                 overflow: 'hidden',
                 ...glass,
               }}
@@ -368,27 +371,15 @@ const Onboarding = () => {
                       alignItems: 'stretch',
                       alignSelf: 'stretch',
                       flexShrink: 0,
-                      width: { xs: 76, sm: 200, md: 228 },
-                      py: { xs: 2, sm: 2.5 },
-                      px: { xs: 1, sm: 2, md: 2.25 },
+                      width: { xs: 64, sm: 160, md: 180 },
+                      py: { xs: 1.25, sm: 1.75 },
+                      px: { xs: 0.75, sm: 1.5, md: 2 },
                       borderRight: `1px solid ${alpha('#22D3EE', 0.12)}`,
-                      bgcolor: isDarkMode ? alpha('#020617', 0.35) : alpha('#f8fafc', 0.65),
+                      bgcolor: isDarkMode ? alpha('#020617', 0.28) : alpha('#f8fafc', 0.6),
                       minHeight: 0,
                     }}
                   >
-                    <Typography
-                      variant="overline"
-                      sx={{
-                        display: { xs: 'none', sm: 'block' },
-                        letterSpacing: '0.14em',
-                        color: 'text.secondary',
-                        fontWeight: 700,
-                        mb: 1.5,
-                        flexShrink: 0,
-                      }}
-                    >
-                      Your path
-                    </Typography>
+                    {/* Left rail heading removed to reduce collision with content */}
                     {/* Grows with card height so the rail can run much longer than the step stack alone */}
                     <Box
                       sx={{
@@ -518,9 +509,7 @@ const Onboarding = () => {
                             </Box>
 
                             <Box sx={{ flex: 1, minWidth: 0, pt: 0.15, display: { xs: 'none', sm: 'block' } }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
-                                Phase {index + 1}
-                              </Typography>
+                              {/* Phase numbering removed — only show step labels */}
                               <Typography
                                 variant="subtitle2"
                                 fontWeight={index === activeStep ? 700 : 600}
@@ -551,8 +540,8 @@ const Onboarding = () => {
                     </Typography>
                   </Box>
 
-                  <CardContent sx={{ flex: 1, minWidth: 0, p: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
-                <Stack spacing={{ xs: 3, md: 4 }} alignItems="center">
+                  <CardContent sx={{ flex: 1, minWidth: 0, p: { xs: 1.25, sm: 1.75, md: 2.25 }, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Stack spacing={{ xs: 2.25, md: 3 }} alignItems="center" sx={{ width: '100%', maxWidth: { xs: '100%', md: 960 }, mx: 'auto' }}>
                   {/* Header Section */}
                   <Box sx={{ textAlign: 'center', width: '100%' }}>
                     {/* Animated Icon */}
@@ -579,7 +568,7 @@ const Onboarding = () => {
                     </Zoom>
 
                     {/* Title and Description */}
-                    <Box sx={{ maxWidth: { xs: '100%', sm: 600, md: 680 }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+                    <Box sx={{ maxWidth: { xs: '100%', sm: 640, md: 760 }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
                       <Fade in={true} timeout={800}>
                         <Typography
                           variant="h3"
@@ -629,7 +618,7 @@ const Onboarding = () => {
                   </Box>
 
                   {/* Features Grid Layout - Integrated within Hero */}
-                  <Box sx={{ width: '100%' }}>
+                    <Box sx={{ width: '100%' }}>
                     <Grid 
                       container 
                       spacing={{ xs: 2, sm: 2.5, md: 3 }} 
@@ -656,7 +645,8 @@ const Onboarding = () => {
                               elevation={0}
                               sx={{
                                 width: '100%',
-                                minHeight: { xs: 'auto', sm: 200 },
+                                minHeight: { xs: 'auto', sm: 220 },
+                                height: '100%',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 background: isDarkMode
@@ -679,11 +669,12 @@ const Onboarding = () => {
                             >
                               <CardContent
                                 sx={{
-                                  p: { xs: 2.25, sm: 2.5 },
+                                  p: { xs: 1.75, sm: 2 },
                                   display: 'flex',
                                   flexDirection: 'column',
                                   justifyContent: 'flex-start',
-                                  '&:last-child': { pb: { xs: 2.25, sm: 2.5 } },
+                                  flex: 1,
+                                  '&:last-child': { pb: { xs: 1.75, sm: 2 } },
                                 }}
                               >
                                 <Stack spacing={1.75}>
@@ -738,13 +729,20 @@ const Onboarding = () => {
             {/* Responsive Navigation Buttons */}
             <Box
               sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column-reverse', sm: 'row' },
-                justifyContent: 'space-between',
-                alignItems: 'stretch',
-                mt: { xs: 2.5, md: 3 },
-                gap: { xs: 1.75, sm: 2 },
-              }}
+                  display: 'flex',
+                  flexDirection: { xs: 'column-reverse', sm: 'row' },
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mt: { xs: 0, md: 0 },
+                  gap: { xs: 1.25, sm: 2 },
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  bottom: { xs: 12, sm: 22 },
+                  px: { xs: 2, sm: 4 },
+                  width: { xs: 'auto', sm: '680px', md: '820px' },
+                  zIndex: 4,
+                }}
             >
               {/* Back Button */}
               <Fade in={activeStep > 0} timeout={300}>

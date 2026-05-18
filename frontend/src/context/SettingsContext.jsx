@@ -2,14 +2,20 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchAllSettings, fetchPublicSettings } from '../utils/api';
 
 const SettingsContext = createContext({
-    siteTitle: 'DiabetesCare',
-    contactEmail: 'support@diabetescare.com',
+    siteTitle: 'Diavise',
+    contactEmail: 'support@diavise.com',
     contactPhone: '+92 323 300 4420',
     siteDescription: 'Comprehensive diabetes management and symptom tracking system',
     dateFormat: 'DD MMMM, YYYY',
     loading: true,
     refreshSettings: () => {},
 });
+
+const normalizeSiteTitle = (value) => {
+    if (!value) return null;
+    const normalized = value.toString().trim();
+    return /^(diabetes\s?care)$/i.test(normalized) ? null : normalized || null;
+};
 
 export const useSettings = () => {
     const context = useContext(SettingsContext);
@@ -21,8 +27,8 @@ export const useSettings = () => {
 
 export const SettingsProvider = ({ children }) => {
     const [settings, setSettings] = useState({
-        siteTitle: 'DiabetesCare',
-        contactEmail: 'support@diabetescare.com',
+        siteTitle: 'Diavise',
+        contactEmail: 'support@diavise.com',
         contactPhone: '+92 323 300 4420',
         siteDescription: 'Comprehensive diabetes management and symptom tracking system',
         dateFormat: 'DD MMMM, YYYY',
@@ -43,8 +49,8 @@ export const SettingsProvider = ({ children }) => {
                 // ignore; fallback below
             }
 
-            const siteTitle = publicData?.site_title || localStorage.getItem('site_title') || 'DiabetesCare';
-            const contactEmail = publicData?.contact_email || localStorage.getItem('contact_email') || 'support@diabetescare.com';
+            const siteTitle = publicData?.site_title || normalizeSiteTitle(localStorage.getItem('site_title')) || 'Diavise';
+            const contactEmail = publicData?.contact_email || localStorage.getItem('contact_email') || 'support@diavise.com';
             const contactPhone = publicData?.contact_phone || localStorage.getItem('contact_phone') || '+92 323 300 4420';
             const siteDescription = publicData?.site_description || localStorage.getItem('site_description') || 'Comprehensive diabetes management and symptom tracking system';
             const dateFormat = publicData?.date_format || localStorage.getItem('date_format') || 'DD MMMM, YYYY';
@@ -87,8 +93,8 @@ export const SettingsProvider = ({ children }) => {
 
             if (data) {
                 const newSettings = {
-                    siteTitle: data.site_title || 'DiabetesCare',
-                    contactEmail: data.contact_email || 'support@diabetescare.com',
+                    siteTitle: data.site_title || 'Diavise',
+                    contactEmail: data.contact_email || 'support@diavise.com',
                     contactPhone: data.contact_phone || localStorage.getItem('contact_phone') || '+92 323 300 4420',
                     siteDescription: data.site_description || 'Comprehensive diabetes management and symptom tracking system',
                     dateFormat: data.date_format || 'DD MMMM, YYYY',

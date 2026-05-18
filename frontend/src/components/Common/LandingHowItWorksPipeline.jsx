@@ -154,7 +154,7 @@ export default function LandingHowItWorksPipeline({ siteTitle }) {
                   mb: 2,
                 }}
               >
-                How {siteTitle || 'DiabetesCare'} Works
+                How {siteTitle || 'Diavise'} Works
               </Typography>
               <Typography
                 variant="body1"
