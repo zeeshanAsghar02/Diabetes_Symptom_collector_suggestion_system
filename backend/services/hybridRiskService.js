@@ -206,7 +206,7 @@ class HybridRiskService {
       const { event_id } = await submitRes.json();
       console.log(`[LLM] Queued event_id: ${event_id}. Reading SSE (60-120s on CPU)...`);
 
-      const sseRes = await fetch(`${hfBase}/call/predict/${event_id}`);
+      const sseRes = await fetch(`${hfBase}/gradio_api/call/predict/${event_id}`);
       if (!sseRes.ok) throw new Error(`SSE stream error: ${sseRes.status}`);
 
       const sseText = await sseRes.text();
