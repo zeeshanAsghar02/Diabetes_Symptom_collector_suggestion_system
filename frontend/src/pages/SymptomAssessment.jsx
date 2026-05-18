@@ -274,15 +274,18 @@ const SymptomAssessment = () => {
       setCurrentSymptomIndex((prev) => prev + 1);
       setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
-      // Completed all questions
+      // Completed all questions — save and move to summary review
       if (!isLoggedIn) {
         // Store redirect info in sessionStorage before showing login dialog
         sessionStorage.setItem('returnToSymptomAssessment', 'true');
         // Show login dialog for unauthenticated users
         setShowLoginDialog(true);
       } else {
-        setActiveStep(1);
+        setActiveStep(1); // Show summary review screen
       }
+    } else if (activeStep === 1) {
+      // User confirmed their answers — proceed to assessment
+      handleViewAssessment();
     }
   };
 
@@ -364,13 +367,12 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
-  const steps = ['Questions', 'Wrap up'];
+  const steps = ['Questions', 'Summary', 'Results'];
 
   const currentSymptom = symptoms[currentSymptomIndex];
 
   const getProgressPercentage = () => {
     if (!symptoms.length) return 0;
-    if (activeStep === 1) return 100;
     return ((currentSymptomIndex + 1) / symptoms.length) * 100;
   };
 
@@ -456,9 +458,9 @@ const SymptomAssessment = () => {
             <Box sx={{ mb: 3 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.25} flexWrap="wrap" gap={1}>
                 <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ letterSpacing: '0.02em' }}>
-                  {activeStep === 0
-                    ? `Topic ${currentSymptomIndex + 1} of ${symptoms.length}`
-                    : 'Finished'}
+                   {activeStep === 0
+                     ? `Question ${currentSymptomIndex + 1} of ${symptoms.length}`
+                     : 'Finished'}
                 </Typography>
                 <Chip
                   label={`${Math.round(getProgressPercentage())}%`}
@@ -655,57 +657,100 @@ const SymptomAssessment = () => {
                 </Fade>
               )}
 
-              {/* Step 1: Complete */}
+              {/* Step 1: Summary review — show user what they filled before proceeding */}
               {activeStep === 1 && (
                 <Fade in timeout={500}>
-                  <Box textAlign="center" py={6}>
-                    <Box 
-                      sx={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 120,
-                        height: 120,
-                        borderRadius: '50%',
-                        bgcolor: (theme) => alpha(theme.palette.success.main, 0.1),
-                        border: (theme) => `3px solid ${alpha(theme.palette.success.main, 0.3)}`,
-                        mb: 4,
-                      }}
-                    >
-                      <CheckCircle sx={{ fontSize: 80, color: 'success.main' }} />
+                  <Box>
+                    <Box textAlign="center" mb={4}>
+                      <Box
+                        sx={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 72, height: 72, borderRadius: '50%', mb: 2,
+                          bgcolor: (theme) => alpha(theme.palette.info.main, 0.12),
+                          border: (theme) => `3px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                        }}
+                      >
+                        <Typography sx={{ fontSize: 28, fontWeight: 900, color: 'info.main' }}>✓</Typography>
+                      </Box>
+                      <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 1.5 }}>
+                        Here&apos;s a snapshot of your responses
+                      </Typography>
+                      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
+                        Take a quick look at what you shared before we run your assessment. Nothing here is a diagnosis—just what you told us. You can always go back and change anything.
+                      </Typography>
                     </Box>
-                    <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 2, letterSpacing: '-0.02em' }}>
-                      You&apos;re all set for this step
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 520, mx: 'auto', lineHeight: 1.8 }}>
-                      Thanks for taking the time. When you&apos;re ready, open your summary to see how we&apos;ve organized what you shared—not a diagnosis, just a clearer picture you can discuss with your care team.
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="large"
-                      endIcon={<Visibility />}
-                      onClick={handleViewAssessment}
-                      sx={{
-                        px: 5,
-                        py: 1.75,
-                        fontSize: '1rem',
-                        fontWeight: 700,
-                        borderRadius: 2.25,
-                        textTransform: 'none',
-                        background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
-                        color: '#fff',
-                        boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
-                          boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
-                        },
-                      }}
-                    >
-                      View summary
-                    </Button>
+
+                    <Box sx={{ mb: 4 }}>
+
+                      {(() => {
+                        let items = [];
+                        const seenKeys = new Set();
+                        symptoms.forEach((symptom) => {
+                          // Recover answers from the component state (logged-in answers were just saved to DB)
+                          const qList = questionListRef.current?.getQuestions?.() || [];
+                          qList.forEach((q) => {
+                            const aid = String(q._id);
+                            if (seenKeys.has(aid)) return;
+                            seenKeys.add(aid);
+                            items.push({ symptomName: symptom.name, question: q.question_text });
+                          });
+                        });
+                        if (!items.length) {
+                          return <Alert severity="info">Your answers have been saved. No individual question text available to display, but they are on record.</Alert>;
+                        }
+                        return items.map((item, i) => (
+                          <Paper
+                            key={i}
+                            elevation={0}
+                            sx={{
+                              p: { xs: 1.75, sm: 2.25 },
+                              borderRadius: 2,
+                              mb: 1.5,
+                              bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
+                              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                            }}
+                          >
+                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: '0.07em', display: 'block', mb: 0.5 }}>
+                              {item.symptomName}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                              {item.question}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                              ✓ Saved
+                            </Typography>
+                          </Paper>
+                        ));
+                      })()}
+
+                    </Box>
+
+                    <Box display="flex" justifyContent="flex-end" mt={3}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        endIcon={<Visibility />}
+                        onClick={() => handleViewAssessment()}
+                        sx={{
+                          px: 5, py: 1.75, fontSize: '1rem', fontWeight: 700, borderRadius: 2.25,
+                          textTransform: 'none',
+                          background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
+                          color: '#fff',
+                          boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                            boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
+                          },
+                        }}
+                      >
+                        View my results
+                      </Button>
+                    </Box>
                   </Box>
                 </Fade>
               )}
+
+              {/* Step 2: Results — replaced by Assessment page via navigation */}
             </Box>
 
             {/* Navigation Buttons */}

@@ -1,4 +1,5 @@
 import { UsersAnswers } from '../models/Users_Answers.js';
+import { QuestionsAnswers } from '../models/Questions_Answers.js';
 import { Question } from '../models/Question.js';
 import { Symptom } from '../models/Symptom.js';
 import { User } from '../models/User.js';
