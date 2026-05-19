@@ -667,10 +667,6 @@ const SymptomAssessment = () => {
                        userAge={userAge}
                        userGender={userGender}
                      />
-                  </Box>
-                </Fade>
-              )}
-
 </Box>
                 </Fade>
               )}
