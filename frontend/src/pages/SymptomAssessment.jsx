@@ -282,14 +282,15 @@ const SymptomAssessment = () => {
       setCurrentSymptomIndex((prev) => prev + 1);
       setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
-      // Completed all questions — save and move to summary review
+      // Completed all questions — save and go directly to assessment
       if (!isLoggedIn) {
         // Store redirect info in sessionStorage before showing login dialog
         sessionStorage.setItem('returnToSymptomAssessment', 'true');
         // Show login dialog for unauthenticated users
         setShowLoginDialog(true);
       } else {
-        setActiveStep(1); // Show summary review screen
+        // Go directly to assessment instead of showing summary
+        handleViewAssessment();
       }
     } else if (activeStep === 1) {
       // User confirmed their answers — proceed to assessment
@@ -386,7 +387,7 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
-  const steps = ['Questions', 'Summary', 'Results'];
+  const steps = ['Questions', 'Results'];
 
   const currentSymptom = symptoms[currentSymptomIndex];
 
@@ -670,99 +671,7 @@ const SymptomAssessment = () => {
                 </Fade>
               )}
 
-              {/* Step 1: Summary review — show user what they filled before proceeding */}
-              {activeStep === 1 && (
-                <Fade in timeout={500}>
-                  <Box sx={{ mb: 2 }}>
-                    <Box textAlign="center" mb={3}>
-                      <Box
-                        sx={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: 72, height: 72, borderRadius: '50%', mb: 2,
-                          bgcolor: (theme) => alpha(theme.palette.info.main, 0.12),
-                          border: (theme) => `3px solid ${alpha(theme.palette.info.main, 0.3)}`,
-                        }}
-                      >
-                        <Typography sx={{ fontSize: 28, fontWeight: 900, color: 'info.main' }}>✓</Typography>
-                      </Box>
-                      <Typography variant="h6" fontWeight={800} gutterBottom sx={{ mb: 1 }}>
-                        Your responses
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', lineHeight: 1.5 }}>
-                        Review before continuing.
-                      </Typography>
-                    </Box>
-
-                    {/* Answer list */}
-                    <Box sx={{ mb: 3 }}>
-                      {(() => {
-                        let savedMap = {};
-                        try {
-                          const raw = sessionStorage.getItem('pendingOnboardingAnswers');
-                          if (raw) {
-                            const arr = JSON.parse(raw);
-                            if (Array.isArray(arr)) {
-                              arr.forEach(a => { savedMap[a.questionId] = a.answerText; });
-                            }
-                          }
-} catch (_e) { /* ignore sessionStorage parse errors */ }
-
-                         const allQuestions = [...accumulatedQuestionsRef.current.values()];
-                         const unique = [...new Map(allQuestions.map(q => [String(q._id), q])).values()];
-
-                         if (!unique.length) {
-                           return <Alert severity="info">Your answers have been recorded.</Alert>;
-                         }
-
-                         return unique.map((q) => {
-                          const answer = savedMap[String(q._id)];
-                          const display = answer && answer.trim() ? answer : 'Not answered';
-                          return (
-                            <Paper
-                              key={String(q._id)}
-                              elevation={0}
-                              sx={{
-                                p: { xs: 1.5, sm: 2 },
-                                borderRadius: 1.5,
-                                mb: 1,
-                                bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
-                                border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
-                              }}
-                            >
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>
-                                {q.question_text}
-                              </Typography>
-                              <Typography variant="caption" color={display === 'Not answered' ? 'text.disabled' : 'text.secondary'}>
-                                {display}
-                              </Typography>
-                            </Paper>
-                          );
-                        });
-                      })()}
-                    </Box>
-
-                    <Box display="flex" justifyContent="flex-end">
-                      <Button
-                        variant="contained"
-                        size="large"
-                        endIcon={<Visibility />}
-                        onClick={handleViewAssessment}
-                        sx={{
-                          px: 4, py: 1.5, fontSize: '0.95rem', fontWeight: 700, borderRadius: 2.25,
-                          textTransform: 'none',
-                          background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
-                          color: '#fff',
-                          boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
-                          '&:hover': {
-                            background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
-                            boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
-                          },
-                        }}
-                      >
-                        View my results
-                      </Button>
-                    </Box>
-                  </Box>
+</Box>
                 </Fade>
               )}
 
