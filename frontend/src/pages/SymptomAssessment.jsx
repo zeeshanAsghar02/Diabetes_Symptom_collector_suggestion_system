@@ -51,6 +51,13 @@ const SymptomAssessment = () => {
   const [helpInfoOpen, setHelpInfoOpen] = useState(false);
   const questionListRef = useRef();
   const accumulatedQuestionsRef = useRef(new Map());
+  const processedQuestionIdsRef = useRef(new Set());
+
+  // Clear accumulated questions when changing symptoms to prevent duplicates
+  useEffect(() => {
+    accumulatedQuestionsRef.current.clear();
+    processedQuestionIdsRef.current.clear();
+  }, [currentSymptomIndex]);
 
   useEffect(() => {
     console.log('🔍 ========== SYMPTOM ASSESSMENT MOUNTED ==========');
@@ -295,7 +302,13 @@ const SymptomAssessment = () => {
     // so the summary step can read and display them (questionListRef only
     // holds the active symptom's questions, not all of them).
     if (questions && questions.length > 0) {
-      questions.forEach(q => accumulatedQuestionsRef.current.set(String(q._id), q));
+      questions.forEach(q => {
+        const qid = String(q._id);
+        if (!processedQuestionIdsRef.current.has(qid)) {
+          processedQuestionIdsRef.current.add(qid);
+          accumulatedQuestionsRef.current.set(qid, q);
+        }
+      });
     }
 
     // Check if all questions have been answered
@@ -312,40 +325,38 @@ const SymptomAssessment = () => {
     }, 0);
     
     // 🔥 CRITICAL FIX: ACCUMULATE answers across all symptoms for unauthenticated users
-    if (!isLoggedIn && Object.keys(answers).length > 0) {
-      try {
-        // Get existing answers from sessionStorage
-        const existingAnswersJson = sessionStorage.getItem('pendingOnboardingAnswers');
-        const existingAnswers = existingAnswersJson ? JSON.parse(existingAnswersJson) : [];
-        
-        // Convert new answers to array format
-        const newAnswersArray = Object.entries(answers).map(([questionId, answerText]) => ({
-          questionId,
-          answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : answerText.toString()
-        }));
-        
-        // Merge: Remove duplicates (same questionId), keep latest answer
-        const answerMap = new Map();
-        
-        // Add existing answers first
-        existingAnswers.forEach(ans => {
-          answerMap.set(ans.questionId, ans);
-        });
-        
-        // Add/update with new answers
-        newAnswersArray.forEach(ans => {
-          answerMap.set(ans.questionId, ans);
-        });
-        
-        // Convert back to array
-        const mergedAnswers = Array.from(answerMap.values());
-        
-        sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(mergedAnswers));
-        console.log('💾 Accumulated answers in sessionStorage:', mergedAnswers.length, 'total answers');
-      } catch (error) {
-        console.error('❌ Failed to save answers to sessionStorage:', error);
-      }
-    }
+     if (!isLoggedIn && Object.keys(answers).length > 0) {
+       try {
+         // Get existing answers from sessionStorage
+         const existingAnswersJson = sessionStorage.getItem('pendingOnboardingAnswers');
+         const existingAnswers = existingAnswersJson ? JSON.parse(existingAnswersJson) : [];
+         
+         // Create a map of existing answers for deduplication
+         const answerMap = new Map();
+         existingAnswers.forEach(ans => {
+           answerMap.set(ans.questionId, ans);
+         });
+         
+         // Only add answers that don't already exist or have changed
+         let hasNewAnswers = false;
+         Object.entries(answers).forEach(([questionId, answerText]) => {
+           const normalizedAnswer = typeof answerText === 'object' ? JSON.stringify(answerText) : answerText.toString();
+           const existing = answerMap.get(questionId);
+           if (!existing || existing.answerText !== normalizedAnswer) {
+             answerMap.set(questionId, { questionId, answerText: normalizedAnswer });
+             hasNewAnswers = true;
+           }
+         });
+         
+         if (hasNewAnswers) {
+           const mergedAnswers = Array.from(answerMap.values());
+           sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(mergedAnswers));
+           console.log('💾 Accumulated answers in sessionStorage:', mergedAnswers.length, 'total answers');
+         }
+       } catch (error) {
+         console.error('❌ Failed to save answers to sessionStorage:', error);
+       }
+     }
   };
 
   const handleBack = () => {
@@ -694,18 +705,16 @@ const SymptomAssessment = () => {
                               arr.forEach(a => { savedMap[a.questionId] = a.answerText; });
                             }
                           }
-                        } catch (_e) { /* ignore sessionStorage parse errors */ }
+} catch (_e) { /* ignore sessionStorage parse errors */ }
 
-                        const allQuestions = [...accumulatedQuestionsRef.current.values()];
-                        const unique = allQuestions.filter((q, idx) =>
-                          allQuestions.findIndex(x => String(x._id) === String(q._id)) === idx
-                        );
+                         const allQuestions = [...accumulatedQuestionsRef.current.values()];
+                         const unique = [...new Map(allQuestions.map(q => [String(q._id), q])).values()];
 
-                        if (!unique.length) {
-                          return <Alert severity="info">Your answers have been recorded.</Alert>;
-                        }
+                         if (!unique.length) {
+                           return <Alert severity="info">Your answers have been recorded.</Alert>;
+                         }
 
-                        return unique.map((q) => {
+                         return unique.map((q) => {
                           const answer = savedMap[String(q._id)];
                           const display = answer && answer.trim() ? answer : 'Not answered';
                           return (
