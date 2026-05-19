@@ -558,7 +558,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const pollUntilComplete = async ({ month, year, maxWaitMs = 15 * 60 * 1000 }) => {
+  const pollUntilComplete = async ({ month, year, maxWaitMs = 20 * 60 * 1000 }) => {
     const startedAt = Date.now();
     pollAbortRef.current.aborted = false;
 
@@ -613,7 +613,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         month,
         year
       }, {
-        timeout: 240000
+        timeout: 480000
       });
 
       if (!response.data?.success) {
