@@ -153,7 +153,7 @@ class HybridRiskService {
       console.warn('RAG retrieval error:', error.message);
     }
     
-    return '';
+return '';
   }
 
   /**
@@ -177,13 +177,18 @@ class HybridRiskService {
       userContext
     );
 
-    if (!this.hfSpaceUrl) {
-      throw new Error('DIABETICA_HF_URL is not set. Add it to your environment variables.');
+    // Validate HF Space URL - correct format: .hf.space domain
+    const DEFAULT_HF_URL = 'https://zeeshanasghar02-diabetica-api.hf.space';
+    let hfUrl = this.hfSpaceUrl;
+    
+    if (!hfUrl || !hfUrl.includes('.hf.space')) {
+      console.warn(`[LLM] Invalid HF Space URL "${this.hfSpaceUrl}", falling back to ${DEFAULT_HF_URL}`);
+      hfUrl = DEFAULT_HF_URL;
     }
 
     try {
       // Logic to handle Gradio 4+ (detecting if we need to poll)
-      const hfBase = this.hfSpaceUrl.replace(/\/$/, "");
+      const hfBase = hfUrl.replace(/\/$/, "");
       
       console.log(`[LLM] Calling Diabetica HF Space: ${hfBase}`);
 

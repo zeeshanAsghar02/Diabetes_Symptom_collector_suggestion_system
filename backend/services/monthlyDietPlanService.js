@@ -689,7 +689,18 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
    * Call Diabetica-7B via Hugging Face Gradio API
    */
   async callDiabetica(prompt) {
-    const hfBase = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+    // Get HF Space URL from environment or use correct default
+    // Correct format: https://USERNAME-daabetica-api.hf.space
+    const envUrl = process.env.LLM_API_URL || process.env.HF_SPACE_URL || '';
+    const DEFAULT_HF_URL = 'https://zeeshanasghar02-diabetica-api.hf.space';
+    
+    // Validate URL - must contain .hf.space domain for correct HF Space format
+    let hfBase = envUrl;
+    if (!envUrl || !envUrl.includes('.hf.space')) {
+      console.warn(`[HF] Invalid LLM_API_URL "${envUrl}", falling back to ${DEFAULT_HF_URL}`);
+      hfBase = DEFAULT_HF_URL;
+    }
+    
     // Always use 2048 — Gradio slider is hard-constrained to 256–2048.
     // Never read from env: LM_STUDIO_MAX_TOKENS may be set to a small value (e.g. 100)
     // for the old LM Studio integration, which would break Gradio validation.
