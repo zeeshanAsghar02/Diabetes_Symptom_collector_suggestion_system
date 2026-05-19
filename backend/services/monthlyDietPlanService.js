@@ -710,11 +710,11 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
     try {
       console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
 
-      // Step 1: Submit job
+      // Step 1: Submit job (increased timeout for cold HF Space boot)
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
         { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
-        { timeout: 45000 }
+        { timeout: 60000 }
       );
       const { event_id } = submitRes.data;
       if (!event_id) throw new Error('HF Gradio did not return an event_id');
@@ -722,10 +722,11 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
 
       // Step 2: Read SSE stream — increased timeout for model generation
       // event:error detection above exits fast on Gradio validation errors.
-      // Increased timeout to 180000 ms (3 minutes) for model generation on CPU
+      // Increased timeout to 300000 ms (5 minutes) for model generation on CPU
+      // Gradio on CPU can take 3-5 minutes for complex prompts
       const sseRes = await axios.get(
         `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 180000, responseType: 'text' }
+        { timeout: 300000, responseType: 'text' }
       );
 
       const raw = sseRes.data || '';
