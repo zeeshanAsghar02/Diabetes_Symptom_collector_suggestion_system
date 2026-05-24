@@ -2,11 +2,11 @@ import monthlyDietPlanService from '../services/monthlyDietPlanService.js';
 import MonthlyDietPlan from '../models/MonthlyDietPlan.js';
 
 /**
- * Generate a new monthly diet plan — SYNCHRONOUS (on-demand)
+ * Generate a new monthly diet plan.
  * POST /api/monthly-diet-plan/generate
  *
- * Generates the plan synchronously and returns the completed plan.
- * Client waits for generation to complete (typically 30-90 seconds).
+ * Creates a pending record, returns immediately, and finishes AI generation in
+ * the background so Azure ingress/browser timeouts cannot kill the request.
  */
 export const generateMonthlyDietPlan = async (req, res) => {
   try {
@@ -34,7 +34,9 @@ export const generateMonthlyDietPlan = async (req, res) => {
     const existing = await MonthlyDietPlan.findOne({ user_id: userId, month: monthNum, year: yearNum });
 
     if (existing) {
-      if (existing.generation_status === 'pending') {
+      const existingStatus = existing.generation_status || (existing.meal_categories?.length > 0 ? 'complete' : 'pending');
+
+      if (existingStatus === 'pending') {
         // If a pending plan is stale, remove it so the user can manually retry.
         const STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 hours
         const createdAt = existing.created_at || existing.createdAt;
@@ -56,7 +58,7 @@ export const generateMonthlyDietPlan = async (req, res) => {
           });
         }
       }
-      if (existing.generation_status === 'complete') {
+      if (existingStatus === 'complete') {
         return res.status(409).json({
           success: false,
           error: `A diet plan already exists for ${monthNum}/${yearNum}. Please delete it first or view it.`
@@ -67,22 +69,47 @@ export const generateMonthlyDietPlan = async (req, res) => {
       console.log(`🗑️ Deleted failed plan for ${monthNum}/${yearNum}, allowing retry`);
     }
 
-    // Generate the plan synchronously
-    console.log(`🔄 Starting synchronous monthly diet plan generation for user ${userId}, ${monthNum}/${yearNum}`);
-    const result = await monthlyDietPlanService.generateMonthlyDietPlan(userId, monthNum, yearNum);
-    
-    console.log(`✅ Monthly diet plan generated successfully for user ${userId}`);
-    
-    return res.status(200).json({
-      success: true,
-      plan: result.plan,
-      calorie_data: result.calorie_data,
-      region_coverage: result.region_coverage,
-      generation_duration_ms: result.generation_duration_ms
+    console.log(`🔄 Starting background monthly diet plan generation for user ${userId}, ${monthNum}/${yearNum}`);
+    const placeholder = new MonthlyDietPlan({
+      user_id: userId,
+      month: monthNum,
+      year: yearNum,
+      region: 'Global',
+      total_daily_calories: 0,
+      meal_categories: [],
+      sources: [],
+      tips: [],
+      generation_status: 'pending',
+      status: 'active'
     });
+
+    await placeholder.save();
+
+    res.status(202).json({
+      success: true,
+      status: 'pending',
+      planId: placeholder._id,
+      month: monthNum,
+      year: yearNum,
+      message: 'Monthly diet plan generation started. Poll /status for updates.'
+    });
+
+    monthlyDietPlanService.runBackgroundGeneration(String(userId), monthNum, yearNum, placeholder._id)
+      .catch(err => console.error('Unhandled background monthly plan error:', err.message));
+
+    return;
 
   } catch (error) {
     console.error('❌ Error in generateMonthlyDietPlan controller:', error);
+    if (error.code === 11000 || error.message?.includes('duplicate key')) {
+      return res.status(202).json({
+        success: true,
+        status: 'pending',
+        month: req.body.month,
+        year: req.body.year,
+        message: 'Monthly diet plan generation is already in progress. Poll /status for updates.'
+      });
+    }
     return res.status(500).json({
       success: false,
       error: 'Failed to generate monthly diet plan. Please try again.',
@@ -111,6 +138,19 @@ export const getGenerationStatus = async (req, res) => {
       return res.status(404).json({ success: false, status: 'not_found', error: 'No plan found for this month/year' });
     }
 
+    let generationStatus = plan.generation_status || (plan.meal_categories?.length > 0 ? 'complete' : 'pending');
+    const STALE_PENDING_MS = 20 * 60 * 1000;
+    const pendingStartedAtMs = new Date(plan.created_at || plan.createdAt || Date.now()).getTime();
+    if (generationStatus === 'pending' && Date.now() - pendingStartedAtMs > STALE_PENDING_MS) {
+      const timeoutMessage = 'Generation timed out. Please delete this pending plan and try again.';
+      await MonthlyDietPlan.findByIdAndUpdate(plan._id, {
+        generation_status: 'failed',
+        generation_error: timeoutMessage
+      });
+      generationStatus = 'failed';
+      plan.generation_error = timeoutMessage;
+    }
+
     // Build realistic ETA from this user's historical completed generations.
     const recentCompleted = await MonthlyDietPlan.find({
       user_id: userId,
@@ -133,12 +173,12 @@ export const getGenerationStatus = async (req, res) => {
     const startedAt = plan.created_at || plan.createdAt || new Date();
     const startedAtMs = new Date(startedAt).getTime();
     const elapsedMs = Math.max(0, Date.now() - startedAtMs);
-    const remainingMs = plan.generation_status === 'pending'
+    const remainingMs = generationStatus === 'pending'
       ? Math.max(0, estimatedDurationMs - elapsedMs)
       : 0;
-    const progress = plan.generation_status === 'pending'
+    const progress = generationStatus === 'pending'
       ? Math.min(0.97, elapsedMs / Math.max(estimatedDurationMs, 1))
-      : (plan.generation_status === 'complete' ? 1 : 0);
+      : (generationStatus === 'complete' ? 1 : 0);
 
     const generationTiming = {
       startedAt,
@@ -150,14 +190,14 @@ export const getGenerationStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      status:  plan.generation_status,   // 'pending' | 'complete' | 'failed'
+      status:  generationStatus,   // 'pending' | 'complete' | 'failed'
       planId:  plan._id,
       month:   plan.month,
       year:    plan.year,
       generationTiming,
       // Send full plan only when complete so polling is lightweight
-      plan:    plan.generation_status === 'complete' ? plan : undefined,
-      error:   plan.generation_status === 'failed'   ? plan.generation_error : undefined,
+      plan:    generationStatus === 'complete' ? plan : undefined,
+      error:   generationStatus === 'failed'   ? plan.generation_error : undefined,
     });
   } catch (error) {
     console.error('❌ Error in getGenerationStatus:', error);

@@ -143,6 +143,7 @@ class MonthlyDietPlanService {
           generated_at: new Date(),
           generation_duration_ms: Date.now() - startTime
         },
+        generation_status: 'complete',
         status: 'active'
       });
       
@@ -422,17 +423,20 @@ class MonthlyDietPlanService {
     const prompt = this.buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal);
 
     let response = null;
-    for (let attempt = 1; attempt <= 2; attempt++) {  // 2 retries max: 2×120s×2groups+RAG ≈ 510s < 600s frontend timeout
+    for (let attempt = 1; attempt <= 3; attempt++) {  // Increased to 3 retries for better reliability
       try {
         response = await this.callDiabetica(prompt);
         break;
       } catch (err) {
-        console.error(`❌ Attempt ${attempt}/2 failed: ${err.message}`);
-        if (attempt === 2) {
+        console.error(`❌ Attempt ${attempt}/3 failed: ${err.message}`);
+        if (attempt === 3) {
           // Hard fail after retries so we never persist static fallback meal content.
-          throw new Error(`Model generation failed after retries: ${err.message}`);
+          throw new Error(`Model generation failed after 3 retries: ${err.message}`);
         }
-        await new Promise(r => setTimeout(r, 2000));
+        // Increased delay between retries for timeout errors
+        const delay = err.message.includes('timeout') ? 5000 : 2000;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
       }
     }
     return this.parseCombinedMealOptions(response, mealDist, mealKeys);
@@ -460,7 +464,7 @@ class MonthlyDietPlanService {
       ).join(',\n    ')}\n  ]`
     ).join(',') + '\n}';
 
-    return `You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
+    const promptText = `You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
 
 PATIENT: Age ${personal.age}, ${personal.gender}, Region: ${region}, ${medical.diabetes_type}, Diet: ${personal.dietary_preference}
 CALORIE TARGETS: ${calTargets}
@@ -475,6 +479,8 @@ RULES:
 
 Return ONLY valid JSON — no markdown, no extra text:
 ${skeleton}`;
+
+    return promptText;
   }
 
   /**
@@ -616,7 +622,9 @@ ${skeleton}`;
         
         if ((isTimeout || isParseError) && !isLastAttempt) {
           console.warn(`⚠️ ${isTimeout ? 'Timeout' : 'Parse error'} on attempt ${attempt}/${maxRetries} for ${mealType.name}, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+          // Increased delay for timeout errors
+          const delay = isTimeout ? 5000 : 2000;
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         } else {
           console.error(`❌ Error generating options for ${mealType.name} (attempt ${attempt}):`, error);
@@ -652,7 +660,7 @@ INSTRUCTIONS:
 3. Use ONLY foods from the regional database above
 4. Target ${targetCalories} kcal per option (±30 kcal acceptable)
 5. Include 2-4 food items per option
-6. Provide exact portions (e.g., "1 cup", "150g", "2 medium")
+6. Provide exact portions (e.g. "1 cup", "150g", "2 medium")
 7. Include full nutritional breakdown per food item
 8. Add brief description and preparation time for each option
 9. Ensure variety in ingredients, cooking methods, and flavors
@@ -722,11 +730,11 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
 
       // Step 2: Read SSE stream — increased timeout for model generation
       // event:error detection above exits fast on Gradio validation errors.
-      // Increased timeout to 300000 ms (5 minutes) for model generation on CPU
+      // Increased timeout to 480000 ms (8 minutes) to match frontend timeout
       // Gradio on CPU can take 3-5 minutes for complex prompts
       const sseRes = await axios.get(
         `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 300000, responseType: 'text' }
+        { timeout: 480000, responseType: 'text' }
       );
 
       const raw = sseRes.data || '';
@@ -889,6 +897,7 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
         user_id: userId,
         month: currentMonth,
         year: currentYear,
+        generation_status: 'complete',
         status: 'active'
       });
       
