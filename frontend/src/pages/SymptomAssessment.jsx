@@ -529,24 +529,6 @@ const SymptomAssessment = () => {
               ))}
             </Stack>
 
-            <Alert
-              severity="info"
-              icon={false}
-              sx={{
-                mb: 3,
-                borderRadius: 2,
-                py: 1.25,
-                bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
-                color: 'text.secondary',
-                border: `1px solid ${alpha('#22D3EE', 0.15)}`,
-                '& .MuiAlert-message': { width: '100%' },
-              }}
-            >
-              <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
-                <strong style={{ color: 'inherit', fontWeight: 700 }}>Take your time.</strong> Answer in your own words where it helps. You can use Back to change a previous topic before finishing.
-              </Typography>
-            </Alert>
-
             {/* Step Content */}
             <Box sx={{ minHeight: 400 }}>
               {/* Step 0: Answer Questions (all symptoms, one by one) */}
@@ -766,11 +748,10 @@ const SymptomAssessment = () => {
                 pt={3}
                 sx={{
                   borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: { xs: 16, sm: 28 },
-                  px: { xs: 3, md: 6 },
+                  position: 'relative',
+                  zIndex: 1,
+                  px: { xs: 0, sm: 1 },
+                  pb: { xs: 0.5, sm: 1 },
                 }}
               >
                 <Button
