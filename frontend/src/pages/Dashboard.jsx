@@ -4,7 +4,6 @@ import {
   Box, Typography, CssBaseline, Paper, Card, CardContent, CardActions, CircularProgress, Alert, Grid, Divider, Chip, Modal, IconButton, Tooltip, Skeleton, TextField, ToggleButtonGroup, ToggleButton, SpeedDial, SpeedDialAction, SpeedDialIcon, Accordion, AccordionSummary, AccordionDetails, Menu, MenuItem, Fade, Zoom
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import HealingIcon from '@mui/icons-material/Healing';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import EditIcon from '@mui/icons-material/Edit';
@@ -12,7 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import RateReviewIcon from '@mui/icons-material/RateReview';
+import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
 import ChatIcon from '@mui/icons-material/Chat';
 import MenuIcon from '@mui/icons-material/Menu';
 import Button from '@mui/material/Button';
@@ -34,7 +33,6 @@ import MobileDrawer from '../layout/MobileDrawer';
 import GoalDialog from '../components/modals/GoalDialog';
 import DayDetailsModal from '../components/modals/DayDetailsModal';
 import ShortcutsDialog from '../components/modals/ShortcutsDialog';
-import AccountSection from '../components/Dashboard/sections/AccountSection';
 import DiseaseDataSection from '../components/Dashboard/sections/DiseaseDataSection';
 import CheckRiskSection from '../components/Dashboard/sections/CheckRiskSection';
 import FeedbackSection from '../components/Dashboard/sections/FeedbackSection';
@@ -54,18 +52,16 @@ const miniDrawerWidth = 64;
 
 const undiagnosedSections = [
   { label: 'Dashboard', icon: <DashboardIcon /> },
-  { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
   { label: 'Check My Risk', icon: <AutoAwesomeIcon /> },
-  { label: 'My Feedback', icon: <RateReviewIcon /> },
+  { label: 'Feedback', icon: <FeedbackOutlinedIcon /> },
 ];
 
 const diagnosedSections = [
   { label: 'Dashboard', icon: <DashboardIcon /> },
-  { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
   { label: 'Chat Assistant', icon: <ChatIcon /> },
-  { label: 'My Feedback', icon: <RateReviewIcon /> },
+  { label: 'Feedback', icon: <FeedbackOutlinedIcon /> },
 ];
 
 function Dashboard() {
@@ -74,7 +70,7 @@ function Dashboard() {
 
   // Destructure commonly used state
   const {
-    user, setUser,
+    user,
     selectedIndex, setSelectedIndex,
     diseaseData, setDiseaseData,
     loading, setLoading,
@@ -109,8 +105,6 @@ function Dashboard() {
     showShortcutsDialog, setShowShortcutsDialog,
     animatedValues, setAnimatedValues,
     refs,
-    savingProfile, setSavingProfile,
-    profileError, setProfileError,
   } = state;
 
   // Get sections based on user diagnosis status
@@ -163,7 +157,6 @@ function Dashboard() {
     handleEditDiseaseData,
     handleCloseEditModal,
     handleDataUpdated,
-    handleSaveProfile,
   } = useDashboardHandlers({
     ...state,
     planUsageAnalytics,
@@ -209,7 +202,7 @@ function Dashboard() {
         selectedIndex={selectedIndex}
         onSectionChange={(index) => {
           setSelectedIndex(index);
-          if (index !== 4) setShowFeedbackForm(false);
+          if (sections[index]?.label !== 'Feedback') setShowFeedbackForm(false);
         }}
         onLogout={handleLogout}
         user={user}
@@ -221,7 +214,7 @@ function Dashboard() {
         selectedIndex={selectedIndex}
         onSectionChange={(index) => {
           setSelectedIndex(index);
-          if (index !== 4) setShowFeedbackForm(false);
+          if (sections[index]?.label !== 'Feedback') setShowFeedbackForm(false);
         }}
         sidebarOpen={sidebarOpen}
         onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -292,7 +285,7 @@ function Dashboard() {
             width: '100%', 
             maxWidth: currentSection === 'Dashboard'
               ? '100%'
-              : selectedIndex === 2 
+              : currentSection === 'Personalized Suggestions'
               ? '100%'
               : { 
                   xs: '100%', 
@@ -327,16 +320,6 @@ function Dashboard() {
                   />
                 )}
               </Box>
-            )}
-
-            {currentSection === 'My Account' && (
-              <AccountSection 
-                user={user}
-                setUser={setUser}
-                profileError={profileError}
-                savingProfile={savingProfile}
-                handleSaveProfile={handleSaveProfile}
-              />
             )}
 
             {currentSection === 'My Disease Data' && (
@@ -430,7 +413,7 @@ function Dashboard() {
               </Box>
             )}
 
-            {currentSection === 'My Feedback' && (
+            {currentSection === 'Feedback' && (
               <FeedbackSection 
                 showFeedbackForm={showFeedbackForm}
                 setShowFeedbackForm={setShowFeedbackForm}

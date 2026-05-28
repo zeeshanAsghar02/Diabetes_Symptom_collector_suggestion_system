@@ -51,13 +51,6 @@ const SymptomAssessment = () => {
   const [helpInfoOpen, setHelpInfoOpen] = useState(false);
   const questionListRef = useRef();
   const accumulatedQuestionsRef = useRef(new Map());
-  const processedQuestionIdsRef = useRef(new Set());
-
-  // Clear accumulated questions when changing symptoms to prevent duplicates
-  useEffect(() => {
-    accumulatedQuestionsRef.current.clear();
-    processedQuestionIdsRef.current.clear();
-  }, [currentSymptomIndex]);
 
   useEffect(() => {
     console.log('🔍 ========== SYMPTOM ASSESSMENT MOUNTED ==========');
@@ -282,15 +275,14 @@ const SymptomAssessment = () => {
       setCurrentSymptomIndex((prev) => prev + 1);
       setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
-      // Completed all questions — save and go directly to assessment
+      // Completed all questions — save and move to summary review
       if (!isLoggedIn) {
         // Store redirect info in sessionStorage before showing login dialog
         sessionStorage.setItem('returnToSymptomAssessment', 'true');
         // Show login dialog for unauthenticated users
         setShowLoginDialog(true);
       } else {
-        // Go directly to assessment instead of showing summary
-        handleViewAssessment();
+        setActiveStep(1); // Show summary review screen
       }
     } else if (activeStep === 1) {
       // User confirmed their answers — proceed to assessment
@@ -299,16 +291,14 @@ const SymptomAssessment = () => {
   };
 
   const handleAnswersChange = (answers, questions) => {
-    // 🔑 CRITICAL: Accumulate questions from every symptom into the ref
-    // so the summary step can read and display them (questionListRef only
-    // holds the active symptom's questions, not all of them).
     if (questions && questions.length > 0) {
-      questions.forEach(q => {
-        const qid = String(q._id);
-        if (!processedQuestionIdsRef.current.has(qid)) {
-          processedQuestionIdsRef.current.add(qid);
-          accumulatedQuestionsRef.current.set(qid, q);
-        }
+      const symptomName = currentSymptom?.name || 'Symptom';
+      questions.forEach((q) => {
+        const questionId = String(q._id);
+        accumulatedQuestionsRef.current.set(questionId, {
+          symptomName,
+          question: q.question_text,
+        });
       });
     }
 
@@ -326,38 +316,40 @@ const SymptomAssessment = () => {
     }, 0);
     
     // 🔥 CRITICAL FIX: ACCUMULATE answers across all symptoms for unauthenticated users
-     if (!isLoggedIn && Object.keys(answers).length > 0) {
-       try {
-         // Get existing answers from sessionStorage
-         const existingAnswersJson = sessionStorage.getItem('pendingOnboardingAnswers');
-         const existingAnswers = existingAnswersJson ? JSON.parse(existingAnswersJson) : [];
-         
-         // Create a map of existing answers for deduplication
-         const answerMap = new Map();
-         existingAnswers.forEach(ans => {
-           answerMap.set(ans.questionId, ans);
-         });
-         
-         // Only add answers that don't already exist or have changed
-         let hasNewAnswers = false;
-         Object.entries(answers).forEach(([questionId, answerText]) => {
-           const normalizedAnswer = typeof answerText === 'object' ? JSON.stringify(answerText) : answerText.toString();
-           const existing = answerMap.get(questionId);
-           if (!existing || existing.answerText !== normalizedAnswer) {
-             answerMap.set(questionId, { questionId, answerText: normalizedAnswer });
-             hasNewAnswers = true;
-           }
-         });
-         
-         if (hasNewAnswers) {
-           const mergedAnswers = Array.from(answerMap.values());
-           sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(mergedAnswers));
-           console.log('💾 Accumulated answers in sessionStorage:', mergedAnswers.length, 'total answers');
-         }
-       } catch (error) {
-         console.error('❌ Failed to save answers to sessionStorage:', error);
-       }
-     }
+    if (!isLoggedIn && Object.keys(answers).length > 0) {
+      try {
+        // Get existing answers from sessionStorage
+        const existingAnswersJson = sessionStorage.getItem('pendingOnboardingAnswers');
+        const existingAnswers = existingAnswersJson ? JSON.parse(existingAnswersJson) : [];
+        
+        // Convert new answers to array format
+        const newAnswersArray = Object.entries(answers).map(([questionId, answerText]) => ({
+          questionId,
+          answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : answerText.toString()
+        }));
+        
+        // Merge: Remove duplicates (same questionId), keep latest answer
+        const answerMap = new Map();
+        
+        // Add existing answers first
+        existingAnswers.forEach(ans => {
+          answerMap.set(ans.questionId, ans);
+        });
+        
+        // Add/update with new answers
+        newAnswersArray.forEach(ans => {
+          answerMap.set(ans.questionId, ans);
+        });
+        
+        // Convert back to array
+        const mergedAnswers = Array.from(answerMap.values());
+        
+        sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(mergedAnswers));
+        console.log('💾 Accumulated answers in sessionStorage:', mergedAnswers.length, 'total answers');
+      } catch (error) {
+        console.error('❌ Failed to save answers to sessionStorage:', error);
+      }
+    }
   };
 
   const handleBack = () => {
@@ -387,7 +379,7 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
-  const steps = ['Questions', 'Results'];
+  const steps = ['Questions', 'Summary', 'Results'];
 
   const currentSymptom = symptoms[currentSymptomIndex];
 
@@ -444,11 +436,17 @@ const SymptomAssessment = () => {
               Calm symptom check-in
             </Typography>
             <Typography
-              variant="body2"
+              variant="body1"
               color="text.secondary"
-              sx={{ maxWidth: 380, mx: 'auto', lineHeight: 1.5 }}
+              sx={{
+                maxWidth: 560,
+                mx: 'auto',
+                lineHeight: 1.75,
+                fontSize: { xs: '0.95rem', md: '1.02rem' },
+                fontWeight: 400,
+              }}
             >
-              Answer at your own pace.
+              A few clear questions at a time. Pause anytime—your answers stay on this step until you move on. Nothing here replaces care from your clinician.
             </Typography>
           </Box>
         </Fade>
@@ -536,16 +534,16 @@ const SymptomAssessment = () => {
               icon={false}
               sx={{
                 mb: 3,
-                borderRadius: 1.5,
-                py: 1,
+                borderRadius: 2,
+                py: 1.25,
                 bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
                 color: 'text.secondary',
                 border: `1px solid ${alpha('#22D3EE', 0.15)}`,
                 '& .MuiAlert-message': { width: '100%' },
               }}
             >
-              <Typography variant="body2">
-                Take your time — you can go back and adjust any answer before finishing.
+              <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                <strong style={{ color: 'inherit', fontWeight: 700 }}>Take your time.</strong> Answer in your own words where it helps. You can use Back to change a previous topic before finishing.
               </Typography>
             </Alert>
 
@@ -667,7 +665,89 @@ const SymptomAssessment = () => {
                        userAge={userAge}
                        userGender={userGender}
                      />
-</Box>
+                  </Box>
+                </Fade>
+              )}
+
+              {/* Step 1: Summary review — show user what they filled before proceeding */}
+              {activeStep === 1 && (
+                <Fade in timeout={500}>
+                  <Box>
+                    <Box textAlign="center" mb={4}>
+                      <Box
+                        sx={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 72, height: 72, borderRadius: '50%', mb: 2,
+                          bgcolor: (theme) => alpha(theme.palette.info.main, 0.12),
+                          border: (theme) => `3px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                        }}
+                      >
+                        <Typography sx={{ fontSize: 28, fontWeight: 900, color: 'info.main' }}>✓</Typography>
+                      </Box>
+                      <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 1.5 }}>
+                        Here&apos;s a snapshot of your responses
+                      </Typography>
+                      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
+                        Take a quick look at what you shared before we run your assessment. Nothing here is a diagnosis—just what you told us. You can always go back and change anything.
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ mb: 4 }}>
+
+                      {(() => {
+                        const items = Array.from(accumulatedQuestionsRef.current.values());
+                        if (!items.length) {
+                          return <Alert severity="info">Your answers have been saved. No individual question text available to display, but they are on record.</Alert>;
+                        }
+                        return items.map((item, i) => (
+                          <Paper
+                            key={i}
+                            elevation={0}
+                            sx={{
+                              p: { xs: 1.75, sm: 2.25 },
+                              borderRadius: 2,
+                              mb: 1.5,
+                              bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
+                              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                            }}
+                          >
+                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: '0.07em', display: 'block', mb: 0.5 }}>
+                              {item.symptomName}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                              {item.question}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                              ✓ Saved
+                            </Typography>
+                          </Paper>
+                        ));
+                      })()}
+
+                    </Box>
+
+                    <Box display="flex" justifyContent="flex-end" mt={3}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        endIcon={<Visibility />}
+                        onClick={() => handleViewAssessment()}
+                        sx={{
+                          px: 5, py: 1.75, fontSize: '1rem', fontWeight: 700, borderRadius: 2.25,
+                          textTransform: 'none',
+                          background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
+                          color: '#fff',
+                          boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                            boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
+                          },
+                        }}
+                      >
+                        View my results
+                      </Button>
+                    </Box>
+                  </Box>
                 </Fade>
               )}
 

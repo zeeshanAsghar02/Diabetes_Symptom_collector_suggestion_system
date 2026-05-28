@@ -38,13 +38,12 @@ export default function SidebarNavigation({
   user,
 }) {
   const navigate = useNavigate();
-const labelMap = {
-  Dashboard: 'Dashboard',
-  'My Account': 'My Profile',
-  'Check My Risk': 'Check My Risk',
-  'My Disease Data': 'My Data',
-  'My Feedback': 'Feedback',
-};
+  const labelMap = {
+    Dashboard: 'Dashboard',
+    'Check My Risk': 'Check My Risk',
+    'My Disease Data': 'My Data',
+    Feedback: 'Feedback',
+  };
 
   const displaySections = sections.map((sec) => ({
     ...sec,
@@ -172,17 +171,17 @@ const labelMap = {
                       justifyContent: 'center',
                     }}
                   >
-{sec.label === 'Feedback' ? (
-  <Badge
-    color="primary"
-    badgeContent={3}
-    sx={{ '& .MuiBadge-badge': { fontSize: '0.62rem', height: 16, minWidth: 16 } }}
-  >
-    {sec.icon}
-  </Badge>
-) : (
-  sec.icon
-)}
+                    {sec.label === 'Feedback' ? (
+                      <Badge
+                        color="primary"
+                        badgeContent={3}
+                        sx={{ '& .MuiBadge-badge': { fontSize: '0.62rem', height: 16, minWidth: 16 } }}
+                      >
+                        {sec.icon}
+                      </Badge>
+                    ) : (
+                      sec.icon
+                    )}
                   </ListItemIcon>
                   {sidebarOpen && (
                     <ListItemText
