@@ -2,11 +2,8 @@ import { WeeklyHabits } from '../models/WeeklyHabits.js';
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { enhanceChatWithRAG } from '../services/ragService.js';
+import { generateText } from '../services/aiService.js';
 
-const HF_SPACE_URL = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-const HF_SUBMIT_TIMEOUT_MS = 30000;
-const HF_SSE_TIMEOUT_MS = 90000;
-const HF_MAX_TOKENS = 768;
 const MAX_HABITS_RAG_QUERY_CHARS = 240;
 const MAX_HABITS_RAG_CONTEXT_CHARS = 1600;
 const inFlightHabitGenerations = new Map();
@@ -186,51 +183,18 @@ const parseHabitsJson = (rawContent) => {
 };
 
 const callHabitsModel = async (systemPrompt, userPrompt) => {
-  console.log('[HABITS] Calling HF Diabetica API...');
-  const submitRes = await fetch(`${HF_SPACE_URL}/call/predict`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: [systemPrompt, userPrompt, HF_MAX_TOKENS, 0.3] }),
-    signal: AbortSignal.timeout(HF_SUBMIT_TIMEOUT_MS),
+  console.log('[HABITS] Calling Ollama Diabetica API...');
+  const response = await generateText({
+    systemPrompt,
+    userPrompt,
+    timeoutMs: 90000,
   });
 
-  if (!submitRes.ok) {
-    throw new Error(`HF submit failed with status ${submitRes.status}`);
+  if (!response || !response.trim()) {
+    throw new Error('AI service returned an empty response');
   }
 
-  const submitData = await submitRes.json();
-  const eventId = submitData?.event_id;
-  if (!eventId) {
-    throw new Error('No event_id returned from HF Space');
-  }
-
-  console.log('[HABITS] Got event_id:', eventId);
-  const sseRes = await fetch(`${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`, {
-    signal: AbortSignal.timeout(HF_SSE_TIMEOUT_MS),
-  });
-
-  if (!sseRes.ok) {
-    throw new Error(`HF SSE failed with status ${sseRes.status}`);
-  }
-
-  const rawText = await sseRes.text();
-  const lines = rawText.split('\n');
-
-  for (let index = lines.length - 1; index >= 0; index--) {
-    const line = lines[index].trim();
-    if (!line.startsWith('data:')) continue;
-
-    try {
-      const payload = JSON.parse(line.slice(5).trim());
-      if (Array.isArray(payload) && typeof payload[0] === 'string' && payload[0].trim()) {
-        return payload[0].trim();
-      }
-    } catch {
-      // Keep scanning
-    }
-  }
-
-  throw new Error('HF AI service returned an empty response');
+  return response.trim();
 };
 
 // Generate weekly habits using LLM + RAG
@@ -300,6 +264,7 @@ IMPORTANT GUIDELINES:
   3. Focus on diet, exercise, medication adherence, sleep, stress, and lifestyle.
   4. Keep each description concise and practical.
   5. Consider Pakistani cultural context.
+  6. If age is 60 or older, habits must be gentle, low-burden, balance-safe, and diet habits must avoid heavy evening meals.
 
 RESPONSE FORMAT (MUST be valid JSON):
 {
@@ -325,10 +290,10 @@ Generate habits that are practical, culturally appropriate, and perfectly tailor
     // Enhance with RAG
     console.log('[HABITS] Enhancing prompt with RAG...');
     const ragQuery = buildHabitRetrievalQuery(clinicalSnapshot);
-    const ragResult = await enhanceChatWithRAG(ragQuery, userId, personal, []);
+    const ragResult = await enhanceChatWithRAG(ragQuery, personal, medical, []);
     
-    const ragContext = typeof ragResult.ragContext === 'string'
-      ? ragResult.ragContext.slice(0, MAX_HABITS_RAG_CONTEXT_CHARS)
+    const ragContext = typeof ragResult.systemPrompt === 'string'
+      ? ragResult.systemPrompt.slice(0, MAX_HABITS_RAG_CONTEXT_CHARS)
       : '';
     const finalPrompt = ragContext
       ? `${habitPrompt}\n\nGUIDELINE CONTEXT:\n${ragContext}`
@@ -338,7 +303,7 @@ Generate habits that are practical, culturally appropriate, and perfectly tailor
 
     const generationPromise = (async () => {
       let habitsData;
-      let generationModel = 'hf-diabetica';
+      let generationModel = 'ollama-diabetica';
 
       try {
         const rawContent = await callHabitsModel(
@@ -352,7 +317,7 @@ Generate habits that are practical, culturally appropriate, and perfectly tailor
           throw new Error('Invalid habits structure');
         }
       } catch (llmError) {
-        console.error('[HABITS] HF habits generation failed, using fallback:', llmError.message);
+        console.error('[HABITS] Ollama habits generation failed, using fallback:', llmError.message);
         habitsData = generateDataDrivenHabits(clinicalSnapshot);
         generationModel = 'data-driven-fallback';
       }

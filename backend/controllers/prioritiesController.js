@@ -1,9 +1,7 @@
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { enhanceChatWithRAG } from '../services/ragService.js';
-
-const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'diabetica-7b';
+import { generateText } from '../services/aiService.js';
 
 const buildClinicalSnapshot = (personal, medical) => {
   const pieces = [];
@@ -168,6 +166,7 @@ Generate exactly 3 priorities based on their ACTUAL data:
 - If activity level is sedentary, prioritize physical activity
 - If sleep is poor, prioritize sleep hygiene
 - If they have allergies, prioritize safe food choices
+- If age is 60 or older, make priorities gentle, practical, clinician-review friendly, and avoid heavy diet or strenuous exercise suggestions
 
 Return ONLY valid JSON in this format:
 [
@@ -194,42 +193,16 @@ Make recommendations practical, specific to their actual data, and evidence-base
       ? `${ragResult.systemPrompt}\n\n${prioritiesPrompt}` 
       : prioritiesPrompt;
 
-    // Prepare messages for LLM
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a diabetes care specialist AI. Generate personalized, evidence-based weekly care priorities in valid JSON format. Be concise, specific, and clinically accurate.'
-      },
-      {
-        role: 'user',
-        content: finalPrompt
-      }
-    ];
+    const systemPrompt = 'You are a diabetes care specialist AI. Generate personalized, evidence-based weekly care priorities in valid JSON format. Be concise, specific, clinically safe, and do not diagnose.';
 
-    console.log('[PRIORITIES] Calling LM Studio API...');
-    const llmResponse = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: LM_STUDIO_MODEL,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-    });
+    console.log('[PRIORITIES] Calling Ollama Diabetica API...');
+    const rawContent = (await generateText({
+      systemPrompt,
+      userPrompt: finalPrompt,
+      timeoutMs: 90000,
+    })).trim() || '[]';
 
-    if (!llmResponse.ok) {
-      const errorText = await llmResponse.text();
-      console.error('[PRIORITIES] LM Studio error:', llmResponse.status, errorText);
-      throw new Error(`LM Studio API error: ${llmResponse.status}`);
-    }
-
-    const llmData = await llmResponse.json();
-    console.log('[PRIORITIES] LM Studio response received');
-
-    const rawContent = llmData.choices?.[0]?.message?.content?.trim() || '[]';
     console.log('[PRIORITIES] Raw LLM response:', rawContent.substring(0, 200));
-
     // Parse JSON response
     let priorities = [];
     try {

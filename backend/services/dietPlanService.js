@@ -5,7 +5,7 @@ import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import calorieCalculatorService from './calorieCalculatorService.js';
 import regionDiscoveryService from './regionDiscoveryService.js';
 import { processQuery } from './queryService.js';
-import axios from 'axios';
+import { generateText } from './aiService.js';
 
 class DietPlanService {
   
@@ -342,6 +342,7 @@ class DietPlanService {
    */
   buildDietPrompt(personal, medical, calories, mealDistribution, foodContext, previousPlans, targetDate) {
     const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const elderlyRules = this.getAgeDietRules(personal.age);
     
     return `You are an expert diabetes dietitian creating a personalized meal plan based on evidence-based dietary guidelines.
 
@@ -354,6 +355,7 @@ PATIENT PROFILE:
 - Medications: ${medical.medications?.join(', ') || 'None specified'}
 - Activity Level: ${personal.activity_level}
 - Daily Calorie Target: ${calories} kcal
+${elderlyRules}
 
 MEAL CALORIE DISTRIBUTION:
 - Breakfast: ${mealDistribution.breakfast} kcal (25%)
@@ -389,6 +391,8 @@ CRITICAL INSTRUCTIONS:
 12. Generate 3-5 personalized tips based on the patient profile
 13. **CREATE UNIQUE COMBINATIONS** - Mix different food items creatively within guidelines
 14. **NO REPETITION** - If this is Day 2+, ensure completely different meal structure
+15. **AGE SAFETY IS MANDATORY** - If the patient is age 60 or older, the plan must be light, easy to digest, lower-oil, lower-salt, modest in portion size, and must avoid heavy fried foods, large rice portions, rich gravies, oversized breads, sugary drinks, and late heavy dinners.
+16. For older adults, dinner must be the lightest main meal and should use soft vegetables, lentils, lean protein, soup, yogurt, or small whole-grain portions.
 
 RESPONSE FORMAT (STRICT JSON - NO MARKDOWN, NO TEXT OUTSIDE JSON):
 
@@ -448,14 +452,9 @@ Generate the complete meal plan now. Return ONLY valid JSON (no markdown, no cod
   }
   
   /**
-   * Call Diabetica-7B via Hugging Face Gradio API
+   * Call Diabetica-7B through the unified Ollama GPU service.
    */
   async callDiabetica(prompt) {
-    const hfBase = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    // Gradio slider constraint: max_tokens must be 256–2048
-    // Always use 2048 — Gradio slider is hard-constrained to 256–2048.
-    // Never read from env: LM_STUDIO_MAX_TOKENS may be a small value (e.g. 100).
-    const maxTokens = 2048;
     const systemPrompt = `You are a specialized diabetes dietitian AI.
 
 CRITICAL RESPONSE RULES:
@@ -464,69 +463,36 @@ CRITICAL RESPONSE RULES:
 3. NEVER put strings, text, or advice directly in the "items" array
 4. Each food item MUST have: "food" (string), "portion" (string), "calories" (number), "carbs" (number), "protein" (number), "fat" (number), "fiber" (number)
 5. Put all advice, tips, and monitoring instructions in the "tips" array ONLY
-6. Create diverse and unique meal combinations for every request`;
+6. Create diverse and unique meal combinations for every request
+7. If the patient is age 60 or older, every meal must be light, modest, low-oil, low-salt, easy to digest, and suitable for older adults with diabetes.`;
 
-    try {
-      console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
-
-      // Step 1: Submit job
-      const submitRes = await axios.post(
-        `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, maxTokens, 0.3] },
-        { timeout: 30000 }
-      );
-      const { event_id } = submitRes.data;
-      if (!event_id) throw new Error('HF Gradio did not return an event_id');
-      console.log(`   HF event_id: ${event_id} — waiting for result...`);
-
-      // Step 2: Read SSE stream — 120s timeout per attempt.
-      // event:error detection above exits fast on Gradio validation errors.
-      // 120s gives the model enough time to generate the response on CPU.
-      const sseRes = await axios.get(
-        `${hfBase}/call/predict/${event_id}`,
-        { timeout: 120000, responseType: 'text' }
-      );
-
-      const raw = sseRes.data || '';
-
-      // Step 3: Detect Gradio error events immediately (fail fast instead of scanning)
-      if (raw.includes('event: error')) {
-        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
-        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
-          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
-          : 'Gradio returned an error event';
-        throw new Error(`Gradio error: ${errMsg}`);
-      }
-
-      // Step 4: Parse SSE — find last data line with the output
-      const lines = raw.split('\n');
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i].trim();
-        if (line.startsWith('data:')) {
-          try {
-            const json = JSON.parse(line.slice(5).trim());
-            if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
-            if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
-            if (json?.output?.data?.[0]) return json.output.data[0];
-          } catch { /* keep scanning */ }
-        }
-      }
-      throw new Error(`Could not parse Gradio SSE response. Raw (first 500): ${raw.substring(0, 500)}`);
-
-    } catch (error) {
-      console.error('❌ Error calling HF Diabetica:', error.message);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-      }
-      if (error.code === 'ECONNREFUSED' || error.response?.status === 503) {
-        throw new Error('Diabetica model is offline. Please check the HF Space.');
-      } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
-        throw new Error('Diabetica model took too long to respond. Please try again.');
-      }
-      throw new Error(`Diabetica error: ${error.message}`);
-    }
+    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: 120000 });
   }
-  
+
+  getAgeDietRules(age) {
+    const numericAge = Number(age);
+    if (!Number.isFinite(numericAge)) {
+      return '';
+    }
+
+    if (numericAge >= 60) {
+      return `AGE-SPECIFIC DIET SAFETY:
+- Patient is ${numericAge} years old, so generate a strictly light geriatric-friendly diabetic diet.
+- Keep portions modest and digestion-friendly; dinner must be the lightest main meal.
+- Prefer soft cooked vegetables, lentils, yogurt, soups, lean protein, small whole-grain portions, and low-GI fruits in controlled portions.
+- Avoid fried foods, rich gravies, heavy rice plates, oversized bread portions, high-salt packaged foods, sugary drinks, and late heavy dinners.
+- Use lower oil, lower sodium, adequate hydration, and simple preparation methods such as steaming, boiling, grilling, or light sauteing.`;
+    }
+
+    if (numericAge >= 45) {
+      return `AGE-SPECIFIC DIET SAFETY:
+- Patient is ${numericAge} years old; keep meals heart-friendly, fiber-rich, moderate in portions, low-oil, and low-sodium.
+- Avoid heavy fried dinners and large refined-carbohydrate portions.`;
+    }
+
+    return '';
+  }
+
   /**
    * Parse AI response and structure meal plan
    * @param {string} aiResponse - Raw AI response

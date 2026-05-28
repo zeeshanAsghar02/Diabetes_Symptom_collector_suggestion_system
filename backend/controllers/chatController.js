@@ -1,17 +1,11 @@
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { enhanceChatWithRAG } from '../services/ragService.js';
-import axios from 'axios';
+import { generateText } from '../services/aiService.js';
 
-// HF Gradio API configuration
-const HF_SPACE_URL = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-const HF_SUBMIT_TIMEOUT_MS = 30000;
-const HF_SSE_TIMEOUT_MS = 90000;
-const MAX_TOKENS = 512;
 const MAX_INPUT_CHARS = 1500;
 const HISTORY_WINDOW = 3;
 const HISTORY_MESSAGE_CHARS = 500;
-const MAX_RAG_CONTEXT_CHARS = 1800;
 
 const safeText = (val) => (typeof val === 'string' ? val.trim() : '');
 
@@ -103,81 +97,47 @@ export const completeChat = async (req, res) => {
     const profileSnippet = buildProfileSnippet(personal, medical);
     const recentHistory = clipHistory(history);
 
-    // **RAG Enhancement**
-    const { ragContext, sources } = await enhanceChatWithRAG(message, userId, personal, recentHistory);
-    const trimmedRagContext = typeof ragContext === 'string'
-      ? ragContext.slice(0, MAX_RAG_CONTEXT_CHARS)
-      : '';
+    // RAG enhancement
+    const ragResult = await enhanceChatWithRAG(message, personal, medical, recentHistory);
+    const ragSystemPrompt = typeof ragResult?.systemPrompt === 'string' ? ragResult.systemPrompt : '';
 
-    const systemPrompt = `You are Diabuddy, a supportive diabetes information assistant.
+    const fallbackSystemPrompt = `You are Diabuddy, a supportive diabetes information assistant.
 
 User Profile Summary:
 ${profileSnippet}
-
-${trimmedRagContext ? `Relevant Information from Health Documents:
-${trimmedRagContext}` : ''}
 
 CRITICAL SAFETY INSTRUCTIONS:
 - Prioritize safety.
 - Never diagnose, prescribe, or replace a clinician.
 - Include a brief disclaimer for health concerns.
 - Keep answers concise, practical, and easy to understand.
-- Use retrieved information when available, but say when evidence is unclear.`;
+- Use retrieved information when available, but say when evidence is unclear.
+- For older adults, keep diet guidance light, low-oil, low-salt, easy to digest, and avoid heavy late dinners.`;
 
-    // Build the user prompt with context
-    const userPromptWithHistory = recentHistory.length > 0 
+    const systemPrompt = ragSystemPrompt || fallbackSystemPrompt;
+
+    const userPromptWithHistory = recentHistory.length > 0
       ? `Previous conversation:\n${recentHistory.map(h => `${h.role}: ${h.content}`).join('\n')}\n\nCurrent question: ${message}`
       : message;
 
-    console.log('[CHAT] Sending to HF Diabetica API');
-
-    // Step 1: Submit job to HF Gradio API
-    const submitRes = await axios.post(
-      `${HF_SPACE_URL}/gradio_api/call/predict`,
-      { data: [systemPrompt, userPromptWithHistory, MAX_TOKENS, 0.4] },
-      { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
-    );
-    
-    const eventId = submitRes.data?.event_id;
-    if (!eventId) throw new Error('No event_id returned from HF Space');
-    console.log('[CHAT] Got event_id:', eventId);
-
-    // Step 2: Get SSE response
-    const sseRes = await axios.get(
-      `${HF_SPACE_URL}/call/predict/${eventId}`,
-      { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
-    );
-
-    const rawText = sseRes.data || '';
-    const lines = rawText.split('\n');
-    let aiMessage = null;
-
-    // Parse SSE response - scan backward for data lines
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim();
-      if (line.startsWith('data:')) {
-        try {
-          const json = JSON.parse(line.slice(5).trim());
-          if (Array.isArray(json) && typeof json[0] === 'string') {
-            aiMessage = json[0];
-            break;
-          }
-        } catch { /* continue scanning */ }
-      }
-    }
+    console.log('[CHAT] Sending to Ollama Diabetica API');
+    const aiMessage = await generateText({
+      systemPrompt,
+      userPrompt: userPromptWithHistory,
+      timeoutMs: 90000,
+    });
 
     if (!aiMessage) {
       throw new Error('AI service returned an empty response.');
     }
 
     console.log('[CHAT] Received AI response:', aiMessage.substring(0, 100));
-
     // Return response in format expected by frontend
     return res.status(200).json({
       success: true,
       reply: aiMessage,
-      sources: sources,
-      context_used: !!ragContext,
+      sources: ragResult?.sources || [],
+      context_used: !!ragResult?.contextUsed,
     });
 
   } catch (error) {

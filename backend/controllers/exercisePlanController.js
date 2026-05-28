@@ -56,7 +56,7 @@ const generateExercisePlan = async (req, res) => {
     if (error.message.includes('not found') || error.message.includes('No exercise documents') || error.message.includes('Unable to retrieve')) {
       return res.status(404).json({ success:false, error:error.message });
     }
-    if (error.message.includes('LM Studio')) {
+    if (error.message.includes('AI service')) {
       return res.status(503).json({ success:false, error:error.message });
     }
     return res.status(500).json({ success:false, error:'Failed to generate exercise plan. Please try again.', details: process.env.NODE_ENV==='development'? error.message: undefined });
@@ -256,7 +256,7 @@ const autoGenerateExercisePlan = async (req, res) => {
     if (error.message.includes('not found') || error.message.includes('No exercise documents') || error.message.includes('Unable to retrieve')) {
       return res.status(404).json({ success: false, error: error.message });
     }
-    if (error.message.includes('LM Studio')) {
+    if (error.message.includes('AI service')) {
       return res.status(503).json({ success: false, error: error.message });
     }
     

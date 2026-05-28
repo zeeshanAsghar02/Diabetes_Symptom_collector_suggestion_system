@@ -1,18 +1,13 @@
 import { retrieveSymptomMedicalContext } from './ragService.js';
+import { generateText, checkAIAvailability } from './aiService.js';
 
 /**
  * Hybrid Risk Assessment Service
- * Combines XGBoost predictions with Diabetica 7B LLM (hosted on HuggingFace ZeroGPU)
+ * Combines XGBoost predictions with Diabetica 7B LLM (Ollama GPU service)
  * for enhanced accuracy and medical reasoning.
- *
- * Set DIABETICA_HF_URL env var to your HF Space URL, e.g.:
- *   https://YOUR-USERNAME-diabetica-api.hf.space/api/predict
  */
 class HybridRiskService {
   constructor() {
-    this.hfSpaceUrl = process.env.DIABETICA_HF_URL || process.env.LLM_API_URL || process.env.HF_SPACE_URL || null;
-    // Gradio slider constraint: max_tokens must be 256–2048; clamp regardless of env var
-    this.maxTokens = Math.min(Math.max(parseInt(process.env.LM_STUDIO_MAX_TOKENS || '1024'), 256), 2048);
     this.ragEnabled = process.env.RAG_ENABLED === 'true';
   }
 
@@ -162,9 +157,11 @@ return '';
    */
   async _getLLMRiskAssessment(xgboostResult, symptomContext, retrievedContext, userContext) {
     const { presentSymptoms, symptomDetails, age, gender, symptomCount } = symptomContext;
-    
-    // Build comprehensive prompt
-    const systemPrompt = `You are Diabetica, an expert AI medical assistant specializing in diabetes risk assessment. You have access to medical literature and clinical guidelines for diabetes diagnosis. Provide evidence-based, accurate assessments.`;
+
+    const systemPrompt = `You are Diabetica, a medical AI assistant specializing in diabetes risk assessment.
+You are not a doctor and must not give a final diagnosis.
+Provide risk interpretation, safety guidance, and practical next steps only.
+Return concise clinical reasoning and patient-safe recommendations.`;
 
     const userPrompt = this._buildRiskAssessmentPrompt(
       xgboostResult,
@@ -177,78 +174,23 @@ return '';
       userContext
     );
 
-    // Validate HF Space URL - correct format: .hf.space domain
-    const DEFAULT_HF_URL = 'https://zeeshanasghar02-diabetica-api.hf.space';
-    let hfUrl = this.hfSpaceUrl;
-    
-    if (!hfUrl || !hfUrl.includes('.hf.space')) {
-      console.warn(`[LLM] Invalid HF Space URL "${this.hfSpaceUrl}", falling back to ${DEFAULT_HF_URL}`);
-      hfUrl = DEFAULT_HF_URL;
-    }
-
     try {
-      // Logic to handle Gradio 4+ (detecting if we need to poll)
-      const hfBase = hfUrl.replace(/\/$/, "");
-      
-      console.log(`[LLM] Calling Diabetica HF Space: ${hfBase}`);
-
-      // Gradio 4+/5 Blocks API: POST /gradio_api/call/predict → { event_id }
-      //                           GET  /gradio_api/call/predict/{event_id} → SSE stream
-      console.log('[LLM] Submitting to /gradio_api/call/predict ...');
-      const submitRes = await fetch(`${hfBase}/gradio_api/call/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: [systemPrompt, userPrompt, this.maxTokens, 0.3]
-        }),
+      console.log('[LLM] Calling Ollama Diabetica risk assessment service...');
+      const llmResponse = await generateText({
+        systemPrompt,
+        userPrompt,
+        timeoutMs: 120000,
       });
 
-      if (!submitRes.ok) {
-        const errBody = await submitRes.text();
-        throw new Error(`HF submit failed ${submitRes.status}: ${errBody.slice(0,200)}`);
-      }
-
-      const { event_id } = await submitRes.json();
-      console.log(`[LLM] Queued event_id: ${event_id}. Reading SSE (60-120s on CPU)...`);
-
-      const sseRes = await fetch(`${hfBase}/gradio_api/call/predict/${event_id}`);
-      if (!sseRes.ok) throw new Error(`SSE stream error: ${sseRes.status}`);
-
-      const sseText = await sseRes.text();
-      // Parse SSE: scan from end for last data line with string array output
-      let llmResponse = null;
-      const sseLines = sseText.split('\n');
-      for (let i = sseLines.length - 1; i >= 0; i--) {
-        const line = sseLines[i].trim();
-        if (line.startsWith('data:')) {
-          try {
-            const parsed = JSON.parse(line.slice(5).trim());
-            if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
-              llmResponse = parsed[0];
-              break;
-            }
-            if (parsed?.output?.data?.[0]) {
-              llmResponse = parsed.output.data[0];
-              break;
-            }
-          } catch {}
-        }
-      }
-
       if (!llmResponse) {
-        throw new Error(`Could not parse SSE response from HF. Raw: ${sseText.slice(0, 300)}`);
+        throw new Error('Empty response from AI service');
       }
 
       return this._parseLLMResponse(llmResponse);
-
     } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Diabetica HF Space timed out (90s). ZeroGPU may be under heavy load — try again.');
-      }
-      throw new Error(`HF Space LLM request failed: ${error.message}`);
+      throw new Error(`Ollama LLM request failed: ${error.message}`);
     }
   }
-
   /**
    * Build the risk assessment prompt for LLM
    * @private
@@ -276,7 +218,7 @@ ${retrievedContext ? `\n## Medical Knowledge Base
 ${retrievedContext.substring(0, 1500)}` : ''}
 
 ## Your Task
-As a diabetes medical expert, please:
+As a diabetes risk-assessment assistant, please do not diagnose. Provide risk interpretation and next-step suggestions only.
 
 1. **Validate Assessment**: Do you agree with the "${xgboostResult.risk_level}" risk classification? Consider:
    - Clinical significance of reported symptoms
@@ -293,6 +235,8 @@ As a diabetes medical expert, please:
 4. **Priority Symptoms**: Which symptoms are most concerning and why?
 
 5. **Enhanced Recommendations**: What specific medical actions should be taken?
+
+6. **Age Safety**: If age is 60 or older, make recommendations gentler and more urgent about clinician review, hydration, light diet, and fall-safe activity.
 
 Respond in this JSON format:
 {
@@ -450,21 +394,11 @@ Respond in this JSON format:
   }
 
   /**
-   * Check if the Diabetica HF Space is reachable
+   * Check if the Ollama Diabetica service is reachable.
    * @returns {Promise<boolean>}
    */
   async checkLLMAvailability() {
-    if (!this.hfSpaceUrl) return false;
-    try {
-      // Ping the Space root (fast, no GPU needed)
-      const spaceRoot = this.hfSpaceUrl.replace('/api/predict', '');
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), 8000);
-      const response = await fetch(spaceRoot, { signal: controller.signal });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
+    return checkAIAvailability();
   }
 }
 

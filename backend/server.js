@@ -38,6 +38,7 @@ import documentRoutes from './routes/documentRoutes.js';
 import queryRoutes from './routes/queryRoutes.js';
 import personalizedSystemRoutes from './routes/personalizedSystemRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 import dietPlanRoutes from './routes/dietPlanRoutes.js';
 import monthlyDietPlanRoutes from './routes/monthlyDietPlanRoutes.js';
 import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
@@ -193,7 +194,7 @@ app.use((req, res, next) => {
 // Add audit context capture middleware globally
 app.use(captureAuditContext);
 
-// Public healthcheck + landing route (useful for Hugging Face Space iframe)
+// Public healthcheck + landing route
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -238,7 +239,7 @@ app.get('/api/v1/server-info', (req, res) => {
 
 // Connect to database and ensure roles exist
 const startServer = async () => {
-    // Bind port FIRST so HuggingFace sees a healthy process immediately
+    // Bind port first so the runtime reports a healthy process immediately.
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`✅ Server listening on port ${PORT}`);
@@ -303,6 +304,8 @@ app.use('/api/v1/admin/docs', documentRoutes);
 app.use('/api/v1/query', queryRoutes);
 app.use('/api/v1/personalized-system', personalizedSystemRoutes);
 app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/ai', aiRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/v1/diet-plan', dietPlanRoutes);
 app.use('/api/v1/monthly-diet-plan', monthlyDietPlanRoutes);
 app.use('/api/v1/exercise-plan', exercisePlanRoutes);

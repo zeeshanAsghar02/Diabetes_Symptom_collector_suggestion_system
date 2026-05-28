@@ -60,7 +60,7 @@ export const autoGenerateLifestyleTips = async (req, res) => {
     console.error('Auto-generate tips error:', error);
     return res.status(500).json({
       success: false,
-      message: error.message || 'AI generator is unavailable or timed out. Please ensure LM Studio is running.',
+      message: error.message || 'AI generator is unavailable or timed out. Please ensure the Ollama AI server is running.',
     });
   }
 };

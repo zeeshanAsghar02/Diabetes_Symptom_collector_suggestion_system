@@ -28,7 +28,9 @@ param qdrantUrl string
 param qdrantApiKey string
 
 @secure()
-param llmApiUrl string
+param aiServerUrl string
+
+param aiModel string = 'hf.co/mradermacher/Diabetica-7B-GGUF:Q6_K'
 
 @secure()
 param googleClientId string
@@ -229,8 +231,8 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: qdrantApiKey
         }
         {
-          name: 'llm-api-url'
-          value: llmApiUrl
+          name: 'ai-server-url'
+          value: aiServerUrl
         }
         {
           name: 'email-user'
@@ -289,12 +291,12 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
               secretRef: 'qdrant-api-key'
             }
             {
-              name: 'LLM_API_URL'
-              secretRef: 'llm-api-url'
+              name: 'AI_SERVER_URL'
+              secretRef: 'ai-server-url'
             }
             {
-              name: 'DIABETICA_HF_URL'
-              secretRef: 'llm-api-url'
+              name: 'AI_MODEL'
+              value: aiModel
             }
             {
               name: 'GOOGLE_CLIENT_ID'

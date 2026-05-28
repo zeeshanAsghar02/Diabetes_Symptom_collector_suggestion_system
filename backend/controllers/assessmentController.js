@@ -614,8 +614,8 @@ export const assessDiabetes = async (req, res) => {
           console.log('⚠️ LLM enhancement failed, using XGBoost only:', enhancedResult.fallbackReason);
         }
       } else {
-        enhancementStatus = { enhanced: false, reason: 'LM Studio not available. Start LM Studio server for enhanced assessments.' };
-        console.log('⚠️ LM Studio not available, using XGBoost only');
+        enhancementStatus = { enhanced: false, reason: 'AI server not available. Start the Ollama AI server for enhanced assessments.' };
+        console.log('⚠️ AI server not available, using XGBoost only');
       }
     } catch (llmError) {
       // If LLM enhancement fails, continue with XGBoost result

@@ -5,7 +5,7 @@ import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import calorieCalculatorService from './calorieCalculatorService.js';
 import regionDiscoveryService from './regionDiscoveryService.js';
 import { processQuery } from './queryService.js';
-import axios from 'axios';
+import { generateText } from './aiService.js';
 
 class MonthlyDietPlanService {
   
@@ -382,8 +382,8 @@ class MonthlyDietPlanService {
   
   /**
    * Generate meal options for all 5 meal types — SINGLE LLM call, 1 option per meal.
-   * 1 option × 5 meals easily fits within the 2048-token Gradio budget.
-   * Halves LLM time vs 2-call approach (critical when HF Space is cold).
+   * 1 option per meal keeps the prompt compact for GPU inference.
+   * Halves model time vs the previous multi-call approach.
    */
   async generateMealOptions(personal, medical, dailyCalories, mealDistribution, foodContext, region) {
     const mealTypes = [
@@ -456,6 +456,7 @@ class MonthlyDietPlanService {
     };
 
     const calTargets = mealKeys.map(k => `${k}=${mealDist[k]} kcal`).join(', ');
+    const ageDietRules = this.getAgeDietRules(personal.age);
 
     // Build skeleton using optionsPerMeal (1 for main meals, 2 for snacks)
     const skeleton = '{' + mealKeys.map(k =>
@@ -468,6 +469,7 @@ class MonthlyDietPlanService {
 
 PATIENT: Age ${personal.age}, ${personal.gender}, Region: ${region}, ${medical.diabetes_type}, Diet: ${personal.dietary_preference}
 CALORIE TARGETS: ${calTargets}
+${ageDietRules}
 
 REGIONAL FOODS (${region}):
 ${foodSnippets}
@@ -476,6 +478,7 @@ RULES:
 - description: max 8 words
 - All nutritional values MUST be plain numbers (no units like g, mg)
 - 2-3 items per option
+- For age 60 or older, options must be light, soft/easy to digest, low-oil, low-salt, modest in carbohydrate portions, and dinner must never be heavy.
 
 Return ONLY valid JSON — no markdown, no extra text:
 ${skeleton}`;
@@ -638,6 +641,8 @@ ${skeleton}`;
    * Build AI prompt for generating meal options
    */
   buildMealOptionPrompt(mealName, targetCalories, personal, medical, foodContext, region, numOptions) {
+    const ageDietRules = this.getAgeDietRules(personal.age);
+
     return `You are an expert diabetes dietitian creating ${numOptions} diverse meal options for ${mealName}.
 
 PATIENT PROFILE:
@@ -650,6 +655,7 @@ PATIENT PROFILE:
 
 MEAL TYPE: ${mealName}
 TARGET CALORIES: ${targetCalories} kcal
+${ageDietRules}
 
 REGIONAL FOOD DATABASE (${region}):
 ${foodContext.chunks.slice(0, 10).map((chunk, i) => `[Source ${i + 1}] ${chunk.substring(0, 200)}...`).join('\n\n')}
@@ -666,6 +672,7 @@ INSTRUCTIONS:
 9. Ensure variety in ingredients, cooking methods, and flavors
 10. Follow diabetic principles: low GI, high fiber, balanced macros
 11. Consider ${personal.dietary_preference} preference
+12. For age 60 or older, generate strictly light, easy-to-digest, low-oil, low-salt options with modest carbohydrate portions.
 
 RESPONSE FORMAT (STRICT JSON ONLY - NO MARKDOWN):
 {
@@ -694,87 +701,37 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
   }
   
   /**
-   * Call Diabetica-7B via Hugging Face Gradio API
+   * Call Diabetica-7B through the unified Ollama GPU service.
    */
   async callDiabetica(prompt) {
-    // Get HF Space URL from environment or use correct default
-    // Correct format: https://USERNAME-daabetica-api.hf.space
-    const envUrl = process.env.LLM_API_URL || process.env.HF_SPACE_URL || '';
-    const DEFAULT_HF_URL = 'https://zeeshanasghar02-diabetica-api.hf.space';
-    
-    // Validate URL - must contain .hf.space domain for correct HF Space format
-    let hfBase = envUrl;
-    if (!envUrl || !envUrl.includes('.hf.space')) {
-      console.warn(`[HF] Invalid LLM_API_URL "${envUrl}", falling back to ${DEFAULT_HF_URL}`);
-      hfBase = DEFAULT_HF_URL;
-    }
-    
-    // Always use 2048 — Gradio slider is hard-constrained to 256–2048.
-    // Never read from env: LM_STUDIO_MAX_TOKENS may be set to a small value (e.g. 100)
-    // for the old LM Studio integration, which would break Gradio validation.
-    const MAX_TOKENS = 2048;
-    const systemPrompt = 'You are a diabetes nutrition expert AI. You create diverse, culturally appropriate meal plans. Respond with ONLY valid JSON — no markdown, no code blocks, no explanations outside JSON.';
+    const systemPrompt = `You are a diabetes nutrition expert AI.
+Respond with ONLY valid JSON - no markdown, no code blocks, and no explanations outside JSON.
+Create diverse, culturally appropriate diabetic meal plans using modest portions and low-GI foods.
+If the patient is age 60 or older, meals must be strictly light, low-oil, low-salt, easy to digest, and dinner must be the lightest main meal.`;
 
-    try {
-      console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
-
-      // Step 1: Submit job (increased timeout for cold HF Space boot)
-      const submitRes = await axios.post(
-        `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
-        { timeout: 60000 }
-      );
-      const { event_id } = submitRes.data;
-      if (!event_id) throw new Error('HF Gradio did not return an event_id');
-      console.log(`   HF event_id: ${event_id} — waiting for result...`);
-
-      // Step 2: Read SSE stream — increased timeout for model generation
-      // event:error detection above exits fast on Gradio validation errors.
-      // Increased timeout to 480000 ms (8 minutes) to match frontend timeout
-      // Gradio on CPU can take 3-5 minutes for complex prompts
-      const sseRes = await axios.get(
-        `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 480000, responseType: 'text' }
-      );
-
-      const raw = sseRes.data || '';
-
-      // Step 3: Detect Gradio error events immediately
-      if (raw.includes('event: error')) {
-        // Extract error message if available
-        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
-        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
-          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
-          : 'Gradio returned an error event';
-        throw new Error(`Gradio error: ${errMsg}`);
-      }
-
-      // Step 4: Parse SSE — scan backward for the last data line with output
-      const lines = raw.split('\n');
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i].trim();
-        if (line.startsWith('data:')) {
-          try {
-            const json = JSON.parse(line.slice(5).trim());
-            if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
-            if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
-            if (json?.output?.data?.[0]) return json.output.data[0];
-          } catch { /* keep scanning */ }
-        }
-      }
-      throw new Error(`Could not parse Gradio SSE response. Raw (first 400): ${raw.substring(0, 400)}`);
-
-    } catch (error) {
-      console.error('❌ Error calling HF Diabetica:', error.message);
-      if (error.code === 'ECONNREFUSED' || error.response?.status === 503) {
-        throw new Error('Diabetica model is offline. Please check the HF Space.');
-      } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
-        throw new Error('Diabetica model took too long. Please try again.');
-      }
-      throw new Error(`Diabetica error: ${error.message}`);
-    }
+    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: 120000 });
   }
-  
+
+  getAgeDietRules(age) {
+    const numericAge = Number(age);
+    if (!Number.isFinite(numericAge)) return '';
+
+    if (numericAge >= 60) {
+      return `AGE-SPECIFIC DIET SAFETY:
+- Patient is ${numericAge} years old: generate strictly light geriatric-friendly diabetic meal options.
+- Keep portions modest, low-oil, low-salt, soft/easy to digest, and spread carbohydrates evenly.
+- Prefer soups, soft cooked vegetables, lentils, yogurt, lean protein, small whole-grain portions, and controlled low-GI fruit.
+- Avoid fried foods, rich gravies, heavy rice plates, oversized bread, high-salt packaged foods, sugary drinks, and heavy late dinners.`;
+    }
+
+    if (numericAge >= 45) {
+      return `AGE-SPECIFIC DIET SAFETY:
+- Patient is ${numericAge} years old: keep options heart-friendly, high-fiber, low-oil, low-sodium, and moderate in portions.`;
+    }
+
+    return '';
+  }
+
   /**
    * Parse AI response into meal options
    */

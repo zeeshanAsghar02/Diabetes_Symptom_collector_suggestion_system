@@ -14,7 +14,7 @@ export const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use IP address as identifier (works behind proxies on HF Space)
+  // Use IP address as identifier (works behind reverse proxies)
   keyGenerator: (req) => {
     return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
            req.ip || 

@@ -3,7 +3,7 @@ import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import regionDiscoveryService from './regionDiscoveryService.js';
 import { processQuery } from './queryService.js';
-import axios from 'axios';
+import { generateText } from './aiService.js';
 
 const UserPersonalInfo = mongoose.model('UserPersonalInfo');
 const UserMedicalInfo = mongoose.model('UserMedicalInfo');
@@ -389,6 +389,7 @@ REQUIREMENTS:
 - Create 2-3 exercise sessions (morning, afternoon, or evening)
 - Total daily duration: 45-90 minutes
 - Include mix of: aerobic, resistance/strength, flexibility
+- If age is 60 or older, keep intensity low-to-moderate, avoid high-impact movements, use balance-safe exercises, and include longer warm-up/cool-down periods.
 - All numerical values must be plain numbers (no units in JSON)
 - duration_min: number of minutes (e.g., 15, 30)
 - estimated_calories: number (e.g., 150, 200)
@@ -414,70 +415,13 @@ Return ONLY valid JSON with this structure:
   }
 
   /**
-   * Call Diabetica-7B via HF Gradio API (same as diet plan service)
+   * Call Diabetica-7B through the unified Ollama GPU service.
+   * Method name is kept for compatibility with the existing service flow.
    */
   async callLMStudio(prompt, options = {}) {
-    const hfBase = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    const MAX_TOKENS = options.maxTokens || 2048;
-    const temperature = typeof options.temperature === 'number' ? options.temperature : 0.3;
-    const systemPrompt = options.systemPrompt || 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations outside JSON.';
-
-    try {
-      console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
-
-      // Step 1: Submit job
-      const submitRes = await axios.post(
-        `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, MAX_TOKENS, temperature] },
-        { timeout: 30000 }
-      );
-      const { event_id } = submitRes.data;
-      if (!event_id) throw new Error('HF Gradio did not return an event_id');
-      console.log(`   HF event_id: ${event_id} — waiting for result...`);
-
-      // Step 2: Read SSE stream — 120s timeout
-      const sseRes = await axios.get(
-        `${hfBase}/call/predict/${event_id}`,
-        { timeout: 120000, responseType: 'text' }
-      );
-
-      const raw = sseRes.data || '';
-
-      // Step 3: Detect Gradio error events immediately
-      if (raw.includes('event: error')) {
-        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
-        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
-          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
-          : 'Gradio returned an error event';
-        throw new Error(`Gradio error: ${errMsg}`);
-      }
-
-      // Step 4: Parse SSE — scan backward for the last data line with output
-      const lines = raw.split('\n');
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i].trim();
-        if (line.startsWith('data:')) {
-          try {
-            const json = JSON.parse(line.slice(5).trim());
-            if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
-            if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
-            if (json?.output?.data?.[0]) return json.output.data[0];
-          } catch { /* keep scanning */ }
-        }
-      }
-      throw new Error(`Could not parse Gradio SSE response. Raw (first 400): ${raw.substring(0, 400)}`);
-
-    } catch (error) {
-      console.error('❌ Error calling HF Diabetica:', error.message);
-      if (error.code === 'ECONNREFUSED' || error.response?.status === 503) {
-        throw new Error('Diabetica model is offline. Please check the HF Space or try again in a few minutes.');
-      } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
-        throw new Error('AI model took too long to respond. Please try again.');
-      }
-      throw new Error(`AI generation failed: ${error.message}`);
-    }
+    const systemPrompt = options.systemPrompt || 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations outside JSON. Keep exercise safe for age, BMI, glucose risk, medications, and comorbidities.';
+    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: options.timeoutMs || 120000 });
   }
-
   async repairExerciseJson(rawResponse) {
     const repairSystemPrompt = 'You repair malformed JSON for exercise plans. Return ONLY valid JSON with keys "sessions" and "tips". No markdown, no prose.';
     const repairPrompt = `Fix the malformed JSON below into strict valid JSON using this schema:\n\n{\n  "sessions": [\n    {\n      "name": "string",\n      "time": "string",\n      "type": "string",\n      "items": [\n        {\n          "exercise": "string",\n          "category": "string",\n          "intensity": "string",\n          "duration_min": number,\n          "mets": number,\n          "estimated_calories": number,\n          "notes": "string",\n          "precautions": ["string"]\n        }\n      ]\n    }\n  ],\n  "tips": ["string"]\n}\n\nMALFORMED JSON:\n${String(rawResponse || '').slice(0, 6000)}`;
@@ -636,7 +580,7 @@ Return ONLY valid JSON with this structure:
 
     console.error('❌ All parsing attempts failed. Response preview:', aiResponse?.substring(0, 200));
     console.error('Full response for debugging:', aiResponse);
-    throw new Error('Unable to parse exercise plan from AI response. LM Studio may not be returning valid JSON. Check logs for full response.');
+    throw new Error('Unable to parse exercise plan from AI response. The AI service may not be returning valid JSON. Check logs for full response.');
   }
 
   calculateTotals(sessions, weightKg) {
@@ -706,7 +650,7 @@ Return ONLY valid JSON with this structure:
       const targetDateObj = new Date(parseInt(yStr), parseInt(mStr) - 1, parseInt(dStr));
       targetDateObj.setUTCHours(0, 0, 0, 0);
 
-      // 5. AI generation via HF Gradio
+      // 5. AI generation via Ollama GPU service
       const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj, {
         diversityHint: `bg-${String(userId).slice(-6)}-${String(planId).slice(-4)}`,
       });

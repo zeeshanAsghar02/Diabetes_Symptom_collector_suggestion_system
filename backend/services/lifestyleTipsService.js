@@ -3,16 +3,11 @@ import { User } from '../models/User.js';
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { processQuery } from './queryService.js';
-import axios from 'axios';
+import { generateText } from './aiService.js';
 
-// HF Gradio API configuration
-const HF_SPACE_URL = process.env.LLM_API_URL || process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-const HF_SUBMIT_TIMEOUT_MS = 30000;
-const HF_SSE_TIMEOUT_MS = 90000;
-const MAX_TOKENS = 768;
 const MAX_GUIDELINE_CHUNKS = 4;
 const MAX_GUIDELINE_CHARS = 1400;
-const SYSTEM_PROMPT = `You are a diabetes wellness coach. Generate personalized daily lifestyle tips. Always respond with valid JSON only.`;
+const SYSTEM_PROMPT = `You are a diabetes wellness coach. Generate personalized daily lifestyle tips. Always respond with valid JSON only. Never diagnose or replace clinician guidance. For older adults, keep suggestions gentle, practical, low-burden, and safety-focused.`;
 const inFlightLifestyleGenerations = new Map();
 
 class LifestyleTipsService {
@@ -162,13 +157,13 @@ class LifestyleTipsService {
       });
       console.log(`📝 Prompt built, length: ${prompt.length}`);
 
-      // Call HF Diabetica API
-      console.log(`🤖 Calling HF Diabetica API...`);
+      // Call Diabetica through the Ollama GPU service.
+      console.log(`🤖 Calling Ollama Diabetica API...`);
       const aiResponse = await this.callDiabetica(prompt);
-      console.log(`✅ HF Diabetica response received, length: ${aiResponse.length}`);
+      console.log(`✅ Ollama Diabetica response received, length: ${aiResponse.length}`);
       let parsedTips = this.parseLifestyleTips(aiResponse);
       console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
-      const source = 'hf-diabetica';
+      const source = 'ollama-diabetica';
 
       // Validate parsed tips
       if (!parsedTips || !parsedTips.categories || parsedTips.categories.length === 0) {
@@ -270,6 +265,11 @@ class LifestyleTipsService {
     const systolic = this.parseNumeric(medicalInfo?.blood_pressure?.systolic);
     const diastolic = this.parseNumeric(medicalInfo?.blood_pressure?.diastolic);
     const diversityHint = options.diversityHint || '';
+    const age = Number.isFinite(Number(personalInfo.age))
+      ? Number(personalInfo.age)
+      : personalInfo.date_of_birth
+        ? Math.max(0, Math.floor((Date.now() - new Date(personalInfo.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
+        : null;
 
     const guidelinesText = (guidelinesContext.chunks || [])
       .slice(0, MAX_GUIDELINE_CHUNKS)
@@ -279,6 +279,7 @@ class LifestyleTipsService {
     const prompt = `Generate concise personalized daily lifestyle tips for this diabetes patient.
 
 PATIENT PROFILE:
+- Age: ${age ?? 'Unknown'}
 - Sleep hours per night: ${sleepHours} hours
 - Activity level: ${activityLevel}
 - Smoking status: ${smokingStatus}
@@ -316,6 +317,7 @@ STRICT PERSONALIZATION RULES:
 - Tailor tips directly to this profile's risk signals (sleep, BMI, smoking, alcohol, labs, chronic conditions).
 - Ensure category tips and insight wording are not near-duplicates of other users on the same date.
 - Internal personalization hint: ${diversityHint || 'none'}
+- If the patient is age 60 or older, keep nutrition and activity advice light, gentle, low-salt, low-oil, easy to follow, and avoid heavy evening meals or strenuous exercise suggestions.
 
 IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this exact structure:
 
@@ -336,53 +338,8 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
   }
 
   async callDiabetica(prompt, options = {}) {
-    const maxTokens = options.maxTokens || MAX_TOKENS;
-    const temperature = typeof options.temperature === 'number' ? options.temperature : 0.3;
-    try {
-      console.log(`📡 Submitting to HF Gradio API...`);
-      const submitRes = await axios.post(
-        `${HF_SPACE_URL}/gradio_api/call/predict`,
-        { data: [SYSTEM_PROMPT, prompt, maxTokens, temperature] },
-        { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
-      );
-      const eventId = submitRes.data?.event_id;
-      if (!eventId) throw new Error('No event_id returned from HF Space');
-      console.log(`📝 Got event_id: ${eventId}, waiting for SSE response...`);
-
-      const sseRes = await axios.get(
-        `${HF_SPACE_URL}/call/predict/${eventId}`,
-        { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
-      );
-
-      const rawText = sseRes.data || '';
-      const lines = rawText.split('\n');
-      let responseData = null;
-
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i].trim();
-        if (line.startsWith('data:')) {
-          try {
-            responseData = JSON.parse(line.slice(5).trim());
-            break;
-          } catch { /* continue scanning */ }
-        }
-      }
-
-      if (!responseData || !Array.isArray(responseData) || !responseData[0]) {
-        throw new Error('No valid response data in SSE stream');
-      }
-
-      return responseData[0];
-    } catch (error) {
-      const isTimeout = error.code === 'ECONNABORTED' || String(error.message || '').toLowerCase().includes('timeout');
-      if (isTimeout) {
-        throw new Error(
-          `HF Diabetica API call failed: timeout after ${Math.round(HF_SSE_TIMEOUT_MS / 1000)}s. ` +
-            `The model may be loading or under heavy load.`
-        );
-      }
-      throw new Error(`HF Diabetica API call failed: ${error.message}`);
-    }
+    const systemPrompt = options.systemPrompt || SYSTEM_PROMPT;
+    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: options.timeoutMs || 120000 });
   }
 
   _repairTruncatedJson(s) {
