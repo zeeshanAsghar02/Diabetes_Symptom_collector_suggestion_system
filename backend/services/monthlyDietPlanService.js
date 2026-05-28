@@ -176,48 +176,40 @@ class MonthlyDietPlanService {
 
   /**
    * Run full generation in the background and update an existing pending plan doc.
-   * Called after the controller has already returned 202 to the client.
-   * @param {string} userId
-   * @param {number} month
-   * @param {number} year
-   * @param {string} planId - The _id of the placeholder MonthlyDietPlan document
    */
   async runBackgroundGeneration(userId, month, year, planId) {
     const startTime = Date.now();
-    console.log(`🔄 [BG] Starting background generation for plan ${planId} (${month}/${year})`);
+    console.log(`[BG] Starting background monthly diet generation for plan ${planId} (${month}/${year})`);
 
     try {
-      // 1. Get user profile
       const user = await User.findById(userId);
       if (!user) throw new Error('User not found');
 
       const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
-      const medicalInfo  = await UserMedicalInfo.findOne({ user_id: userId });
+      const medicalInfo = await UserMedicalInfo.findOne({ user_id: userId });
       if (!personalInfo) throw new Error('Personal information not found. Please complete your profile first.');
 
-      // Calculate age
-      const dob   = new Date(personalInfo.date_of_birth);
+      const dob = new Date(personalInfo.date_of_birth);
       const today = new Date();
       let age = today.getFullYear() - dob.getFullYear();
-      const md = today.getMonth() - dob.getMonth();
-      if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
 
       const personal = {
         age,
-        gender:               personalInfo.gender,
-        weight:               personalInfo.weight,
-        height:               personalInfo.height,
-        activity_level:       personalInfo.activity_level || 'Sedentary',
-        goal:                 'maintain',
-        country:              user.country || 'Global',
-        dietary_preference:   personalInfo.dietary_preference || 'Non-Vegetarian',
+        gender: personalInfo.gender,
+        weight: personalInfo.weight,
+        height: personalInfo.height,
+        activity_level: personalInfo.activity_level || 'Sedentary',
+        goal: 'maintain',
+        country: user.country || 'Global',
+        dietary_preference: personalInfo.dietary_preference || 'Non-Vegetarian',
       };
       const medical = {
         diabetes_type: medicalInfo?.diabetes_type || 'Type 2',
-        medications:   medicalInfo?.current_medications?.map(m => m.medication_name) || [],
+        medications: medicalInfo?.current_medications?.map(m => m.medication_name) || [],
       };
 
-      // 2. Region coverage
       let userRegion = personal.country;
       const regionCoverage = await regionDiscoveryService.checkRegionCoverage(userRegion, 'diet_chart');
       if (!regionCoverage.canGeneratePlan) {
@@ -225,91 +217,76 @@ class MonthlyDietPlanService {
         userRegion = fallback || userRegion;
       }
 
-      // 3. Calories
-      const calorieData      = calorieCalculatorService.calculateDailyCalories(personal, medical);
-      const dailyCalories    = calorieData.target_calories;
+      const calorieData = calorieCalculatorService.calculateDailyCalories(personal, medical);
+      const dailyCalories = calorieData.target_calories;
       const mealDistribution = calorieCalculatorService.distributeMealCalories(dailyCalories);
-
-      // 4. RAG
       const foodContext = await this.queryRegionalFoodsForMonth(userRegion, dailyCalories, personal);
-      console.log(`[BG] RAG context: ${foodContext.chunks?.length || 0} chunks`);
 
-      // 5. LLM meal generation
       const mealCategories = await this.generateMealOptions(
-        personal, medical, dailyCalories, mealDistribution, foodContext, userRegion
+        personal,
+        medical,
+        dailyCalories,
+        mealDistribution,
+        foodContext,
+        userRegion
       );
 
-      // 6. Update the placeholder document in-place
-      const updateData = {
-        region:               userRegion,
+      await MonthlyDietPlan.findByIdAndUpdate(planId, {
+        region: userRegion,
         total_daily_calories: dailyCalories,
-        meal_categories:      mealCategories,
+        meal_categories: mealCategories,
         nutritional_guidelines: {
-          daily_carbs_range:   { min: Math.round(dailyCalories * 0.45 / 4), max: Math.round(dailyCalories * 0.55 / 4) },
+          daily_carbs_range: { min: Math.round(dailyCalories * 0.45 / 4), max: Math.round(dailyCalories * 0.55 / 4) },
           daily_protein_range: { min: Math.round(dailyCalories * 0.15 / 4), max: Math.round(dailyCalories * 0.20 / 4) },
-          daily_fat_range:     { min: Math.round(dailyCalories * 0.25 / 9), max: Math.round(dailyCalories * 0.35 / 9) },
-          daily_fiber_target:  35,
+          daily_fat_range: { min: Math.round(dailyCalories * 0.25 / 9), max: Math.round(dailyCalories * 0.35 / 9) },
+          daily_fiber_target: 35,
         },
         sources: foodContext.sources,
-        tips:    await this.generateMonthlyTips(personal, medical, userRegion),
+        tips: await this.generateMonthlyTips(personal, medical, userRegion),
         generation_context: {
           user_profile_snapshot: personal,
-          llm_model:             'diabetica-7b',
-          generated_at:          new Date(),
+          llm_model: 'diabetica-7b',
+          generated_at: new Date(),
           generation_duration_ms: Date.now() - startTime,
         },
         generation_status: 'complete',
-        generation_error:  undefined,
-        status:            'active',
-      };
+        generation_error: undefined,
+        status: 'active',
+      }, { new: true });
 
-      await MonthlyDietPlan.findByIdAndUpdate(planId, updateData, { new: true });
-      console.log(`✅ [BG] Plan ${planId} completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
-
+      console.log(`[BG] Monthly diet plan ${planId} completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
     } catch (err) {
-      console.error(`❌ [BG] Generation failed for plan ${planId}:`, err.message);
+      console.error(`[BG] Monthly diet generation failed for plan ${planId}:`, err.message);
       await MonthlyDietPlan.findByIdAndUpdate(planId, {
         generation_status: 'failed',
-        generation_error:  err.message,
+        generation_error: err.message,
       }).catch(() => {});
     }
   }
 
   /**
-   * Query RAG for extensive food data for monthly planning
-   * @param {string} region - Region/country
-   * @param {number} calorieTarget - Daily calorie target
-   * @param {Object} personal - Personal info
-   * @returns {Promise<Object>} - Food context
+   * Query RAG for extensive food data for monthly planning.
    */
   async queryRegionalFoodsForMonth(region, calorieTarget, personal) {
     try {
-      // 5 focused queries — enough variety, respects Jina free-tier concurrency
       const queries = [
         `${region} breakfast lunch dinner foods diabetes nutrition traditional meals`,
         `${region} protein sources vegetables whole grains diabetes diet`,
         `${region} snacks dairy healthy fats diabetic friendly low glycemic`,
         `${region} glycemic index portion sizes diabetes guidelines`,
-        `traditional ${region} cuisine healthy modifications diabetes meal planning`
+        `traditional ${region} cuisine healthy modifications diabetes meal planning`,
       ];
-      
+
       const allResults = [];
       const seenTexts = new Set();
-      
-      // Use flat $in filter to avoid nested $and/$or complexity in qdrantService formatFilter
-      const filter = {
-        country: region,
-        doc_type: { $in: ['diet_chart', 'guideline'] }
-      };
-      
-      // Run queries SEQUENTIALLY to respect Jina free-tier concurrency limit (max 2)
+
       const collectResultsSequential = async (activeFilter) => {
         for (const query of queries) {
           try {
             const queryResponse = await processQuery(query, {
               topK: 10,
               filter: activeFilter,
-              minScore: 0.0
+              minScore: 0.0,
             });
             const queryResults = queryResponse.results || [];
             queryResults.forEach(result => {
@@ -325,44 +302,37 @@ class MonthlyDietPlanService {
         }
       };
 
-      // Attempt 1: region + doc_type filter
-      await collectResultsSequential(filter);
+      await collectResultsSequential({
+        country: region,
+        doc_type: { $in: ['diet_chart', 'guideline'] },
+      });
 
-      // Attempt 2: doc_type only (in case country field mismatch in Qdrant)
       if (allResults.length === 0) {
-        console.warn(`⚠️  No results for region "${region}" — retrying with doc_type filter only`);
         seenTexts.clear();
         await collectResultsSequential({ doc_type: { $in: ['diet_chart', 'guideline'] } });
       }
 
-      // Attempt 3: no filter at all (last resort)
       if (allResults.length === 0) {
-        console.warn(`⚠️  No results with doc_type filter — retrying with no filter`);
         seenTexts.clear();
         await collectResultsSequential(null);
       }
 
-      // Return whatever we got (even empty) - LLM will use built-in knowledge
-      console.log(`📥 Total unique food data chunks: ${allResults.length}`);
-      
       return {
         chunks: allResults.map(r => r.text),
-        sources: this.extractSources(allResults)
+        sources: this.extractSources(allResults),
       };
-      
     } catch (error) {
-      console.error('❌ Error querying regional foods for month:', error);
-      // Return empty context instead of throwing - let AI use built-in knowledge
+      console.error('Error querying regional foods for month:', error);
       return { chunks: [], sources: [] };
     }
   }
-  
+
   /**
-   * Extract unique sources from RAG results
+   * Extract unique sources from RAG results.
    */
   extractSources(results) {
     const sourcesMap = new Map();
-    
+
     results.forEach(result => {
       const metadata = result.chunk_metadata || result.metadata;
       if (metadata?.title) {
@@ -371,19 +341,19 @@ class MonthlyDietPlanService {
           sourcesMap.set(key, {
             title: metadata.title,
             country: metadata.country || 'Unknown',
-            doc_type: metadata.doc_type || 'diet'
+            doc_type: metadata.doc_type || 'diet',
           });
         }
       }
     });
-    
+
     return Array.from(sourcesMap.values());
   }
-  
+
   /**
-   * Generate meal options for all 5 meal types — SINGLE LLM call, 1 option per meal.
-   * 1 option per meal keeps the prompt compact for GPU inference.
-   * Halves model time vs the previous multi-call approach.
+   * Generate at least 5 options for every meal type.
+   * Meal groups are kept compact to reduce JSON truncation while still giving
+   * the frontend meaningful choice for each time period.
    */
   async generateMealOptions(personal, medical, dailyCalories, mealDistribution, foodContext, region) {
     const mealTypes = [
@@ -394,21 +364,40 @@ class MonthlyDietPlanService {
       { name: 'Dinner',            timing: '7:30 PM - 9:00 PM',   key: 'dinner'           },
     ];
 
-    const allKeys = ['breakfast', 'mid_morning_snack', 'lunch', 'evening_snack', 'dinner'];
-    console.log('🍽️  Single LLM call for all 5 meals (1 option each)...');
-    const allMeals = await this._callForMealGroup(allKeys, mealDistribution, personal, medical, dailyCalories, foodContext, region, 1);
+    const optionsPerMeal = 5;
+    const mealGroups = [
+      ['breakfast', 'mid_morning_snack'],
+      ['lunch', 'evening_snack'],
+      ['dinner'],
+    ];
+
+    console.log(`Generating ${optionsPerMeal} options per meal across ${mealGroups.length} compact AI calls...`);
+    const allMeals = {};
+    for (const group of mealGroups) {
+      const groupMeals = await this._callForMealGroup(
+        group,
+        mealDistribution,
+        personal,
+        medical,
+        dailyCalories,
+        foodContext,
+        region,
+        optionsPerMeal
+      );
+      Object.assign(allMeals, groupMeals);
+    }
 
     const mealCategories = mealTypes.map(mt => {
       const options = allMeals[mt.key];
-      if (!Array.isArray(options) || options.length === 0) {
-        throw new Error(`Model returned empty meal options for ${mt.name}`);
+      if (!Array.isArray(options) || options.length < optionsPerMeal) {
+        throw new Error(`Model returned ${options?.length || 0} options for ${mt.name}; expected at least ${optionsPerMeal}`);
       }
-      console.log(`✅ ${mt.name}: ${options.length} options`);
+      console.log(`${mt.name}: ${options.length} options`);
       return {
         meal_type:       mt.name,
         timing:          mt.timing,
         target_calories: mealDistribution[mt.key],
-        options,
+        options:         options.slice(0, optionsPerMeal),
       };
     });
 
@@ -419,27 +408,34 @@ class MonthlyDietPlanService {
    * Make one LLM call for a subset of meal keys and return a parsed map.
    * @private
    */
-  async _callForMealGroup(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal = 2) {
-    const prompt = this.buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal);
+  async _callForMealGroup(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal = 5) {
+    const prompt = this.buildCombinedMealPrompt(
+      mealKeys,
+      mealDist,
+      personal,
+      medical,
+      dailyCalories,
+      foodContext,
+      region,
+      optionsPerMeal
+    );
 
     let response = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {  // Increased to 3 retries for better reliability
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
         response = await this.callDiabetica(prompt);
         break;
       } catch (err) {
-        console.error(`❌ Attempt ${attempt}/3 failed: ${err.message}`);
+        console.error(`Attempt ${attempt}/3 failed for ${mealKeys.join(', ')}: ${err.message}`);
         if (attempt === 3) {
-          // Hard fail after retries so we never persist static fallback meal content.
           throw new Error(`Model generation failed after 3 retries: ${err.message}`);
         }
-        // Increased delay between retries for timeout errors
         const delay = err.message.includes('timeout') ? 5000 : 2000;
-        console.log(`⏳ Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    return this.parseCombinedMealOptions(response, mealDist, mealKeys);
+
+    return this.parseCombinedMealOptions(response, mealDist, mealKeys, optionsPerMeal);
   }
 
   /**
@@ -458,7 +454,7 @@ class MonthlyDietPlanService {
     const calTargets = mealKeys.map(k => `${k}=${mealDist[k]} kcal`).join(', ');
     const ageDietRules = this.getAgeDietRules(personal.age);
 
-    // Build skeleton using optionsPerMeal (1 for main meals, 2 for snacks)
+    // Build skeleton using the requested number of options per meal.
     const skeleton = '{' + mealKeys.map(k =>
       `\n  "${k}": [\n    ${Array.from({length: optionsPerMeal}, (_, i) =>
         `{"option_name":"Option ${i + 1}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
@@ -478,6 +474,9 @@ RULES:
 - description: max 8 words
 - All nutritional values MUST be plain numbers (no units like g, mg)
 - 2-3 items per option
+- Return EXACTLY ${optionsPerMeal} unique options for each requested meal key
+- Keep option_name values as "Option 1", "Option 2", up to "Option ${optionsPerMeal}"
+- Do not repeat the same main food across options for the same meal
 - For age 60 or older, options must be light, soft/easy to digest, low-oil, low-salt, modest in carbohydrate portions, and dinner must never be heavy.
 
 Return ONLY valid JSON — no markdown, no extra text:
@@ -517,7 +516,7 @@ ${skeleton}`;
   /**
    * Parse LLM response for a specific set of meal keys.
    */
-  parseCombinedMealOptions(aiResponse, mealDist, mealKeys) {
+  parseCombinedMealOptions(aiResponse, mealDist, mealKeys, expectedOptionsPerMeal = 5) {
     try {
       let cleaned = aiResponse.trim().replace(/```json|```/g, '').trim();
 
@@ -562,9 +561,9 @@ ${skeleton}`;
       };
 
       for (const key of mealKeys) {
-        if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
-          result[key] = parsed[key].map(opt => ({
-            option_name:      opt.option_name      || 'Option',
+        if (Array.isArray(parsed[key]) && parsed[key].length >= expectedOptionsPerMeal) {
+          result[key] = parsed[key].slice(0, expectedOptionsPerMeal).map((opt, index) => ({
+            option_name:      opt.option_name      || `Option ${index + 1}`,
             description:      opt.description      || '',
             preparation_time: opt.preparation_time || '15 minutes',
             difficulty:       normDiff(opt.difficulty),
@@ -582,7 +581,7 @@ ${skeleton}`;
               : (mealDist[key] || 300),
           }));
         } else {
-          throw new Error(`No valid options parsed for ${key}`);
+          throw new Error(`Parsed ${parsed[key]?.length || 0} options for ${key}; expected at least ${expectedOptionsPerMeal}`);
         }
       }
       return result;
@@ -709,7 +708,7 @@ Respond with ONLY valid JSON - no markdown, no code blocks, and no explanations 
 Create diverse, culturally appropriate diabetic meal plans using modest portions and low-GI foods.
 If the patient is age 60 or older, meals must be strictly light, low-oil, low-salt, easy to digest, and dinner must be the lightest main meal.`;
 
-    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: 120000 });
+    return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: 180000 });
   }
 
   getAgeDietRules(age) {

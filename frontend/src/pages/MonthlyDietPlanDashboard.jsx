@@ -31,8 +31,7 @@ import {
   LinearProgress,
   alpha,
   Fade,
-  Skeleton,
-  useTheme
+  Skeleton
 } from '@mui/material';
 import {
   Restaurant as RestaurantIcon,
@@ -71,15 +70,16 @@ const NUTRITION_TIPS = [
   { tip: "Berries are the best fruit choice for diabetics", icon: "🫐" }
 ];
 
-// Progress stages for the loading animation
+// Progress stages for the loading animation. Durations are only used to rotate
+// the active stage; the UI deliberately avoids promising a fixed completion time.
 const LOADING_STAGES = [
-  { id: 1, label: "Analyzing your health profile", duration: 15 },
-  { id: 2, label: "Searching regional food database", duration: 30 },
-  { id: 3, label: "Consulting AI nutrition expert", duration: 60 },
-  { id: 4, label: "Creating breakfast & lunch options", duration: 90 },
-  { id: 5, label: "Designing dinner & snack plans", duration: 120 },
-  { id: 6, label: "Calculating nutritional values", duration: 30 },
-  { id: 7, label: "Finalizing your personalized plan", duration: 15 }
+  { id: 1, label: "Analyzing your health profile", duration: 12 },
+  { id: 2, label: "Searching regional food database", duration: 18 },
+  { id: 3, label: "Consulting AI nutrition expert", duration: 30 },
+  { id: 4, label: "Creating breakfast and snack options", duration: 45 },
+  { id: 5, label: "Designing lunch and dinner choices", duration: 45 },
+  { id: 6, label: "Checking nutritional balance", duration: 24 },
+  { id: 7, label: "Finalizing your personalized plan", duration: 18 }
 ];
 
 // Engaging Loading Component
@@ -97,7 +97,8 @@ const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  // Update stage based on elapsed time
+  // Update stage based on elapsed time, then stay on the final stage until
+  // server polling reports completion.
   useEffect(() => {
     if (!isLoading) return;
     let accumulated = 0;
@@ -120,8 +121,8 @@ const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
   };
 
-  const estimatedTotal = LOADING_STAGES.reduce((sum, s) => sum + s.duration, 0);
-  const progress = Math.min((elapsedSeconds / estimatedTotal) * 100, 98);
+  const stageCycleSeconds = LOADING_STAGES.reduce((sum, s) => sum + s.duration, 0);
+  const progress = Math.min((elapsedSeconds / stageCycleSeconds) * 100, 95);
 
   if (!isLoading) return null;
 
@@ -183,12 +184,12 @@ const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
                 Creating Your Plan
               </Typography>
               <Typography variant="caption" sx={{ color: '#64748b' }}>
-                AI-powered personalization in progress
+                AI-powered personalization in progress. This can finish sooner or take a little longer depending on server load.
               </Typography>
             </Box>
           </Stack>
           <Chip
-            label={formatTime(elapsedSeconds)}
+            label={`${formatTime(elapsedSeconds)} elapsed`}
             size="small"
             sx={{
               bgcolor: alpha('#3b82f6', 0.1),
@@ -204,10 +205,10 @@ const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
         <Box>
           <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
             <Typography variant="caption" fontWeight={600} sx={{ color: '#475569' }}>
-              Progress: {Math.round(progress)}%
+              Generation progress
             </Typography>
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-              ~{formatTime(Math.max(0, estimatedTotal - elapsedSeconds))} remaining
+              Waiting for server confirmation
             </Typography>
           </Stack>
           <LinearProgress
@@ -520,7 +521,7 @@ const StatCard = ({ icon: Icon, label, value, color = '#10b981' }) => (
           justifyContent: 'center'
         }}
       >
-        <Icon sx={{ color, fontSize: 20 }} />
+        {React.createElement(Icon, { sx: { color, fontSize: 20 } })}
       </Box>
       <Box>
         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
@@ -548,11 +549,12 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
   const pollIntervalMs = useMemo(() => 3500, []);
 
   useEffect(() => {
+    const pollState = pollAbortRef.current;
     isMountedRef.current = true;
     fetchMonthlyPlans();
     return () => {
       isMountedRef.current = false;
-      pollAbortRef.current.aborted = true;
+      pollState.aborted = true;
     };
   }, []);
 
@@ -682,7 +684,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
       setSuccess('Plan deleted successfully');
       await fetchMonthlyPlans();
       if (selectedPlan?._id === planId) setSelectedPlan(null);
-    } catch (err) {
+    } catch {
       setError('Failed to delete plan');
     }
   };
