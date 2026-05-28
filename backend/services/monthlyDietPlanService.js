@@ -365,41 +365,30 @@ class MonthlyDietPlanService {
     ];
 
     const optionsPerMeal = 5;
-    const mealGroups = [
-      ['breakfast', 'mid_morning_snack'],
-      ['lunch', 'evening_snack'],
-      ['dinner'],
-    ];
+    console.log(`Generating ${optionsPerMeal} options for each monthly meal period...`);
 
-    console.log(`Generating ${optionsPerMeal} options per meal across ${mealGroups.length} compact AI calls...`);
-    const allMeals = {};
-    for (const group of mealGroups) {
-      const groupMeals = await this._callForMealGroup(
-        group,
-        mealDistribution,
+    const mealCategories = [];
+    for (const mt of mealTypes) {
+      const options = await this.generateOptionsForMealType(
+        mt,
+        mealDistribution[mt.key],
         personal,
         medical,
-        dailyCalories,
         foodContext,
-        region,
-        optionsPerMeal
+        region
       );
-      Object.assign(allMeals, groupMeals);
-    }
 
-    const mealCategories = mealTypes.map(mt => {
-      const options = allMeals[mt.key];
       if (!Array.isArray(options) || options.length < optionsPerMeal) {
         throw new Error(`Model returned ${options?.length || 0} options for ${mt.name}; expected at least ${optionsPerMeal}`);
       }
       console.log(`${mt.name}: ${options.length} options`);
-      return {
+      mealCategories.push({
         meal_type:       mt.name,
         timing:          mt.timing,
         target_calories: mealDistribution[mt.key],
         options:         options.slice(0, optionsPerMeal),
-      };
-    });
+      });
+    }
 
     return mealCategories;
   }
@@ -810,8 +799,8 @@ If the patient is age 60 or older, meals must be strictly light, low-oil, low-sa
         })
         .slice(0, expectedOptions); // Take only expected number
       
-      if (validOptions.length === 0) {
-        throw new Error('No valid options found in AI response');
+      if (validOptions.length < expectedOptions) {
+        throw new Error(`Expected ${expectedOptions} valid options, parsed ${validOptions.length}`);
       }
       
       console.log(`✅ Parsed ${validOptions.length} valid options`);
