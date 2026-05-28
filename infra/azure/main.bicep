@@ -30,7 +30,8 @@ param qdrantApiKey string
 @secure()
 param aiServerUrl string
 
-param aiModel string = 'hf.co/mradermacher/Diabetica-7B-GGUF:Q6_K'
+@secure()
+param aiModel string
 
 @secure()
 param googleClientId string
@@ -235,6 +236,10 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: aiServerUrl
         }
         {
+          name: 'ai-model'
+          value: aiModel
+        }
+        {
           name: 'email-user'
           value: emailUser
         }
@@ -296,7 +301,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'AI_MODEL'
-              value: aiModel
+              secretRef: 'ai-model'
             }
             {
               name: 'GOOGLE_CLIENT_ID'

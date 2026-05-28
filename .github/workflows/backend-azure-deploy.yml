@@ -74,7 +74,7 @@ jobs:
       QDRANT_URL: ${{ secrets.QDRANT_URL }}
       QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
       AI_SERVER_URL: ${{ secrets.AI_SERVER_URL }}
-      AI_MODEL: ${{ vars.AI_MODEL || 'hf.co/mradermacher/Diabetica-7B-GGUF:Q6_K' }}
+      AI_MODEL: ${{ secrets.AI_MODEL }}
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASS: ${{ secrets.SMTP_PASS }}
       ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
