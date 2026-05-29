@@ -13,7 +13,6 @@ import {
   Box,
   Button,
   Tooltip,
-  Badge,
   IconButton,
   Divider,
 } from '@mui/material';
@@ -21,8 +20,6 @@ import { alpha } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import LocalHospitalOutlinedIcon from '@mui/icons-material/LocalHospitalOutlined';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 
 const drawerWidth = 220;
@@ -40,6 +37,8 @@ export default function SidebarNavigation({
   const navigate = useNavigate();
   const labelMap = {
     Dashboard: 'Dashboard',
+    Overview: 'Overview',
+    'Care Plan': 'Care Plan',
     'Check My Risk': 'Check My Risk',
     'My Disease Data': 'My Data',
     Feedback: 'Feedback',
@@ -114,7 +113,7 @@ export default function SidebarNavigation({
           {sidebarOpen && (
             <Box>
               <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.02rem', lineHeight: 1.1 }}>
-                Diabetes
+                Diavise
               </Typography>
               <Typography sx={{ color: '#4F46E5', fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.1 }}>
                 Care
@@ -171,17 +170,7 @@ export default function SidebarNavigation({
                       justifyContent: 'center',
                     }}
                   >
-                    {sec.label === 'Feedback' ? (
-                      <Badge
-                        color="primary"
-                        badgeContent={3}
-                        sx={{ '& .MuiBadge-badge': { fontSize: '0.62rem', height: 16, minWidth: 16 } }}
-                      >
-                        {sec.icon}
-                      </Badge>
-                    ) : (
-                      sec.icon
-                    )}
+                    {sec.icon}
                   </ListItemIcon>
                   {sidebarOpen && (
                     <ListItemText
@@ -203,48 +192,6 @@ export default function SidebarNavigation({
 
       {/* Bottom area */}
       <Box sx={{ px: sidebarOpen ? 0.6 : 0 }}>
-        {sidebarOpen && (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 1.1,
-              borderRadius: 2,
-              background: alpha('#4F46E5', 0.06),
-              border: `1px solid ${alpha('#4F46E5', 0.12)}`,
-              mb: 1.2,
-            }}
-          >
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4F46E5', 0.15), color: '#4F46E5' }}>
-                <LocalHospitalOutlinedIcon sx={{ fontSize: 17 }} />
-              </Avatar>
-              <Box>
-                <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
-                  Need help?
-                </Typography>
-                <Typography sx={{ fontSize: '0.66rem', color: '#64748B', mt: 0.25, lineHeight: 1.35 }}>
-                  Talk to our diabetes care specialist.
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    mt: 0.7,
-                    borderRadius: 1.5,
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.64rem',
-                    px: 1,
-                    py: 0.15,
-                  }}
-                >
-                  Contact Us
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
-        )}
-
         {typeof onLogout === 'function' && (
           <Tooltip title={!sidebarOpen ? 'Logout' : ''} placement="right">
             <Button

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography, Button } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import UserFeedbackHistory from '../../Feedback/UserFeedbackHistory';
 
 export default function FeedbackSection({ showFeedbackForm, setShowFeedbackForm, user }) {
@@ -15,33 +15,17 @@ export default function FeedbackSection({ showFeedbackForm, setShowFeedbackForm,
     >
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>
-          My Feedback
+          Feedback
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          View your feedback history and submit new feedback about your experience.
+          Help us improve your Diavise experience and review your previous submissions.
         </Typography>
       </Box>
-
-      {!showFeedbackForm && (
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => setShowFeedbackForm(true)}
-          sx={{
-            borderRadius: 2,
-            fontWeight: 700,
-            px: 3,
-            py: 1.5,
-            mb: 3,
-          }}
-        >
-          Submit New Feedback
-        </Button>
-      )}
 
       <UserFeedbackHistory 
         userId={user?._id} 
         showForm={showFeedbackForm}
+        onShowFormChange={setShowFeedbackForm}
         onFormClose={() => setShowFeedbackForm(false)}
       />
     </Paper>

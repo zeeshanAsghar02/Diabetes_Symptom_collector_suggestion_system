@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogActions,
   Chip,
-  Divider,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -21,7 +21,7 @@ import AddIcon from '@mui/icons-material/Add';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import FeedbackSubmissionForm from './FeedbackSubmissionForm';
-import { fetchMyFeedback, deleteFeedbackById, updateFeedbackById } from '../../utils/api';
+import { fetchMyFeedback, deleteFeedbackById } from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const categoryList = [
@@ -34,14 +34,19 @@ const categoryList = [
   'Open Feedback',
 ];
 
-export default function UserFeedbackHistory({ showFormOnMount = false }) {
+export default function UserFeedbackHistory({ showFormOnMount = false, showForm: controlledShowForm, onShowFormChange }) {
   const { formatDate } = useDateFormat();
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(showFormOnMount);
+  const [internalShowForm, setInternalShowForm] = useState(showFormOnMount);
   const [editingFeedback, setEditingFeedback] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
+  const showForm = controlledShowForm !== undefined ? controlledShowForm : internalShowForm;
+  const setShowForm = useCallback((value) => {
+    if (onShowFormChange) onShowFormChange(value);
+    if (controlledShowForm === undefined) setInternalShowForm(value);
+  }, [controlledShowForm, onShowFormChange]);
 
   useEffect(() => {
     loadFeedback();
@@ -52,7 +57,7 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
     if (showFormOnMount) {
       setShowForm(true);
     }
-  }, [showFormOnMount]);
+  }, [showFormOnMount, setShowForm]);
 
   const loadFeedback = async () => {
     setLoading(true);
@@ -143,10 +148,10 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
         <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
           <Box>
             <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
-              My Feedback
+              Your Feedback
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Track your submissions and refine your voice across categories.
+              Share what feels helpful, confusing, or missing in your Diavise experience.
             </Typography>
           </Box>
           <Button
@@ -258,7 +263,7 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
             No Feedback Yet
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Share your experience with us!
+            Tell us what could be improved in your care dashboard, plans, assessment, or AI assistant.
           </Typography>
           <Button
             variant="contained"
@@ -366,20 +371,24 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
 
                 {/* Actions */}
                 <Box display="flex" gap={1}>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEditFeedback(item)}
-                    sx={{ color: 'primary.main' }}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(item._id)}
-                    sx={{ color: 'error.main' }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                  <Tooltip title="Edit feedback">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEditFeedback(item)}
+                      sx={{ color: 'primary.main' }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete feedback">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(item._id)}
+                      sx={{ color: 'error.main' }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
             </Paper>
@@ -405,4 +414,3 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
     </Box>
   );
 }
-

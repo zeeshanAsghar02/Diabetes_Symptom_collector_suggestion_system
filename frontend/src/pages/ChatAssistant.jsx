@@ -1,458 +1,333 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Box, Container, Paper, Typography, TextField, IconButton, Avatar, Fade, Grow, Chip, Stack } from '@mui/material';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Container,
+  IconButton,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../utils/axiosInstance';
 import { useSettings } from '../context/SettingsContext';
+
+const starterPrompts = [
+  'Suggest a light dinner for tonight',
+  'Explain my latest diet plan',
+  'How can I reduce post-meal sugar spikes?',
+  'What should I ask my doctor?',
+  'Give me safe exercise ideas',
+];
 
 const ChatAssistant = ({ inModal = false }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
   const { siteTitle } = useSettings();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const sendMessage = async (messageText = input) => {
+    const trimmed = messageText.trim();
     if (!trimmed || loading) return;
+
     const nextMessages = [...messages, { role: 'user', content: trimmed }];
     setMessages(nextMessages);
     setInput('');
     setLoading(true);
-    
+
     try {
       const res = await axiosInstance.post('/chat/send', {
         message: trimmed,
         history: messages,
       });
-      const reply = res?.data?.reply || 'No response';
-      const sources = res?.data?.sources || [];
-      const contextUsed = res?.data?.context_used || false;
-      
-      setMessages([...nextMessages, { 
-        role: 'assistant', 
-        content: reply,
-        sources: sources,
-        contextUsed: contextUsed
-      }]);
-      setLoading(false);
-      
+
+      setMessages([
+        ...nextMessages,
+        {
+          role: 'assistant',
+          content: res?.data?.reply || 'No response was returned.',
+          sources: res?.data?.sources || [],
+          contextUsed: Boolean(res?.data?.context_used),
+        },
+      ]);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Unable to get a response right now.';
-      setMessages([...nextMessages, { role: 'assistant', content: `Error: ${msg}` }]);
+      setMessages([
+        ...nextMessages,
+        {
+          role: 'assistant',
+          content: `I could not complete that request. ${msg}`,
+          isError: true,
+        },
+      ]);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
     }
   };
 
   return (
-    <Box sx={{ 
-      height: inModal ? '100%' : '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      background: inModal ? 'transparent' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-      overflow: 'hidden',
-      position: 'relative',
-      m: 0,
-      p: 0,
-      '&::before': inModal ? {} : {
-        content: '""',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'radial-gradient(circle at 20% 30%, rgba(139,92,246,0.08), transparent 50%), radial-gradient(circle at 80% 70%, rgba(168,85,247,0.08), transparent 50%)',
-        zIndex: 0
-      }
-    }}>
-      <Container maxWidth={inModal ? false : "lg"} sx={{ 
-        height: '100%',
+    <Box
+      sx={{
+        height: inModal ? '100%' : '100vh',
         display: 'flex',
         flexDirection: 'column',
-        py: 0,
-        px: inModal ? 0 : 3,
-        m: 0,
-        maxWidth: inModal ? '100%' : undefined,
-        position: 'relative',
-        zIndex: 1
-      }}>
-        <Paper 
+        bgcolor: inModal ? 'transparent' : '#f8fbff',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        maxWidth={inModal ? false : 'lg'}
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          py: 0,
+          px: inModal ? 0 : 3,
+          maxWidth: inModal ? '100%' : undefined,
+        }}
+      >
+        <Paper
           elevation={0}
-          sx={{ 
+          sx={{
             borderRadius: inModal ? 0 : 4,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            background: inModal ? '#fff' : 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: inModal ? 'none' : 'blur(20px)',
-            border: inModal ? 'none' : '1px solid rgba(255,255,255,0.3)',
-            boxShadow: inModal ? 'none' : '0 20px 60px rgba(102,126,234,0.3)',
+            bgcolor: '#fff',
+            border: inModal ? 'none' : '1px solid #e2e8f0',
+            boxShadow: inModal ? 'none' : '0 20px 60px rgba(15, 23, 42, 0.08)',
           }}
         >
-          {/* Header with modern gradient - hide when inModal */}
-          {!inModal && (
-            <Box sx={{ 
-              background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
-              p: 3,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2.5,
-              flexShrink: 0,
-              position: 'relative',
-              overflow: 'hidden',
-              border: '1px solid #e5e7eb',
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                right: -50,
-                bottom: -50,
-                width: 200,
-                height: 200,
-                background: 'radial-gradient(circle, rgba(139,92,246,0.1), transparent)',
-                borderRadius: '50%'
-              }
-            }}>
-              <Avatar sx={{ 
-                width: 56, 
-                height: 56,
-                bgcolor: '#8b5cf6',
-                animation: loading ? 'pulse 1.5s ease-in-out infinite' : 'none',
-                boxShadow: '0 8px 20px rgba(139,92,246,0.3)',
-                '@keyframes pulse': {
-                  '0%, 100%': { transform: 'scale(1)' },
-                  '50%': { transform: 'scale(1.05)' },
-                },
-              }}>
-                <Box component="span" sx={{ fontSize: '2rem' }}>🧑‍⚕️</Box>
+          <Box
+            sx={{
+              p: { xs: 2, md: 2.75 },
+              borderBottom: '1px solid #e2e8f0',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+            }}
+          >
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ width: 48, height: 48, bgcolor: '#0ea5e9', boxShadow: '0 8px 20px rgba(14,165,233,0.22)' }}>
+                <HealthAndSafetyIcon />
               </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h5" fontWeight="700" sx={{ color: '#1f2937', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box component="span">🩺</Box> Dr. {siteTitle} AI <Box component="span">✨</Box>
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
-                {loading ? '🔍 Analyzing your query...' : '💡 Your personalized diabetes assistant'}
-              </Typography>
-            </Box>
-            {/* Floating decorative elements */}
-            <Box sx={{ position: 'absolute', top: 10, right: 80, fontSize: '1.5rem', opacity: 0.2, animation: 'float 3s ease-in-out infinite' }}>💬</Box>
-            <Box sx={{ position: 'absolute', bottom: 15, right: 50, fontSize: '1.2rem', opacity: 0.15, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>❤️‍🩹</Box>
-            <style>{`
-              @keyframes float {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-8px); }
-              }
-            `}</style>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h5" fontWeight={850} sx={{ color: '#0f172a', lineHeight: 1.2 }}>
+                  Diavise AI Assistant
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#64748b', mt: 0.35 }}>
+                  Personalized diabetes education and care suggestions from {siteTitle}.
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 0.35 }}>
+                  Educational support only. This assistant does not diagnose or replace a clinician.
+                </Typography>
+              </Box>
+            </Stack>
           </Box>
-          )}
 
-          {/* Chat messages */}
-          <Box 
-            ref={chatContainerRef}
-            sx={{ 
+          <Box
+            sx={{
               flex: 1,
               overflowY: 'auto',
-              p: 3,
-              background: '#f8f9fa',
+              p: { xs: 2, md: 3 },
+              bgcolor: '#f8fafc',
               display: 'flex',
               flexDirection: 'column',
               '&::-webkit-scrollbar': { width: 8 },
-              '&::-webkit-scrollbar-track': { background: '#e9ecef', borderRadius: 10 },
-              '&::-webkit-scrollbar-thumb': { background: '#1e3c72', borderRadius: 10 },
+              '&::-webkit-scrollbar-track': { background: '#e2e8f0' },
+              '&::-webkit-scrollbar-thumb': { background: '#94a3b8', borderRadius: 10 },
             }}
           >
             {messages.length === 0 && (
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                flex: 1,
-                gap: 3,
-                position: 'relative'
-              }}>
-                {/* Decorative floating elements */}
-                <Box sx={{ position: 'absolute', top: '20%', left: '15%', fontSize: '2rem', opacity: 0.1, animation: 'float 3s ease-in-out infinite' }}>💊</Box>
-                <Box sx={{ position: 'absolute', top: '30%', right: '20%', fontSize: '2.5rem', opacity: 0.1, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🩺</Box>
-                <Box sx={{ position: 'absolute', bottom: '25%', left: '10%', fontSize: '2rem', opacity: 0.1, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>📊</Box>
-                <Box sx={{ position: 'absolute', bottom: '30%', right: '15%', fontSize: '2rem', opacity: 0.1, animation: 'float 4.5s ease-in-out infinite', animationDelay: '1.5s' }}>🧬</Box>
-                <style>{`
-                  @keyframes float {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-15px); }
-                  }
-                `}</style>
-                
-                <Box sx={{ fontSize: '4rem', animation: 'bounce 2s ease-in-out infinite' }}>🤖</Box>
-                <style>{`
-                  @keyframes bounce {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-15px); }
-                  }
-                `}</style>
-                
-                <Typography variant="h5" fontWeight="700" sx={{ color: '#1e3c72' }}>
-                  👋 Welcome to {siteTitle} Assistant!
-                </Typography>
-                <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
-                  💬 Ask me anything about diabetes management, diet, exercise, medications, or symptoms
-                </Typography>
-                
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2, mt: 2 }}>
-                  <Chip label="🍎 Diet Advice" sx={{ py: 2, px: 1, fontSize: '0.9rem', bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} />
-                  <Chip label="🏃 Exercise Tips" sx={{ py: 2, px: 1, fontSize: '0.9rem', bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />
-                  <Chip label="💊 Medications" sx={{ py: 2, px: 1, fontSize: '0.9rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} />
-                  <Chip label="📊 Health Tracking" sx={{ py: 2, px: 1, fontSize: '0.9rem', bgcolor: '#f3e5f5', color: '#6a1b9a', fontWeight: 600 }} />
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flex: 1,
+                  gap: 2.5,
+                  textAlign: 'center',
+                }}
+              >
+                <Avatar sx={{ width: 72, height: 72, bgcolor: '#e0f2fe', color: '#0369a1' }}>
+                  <HealthAndSafetyIcon sx={{ fontSize: 36 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" fontWeight={850} sx={{ color: '#0f172a', mb: 1 }}>
+                    Ask Diavise about your diabetes care
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 620, mx: 'auto', lineHeight: 1.7 }}>
+                    Get educational suggestions about diet, exercise, symptoms, medications, and care planning.
+                  </Typography>
+                </Box>
+                <Alert severity="info" sx={{ maxWidth: 680, borderRadius: 2, textAlign: 'left' }}>
+                  For urgent symptoms or treatment decisions, contact a qualified healthcare professional.
+                </Alert>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.25, width: '100%', maxWidth: 680 }}>
+                  {starterPrompts.map((prompt) => (
+                    <Button
+                      key={prompt}
+                      variant="outlined"
+                      onClick={() => sendMessage(prompt)}
+                      sx={{ borderRadius: 2, textTransform: 'none', justifyContent: 'flex-start', fontWeight: 750, py: 1.1 }}
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
                 </Box>
               </Box>
             )}
-            
-            {messages.map((msg, idx) => (
-              <Grow key={idx} in timeout={300}>
-                <Box sx={{ 
+
+            {messages.map((msg, index) => (
+              <Box
+                key={`${msg.role}-${index}`}
+                sx={{
                   display: 'flex',
                   justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   mb: 2,
                   gap: 1.5,
                   alignItems: 'flex-start',
-                }}>
-                  {msg.role === 'assistant' && (
-                    <Avatar sx={{ 
-                      bgcolor: 'white',
-                      width: 36,
-                      height: 36,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }}>
-                      <Box component="span" sx={{ fontSize: '1.2rem' }}>🤖</Box>
-                    </Avatar>
+                }}
+              >
+                {msg.role === 'assistant' && (
+                  <Avatar sx={{ bgcolor: '#e0f2fe', color: '#0369a1', width: 36, height: 36 }}>
+                    <HealthAndSafetyIcon sx={{ fontSize: 20 }} />
+                  </Avatar>
+                )}
+
+                <Box sx={{ maxWidth: { xs: '88%', md: '74%' } }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      bgcolor: msg.role === 'user' ? '#2563eb' : msg.isError ? '#fff7ed' : '#fff',
+                      color: msg.role === 'user' ? '#fff' : '#1f2937',
+                      borderRadius: 2.5,
+                      border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
+                      boxShadow: msg.role === 'assistant' ? '0 8px 22px rgba(15, 23, 42, 0.05)' : 'none',
+                      '& p': { margin: 0, marginBottom: 1 },
+                      '& p:last-child': { marginBottom: 0 },
+                      '& ul, & ol': { margin: '8px 0', paddingLeft: '20px' },
+                      '& strong': { fontWeight: 700 },
+                    }}
+                  >
+                    {msg.role === 'assistant' ? (
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    ) : (
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: '#fff' }}>
+                        {msg.content}
+                      </Typography>
+                    )}
+                  </Paper>
+
+                  {msg.role === 'assistant' && msg.sources?.length > 0 && (
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                      <Chip icon={<MenuBookIcon />} label="Sources" size="small" sx={{ fontWeight: 750 }} />
+                      {msg.sources.slice(0, 3).map((source) => (
+                        <Chip
+                          key={source.id}
+                          label={`[${source.id}] ${String(source.title || 'Source').substring(0, 28)}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: '0.72rem' }}
+                        />
+                      ))}
+                    </Stack>
                   )}
-                  
-                  <Box sx={{ maxWidth: '75%' }}>
-                    <Paper
-                      elevation={2}
-                      sx={{
-                        p: 2,
-                        background: msg.role === 'user' 
-                          ? '#1e3c72'
-                          : 'white',
-                        color: msg.role === 'user' ? '#fff' : '#2c3e50',
-                        borderRadius: 2,
-                        '& p': { margin: 0, marginBottom: 1 },
-                        '& p:last-child': { marginBottom: 0 },
-                        '& ul, & ol': { margin: '8px 0', paddingLeft: '20px' },
-                        '& strong': { fontWeight: 600 },
-                        '& code': { 
-                          background: msg.role === 'user' ? 'rgba(255,255,255,0.2)' : '#f1f3f5',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '0.9em',
-                        },
-                      }}
-                    >
-                      {msg.role === 'assistant' ? (
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      ) : (
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: '#ffffff' }}>
-                          {msg.content}
-                        </Typography>
-                      )}
-                    </Paper>
-                    
-                    {/* Display sources for assistant messages */}
-                    {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                      <Box sx={{ mt: 1 }}>
-                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
-                          <MenuBookIcon sx={{ fontSize: 14, color: '#1e3c72' }} />
-                          <Typography variant="caption" sx={{ color: '#1e3c72', fontWeight: 600 }}>
-                            Sources:
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                          {msg.sources.map((source) => (
-                            <Chip
-                              key={source.id}
-                              label={`[${source.id}] ${source.title.substring(0, 30)}... (${source.country})`}
-                              size="small"
-                              sx={{
-                                fontSize: '0.7rem',
-                                height: 'auto',
-                                py: 0.5,
-                                '& .MuiChip-label': { px: 1, py: 0.25 },
-                                bgcolor: '#e3f2fd',
-                                color: '#1e3c72',
-                                border: '1px solid #1e3c72',
-                              }}
-                            />
-                          ))}
-                        </Stack>
-                      </Box>
-                    )}
-                    
-                    {/* Context used indicator */}
-                    {msg.role === 'assistant' && msg.contextUsed && (
-                      <Chip
-                        icon={<MenuBookIcon sx={{ fontSize: 12 }} />}
-                        label="Based on guidelines"
-                        size="small"
-                        sx={{
-                          mt: 0.5,
-                          fontSize: '0.7rem',
-                          height: 20,
-                          bgcolor: '#10b981',
-                          color: 'white',
-                          '& .MuiChip-icon': { color: 'white' }
-                        }}
-                      />
-                    )}
-                  </Box>
-                  
-                  {msg.role === 'user' && (
-                    <Avatar sx={{ bgcolor: '#8b5cf6', width: 36, height: 36 }}>
-                      <Box component="span" sx={{ fontSize: '1.2rem' }}>👤</Box>
-                    </Avatar>
+
+                  {msg.role === 'assistant' && msg.contextUsed && (
+                    <Chip
+                      icon={<MenuBookIcon sx={{ fontSize: 13 }} />}
+                      label="Based on available guidance"
+                      size="small"
+                      sx={{ mt: 0.75, fontSize: '0.72rem', bgcolor: '#10b981', color: '#fff', '& .MuiChip-icon': { color: '#fff' } }}
+                    />
                   )}
                 </Box>
-              </Grow>
+
+                {msg.role === 'user' && (
+                  <Avatar sx={{ bgcolor: '#2563eb', width: 36, height: 36 }}>
+                    <Typography variant="caption" sx={{ color: '#fff', fontWeight: 800 }}>
+                      You
+                    </Typography>
+                  </Avatar>
+                )}
+              </Box>
             ))}
-            
+
             {loading && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'white', width: 36, height: 36, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                  <Box component="span" sx={{ fontSize: '1.2rem' }}>🤖</Box>
+                <Avatar sx={{ bgcolor: '#e0f2fe', color: '#0369a1', width: 36, height: 36 }}>
+                  <HealthAndSafetyIcon sx={{ fontSize: 20 }} />
                 </Avatar>
-                <Paper sx={{ 
-                  p: 2, 
-                  background: 'white',
-                  borderRadius: 2,
-                }}>
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {[0, 1, 2].map((i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: '#8b5cf6',
-                          animation: `typing 1.4s ease-in-out ${i * 0.2}s infinite`,
-                          '@keyframes typing': {
-                            '0%, 60%, 100%': { transform: 'translateY(0)' },
-                            '30%': { transform: 'translateY(-8px)' },
-                          },
-                        }}
-                      />
-                    ))}
-                  </Box>
+                <Paper elevation={0} sx={{ p: 2, bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
+                  <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 700 }}>
+                    Analyzing your question...
+                  </Typography>
                 </Paper>
               </Box>
             )}
-            
+
             <div ref={messagesEndRef} />
           </Box>
 
-          {/* Input area */}
-          <Box sx={{ 
-            p: 2.5, 
-            background: 'white',
-            borderTop: '1px solid #e9ecef',
-            flexShrink: 0,
-          }}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              alignItems: 'flex-end',
-            }}>
+          <Box sx={{ p: { xs: 1.75, md: 2.25 }, bgcolor: '#fff', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
+            <Stack direction="row" spacing={1.5} alignItems="flex-end">
               <TextField
                 fullWidth
                 minRows={1}
                 maxRows={4}
                 multiline
-                placeholder="💬 Type your question here... (Press Enter to send)"
+                placeholder="Type your question here... (Press Enter to send)"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={loading}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
-                    bgcolor: 'white',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    border: '2px solid transparent',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: '0 4px 16px rgba(30,60,114,0.15)',
-                      borderColor: '#667eea',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'transparent',
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 6px 20px rgba(30,60,114,0.2)',
-                      borderColor: '#667eea',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'transparent',
-                      borderWidth: 0,
-                    },
+                    bgcolor: '#fff',
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
+                    '&:hover fieldset': { borderColor: '#0ea5e9' },
+                    '&.Mui-focused fieldset': { borderColor: '#0ea5e9' },
                   },
-                  '& .MuiInputBase-input': {
-                    fontSize: '1rem',
-                    fontWeight: 500,
-                  }
                 }}
               />
-              <IconButton 
-                onClick={handleSend} 
+              <IconButton
+                onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
                 sx={{
-                  background: '#8b5cf6',
-                  color: 'white',
+                  bgcolor: '#2563eb',
+                  color: '#fff',
                   width: 52,
                   height: 52,
-                  boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
-                  '&:hover': {
-                    background: '#7c3aed',
-                    transform: 'scale(1.05)',
-                    boxShadow: '0 6px 16px rgba(139,92,246,0.4)',
-                  },
-                  '&:disabled': {
-                    bgcolor: '#e0e0e0',
-                    color: '#9e9e9e',
-                  },
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 8px 20px rgba(37,99,235,0.22)',
+                  '&:hover': { bgcolor: '#1d4ed8' },
+                  '&:disabled': { bgcolor: '#e2e8f0', color: '#94a3b8' },
                 }}
               >
-                {loading ? (
-                  <Box sx={{ animation: 'spin 1s linear infinite' }}>⏳</Box>
-                ) : (
-                  <SendIcon />
-                )}
-                <style>{`
-                  @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                  }
-                `}</style>
+                <SendIcon />
               </IconButton>
-            </Box>
+            </Stack>
           </Box>
         </Paper>
       </Container>

@@ -39,6 +39,7 @@ import FeedbackSection from '../components/Dashboard/sections/FeedbackSection';
 import DiagnosedInsightsView from '../components/Dashboard/views/DiagnosedInsightsView';
 import UndiagnosedInsightsView from '../components/Dashboard/views/UndiagnosedInsightsView';
 import PersonalizedSuggestionsView from '../components/Dashboard/views/PersonalizedSuggestionsView';
+import CarePlanView from '../components/Dashboard/views/CarePlanView';
 import dashboardTheme from '../theme/dashboardTheme';
 
 // Custom Hooks
@@ -58,9 +59,9 @@ const undiagnosedSections = [
 ];
 
 const diagnosedSections = [
-  { label: 'Dashboard', icon: <DashboardIcon /> },
-  { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
-  { label: 'Chat Assistant', icon: <ChatIcon /> },
+  { label: 'Overview', icon: <DashboardIcon /> },
+  { label: 'Care Plan', icon: <AutoAwesomeIcon /> },
+  { label: 'AI Assistant', icon: <ChatIcon /> },
   { label: 'Feedback', icon: <FeedbackOutlinedIcon /> },
 ];
 
@@ -181,6 +182,11 @@ function Dashboard() {
 
   // No-op: assessments navigated inline via onClick handlers
 
+  const switchToDiagnosedSection = (label) => {
+    const idx = diagnosedSections.findIndex((section) => section.label === label);
+    if (idx >= 0) setSelectedIndex(idx);
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -267,14 +273,14 @@ function Dashboard() {
         </IconButton>
         {/* Content container - Responsive Padding */}
         <Box sx={{ 
-          px: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 2.5, md: 3, lg: 4 }, 
-          pt: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 3, md: 4, lg: 5 }, 
-          pb: currentSection === 'Chat Assistant' ? 0 : { xs: 4, sm: 5, md: 6 }, 
+          px: currentSection === 'AI Assistant' ? 0 : { xs: 2, sm: 2.5, md: 3, lg: 4 }, 
+          pt: currentSection === 'AI Assistant' ? 0 : { xs: 2, sm: 3, md: 4, lg: 5 }, 
+          pb: currentSection === 'AI Assistant' ? 0 : { xs: 4, sm: 5, md: 6 }, 
           display: 'flex', 
           justifyContent: 'center', 
           position: 'relative', 
           zIndex: 1,
-          height: currentSection === 'Chat Assistant' ? '100vh' : 'auto',
+          height: currentSection === 'AI Assistant' ? '100vh' : 'auto',
           animation: 'fadeIn 0.4s ease-out',
           '@keyframes fadeIn': {
             from: { opacity: 0, transform: 'translateY(10px)' },
@@ -283,9 +289,9 @@ function Dashboard() {
         }}>
           <Box sx={{ 
             width: '100%', 
-            maxWidth: currentSection === 'Dashboard'
+            maxWidth: currentSection === 'Overview' || currentSection === 'Dashboard'
               ? '100%'
-              : currentSection === 'Personalized Suggestions'
+              : currentSection === 'Care Plan'
               ? '100%'
               : { 
                   xs: '100%', 
@@ -294,10 +300,10 @@ function Dashboard() {
                   lg: 'min(1400px, 92vw)',
                   xl: '1440px'
                 },
-            height: currentSection === 'Chat Assistant' ? '100%' : 'auto',
+            height: currentSection === 'AI Assistant' ? '100%' : 'auto',
             margin: '0 auto',
           }}>
-            {currentSection === 'Dashboard' && (
+            {(currentSection === 'Overview' || currentSection === 'Dashboard') && (
               <Box>
                 {user?.diabetes_diagnosed === 'yes' ? (
                   <DiagnosedInsightsView 
@@ -309,6 +315,11 @@ function Dashboard() {
                     personalInfoCompletion={personalInfoCompletion}
                     medicalInfo={medicalInfo}
                     user={user}
+                    dietHistory={dietHistory || []}
+                    exerciseHistory={exerciseHistory || []}
+                    lifestyleHistory={lifestyleHistory || []}
+                    onOpenTool={setOpenCardModal}
+                    onSwitchSection={switchToDiagnosedSection}
                   />
                 ) : (
                   <UndiagnosedInsightsView 
@@ -336,6 +347,22 @@ function Dashboard() {
               <CheckRiskSection />
             )}
 
+            {currentSection === 'Care Plan' && user?.diabetes_diagnosed === 'yes' && (
+              <CarePlanView
+                planUsageAnalytics={planUsageAnalytics}
+                macronutrientBalance={macronutrientBalance}
+                mealWiseDistribution={mealWiseDistribution}
+                bmiAnalytics={bmiAnalytics}
+                personalInfo={personalInfo}
+                personalInfoCompletion={personalInfoCompletion}
+                medicalInfo={medicalInfo}
+                dietHistory={dietHistory || []}
+                exerciseHistory={exerciseHistory || []}
+                lifestyleHistory={lifestyleHistory || []}
+                onOpenTool={setOpenCardModal}
+              />
+            )}
+
             {currentSection === 'Personalized Suggestions' && (
               <Box sx={{ 
                 bgcolor: 'transparent', 
@@ -350,7 +377,7 @@ function Dashboard() {
               </Box>
             )}
 
-            {currentSection === 'Chat Assistant' && (
+            {currentSection === 'AI Assistant' && (
               <Box sx={{ 
                 position: 'absolute',
                 top: 0,
@@ -386,10 +413,10 @@ function Dashboard() {
                   >
                     <LockIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
                     <Typography variant="h5" fontWeight={600} sx={{ mb: 1 }}>
-                      Chat Assistant Locked
+                      AI Assistant Locked
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                      Complete your Personal & Medical Information to unlock the AI Chat Assistant
+                      Complete your Personal & Medical Information to unlock the AI Assistant
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                       Profile Completion: {personalInfoCompletion}%
@@ -397,7 +424,7 @@ function Dashboard() {
                     <Button
                       variant="contained"
                       onClick={() => {
-                        const idx = diagnosedSections.findIndex((s) => s.label === 'Personalized Suggestions');
+                        const idx = diagnosedSections.findIndex((s) => s.label === 'Care Plan');
                         setSelectedIndex(idx >= 0 ? idx : 0);
                       }}
                       sx={{
