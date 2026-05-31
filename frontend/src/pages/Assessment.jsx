@@ -49,8 +49,15 @@ const formatDecimal = (value, digits = 2) => {
 
 const formatPercent = (value, digits = 0) => `${formatDecimal(Number(value) * 100, digits)}%`;
 
+const formatClinicalLabel = (value = '') => value
+  .replace(/_/g, ' ')
+  .replace(/([a-z])([A-Z])/g, '$1 $2')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .replace(/\b\w/g, (char) => char.toUpperCase());
+
 const StackPanel = ({ title, subtitle, children }) => (
-  <Card sx={{ height: '100%', minHeight: 640, bgcolor: 'rgba(17,24,39,0.88)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 1.5, boxShadow: '0 22px 64px rgba(0,0,0,0.3)', backdropFilter: 'blur(18px)' }}>
+  <Card sx={{ height: '100%', minHeight: { xs: 'auto', lg: 640 }, bgcolor: 'rgba(17,24,39,0.88)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 1.5, boxShadow: '0 22px 64px rgba(0,0,0,0.3)', backdropFilter: 'blur(18px)' }}>
     <CardContent sx={{ p: { xs: 2, md: 2.5 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: 1.6 }}>
         <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '1rem' }}>{title}</Typography>
@@ -69,13 +76,13 @@ const TelemetryTile = ({ label, value, tone }) => (
 );
 
 const ClinicalLogRow = ({ title, detail, status, active = false }) => (
-  <Box sx={{ display: 'grid', gridTemplateColumns: '10px 1fr auto', alignItems: 'center', gap: 1.2, p: 1.35, mb: 1, bgcolor: active ? 'rgba(45,212,191,0.07)' : 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.055)', borderRadius: 1 }}>
+  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '10px 1fr', sm: '10px 1fr auto' }, alignItems: 'center', gap: 1.2, p: 1.35, mb: 1, bgcolor: active ? 'rgba(45,212,191,0.07)' : 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.055)', borderRadius: 1 }}>
     <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: active ? '#2dd4bf' : '#64748b', boxShadow: active ? '0 0 14px rgba(45,212,191,0.62)' : 'none' }} />
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: '#f8fafc', fontWeight: 720, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</Typography>
-      <Typography sx={{ color: 'rgba(203,213,225,0.58)', fontFamily: monoFont, fontSize: '0.68rem' }}>{detail}</Typography>
+      <Typography sx={{ color: '#f8fafc', fontWeight: 720, fontSize: '0.9rem' }}>{title}</Typography>
+      <Typography sx={{ color: 'rgba(203,213,225,0.7)', fontSize: '0.78rem', lineHeight: 1.45 }}>{detail}</Typography>
     </Box>
-    <Typography sx={{ color: active ? '#99f6e4' : '#cbd5e1', fontFamily: monoFont, fontWeight: 700, fontSize: '0.66rem' }}>{status}</Typography>
+    <Typography sx={{ color: active ? '#99f6e4' : '#dbeafe', fontFamily: monoFont, fontWeight: 700, fontSize: '0.68rem', gridColumn: { xs: '2', sm: 'auto' } }}>{status}</Typography>
   </Box>
 );
 
@@ -190,6 +197,8 @@ const Assessment = () => {
       const symptoms_present = Object.entries(features)
         .filter(([k, v]) => !['Age', 'Gender', 'Obesity'].includes(k) && Number(v) === 1)
         .map(([k]) => k);
+      const symptoms_evaluated = Object.keys(features)
+        .filter((k) => !['Age', 'Gender', 'Obesity'].includes(k));
 
       const feature_importance = {};
       if (result.feature_importance && typeof result.feature_importance === 'object') {
@@ -208,6 +217,7 @@ const Assessment = () => {
         next_steps: result?.recommendations?.next_steps || [],
         feature_importance,
         symptoms_present,
+        symptoms_evaluated,
         medical_reasoning: result?.llm_insights?.medical_reasoning || '',
         clinical_notes: result?.llm_insights?.clinical_notes || '',
         priority_symptoms: result?.llm_insights?.priority_symptoms || [],
@@ -265,17 +275,26 @@ const Assessment = () => {
     recommendations,
     next_steps,
     feature_importance,
-    symptoms_present
+    symptoms_present,
+    symptoms_evaluated
   } = assessmentData;
 
   const featureEntries = Object.entries(feature_importance)
     .sort(([, a], [, b]) => Number(b) - Number(a))
     .slice(0, 8);
-  const featureLabels = featureEntries.length ? featureEntries.map(([label]) => label) : ['Age', 'Gender', 'BMI', 'Glucose', 'Family History', 'Activity', 'Sleep', 'Hydration'];
+  const featureLabels = featureEntries.length ? featureEntries.map(([label]) => formatClinicalLabel(label)) : ['Age', 'Gender', 'BMI', 'Glucose', 'Family History', 'Activity', 'Sleep', 'Hydration'];
   const featureValues = featureEntries.length ? featureEntries.map(([, value]) => Number(value) || 0) : Array(8).fill(0);
   const presentCount = symptoms_present.length;
-  const absentCount = Math.max(TOTAL_SYMPTOMS - presentCount, 0);
+  const evaluatedSymptoms = symptoms_evaluated?.length ? symptoms_evaluated : Array.from({ length: TOTAL_SYMPTOMS }, (_, index) => `Assessment item ${index + 1}`);
+  const evaluatedCount = Math.max(evaluatedSymptoms.length, TOTAL_SYMPTOMS);
+  const absentCount = Math.max(evaluatedCount - presentCount, 0);
   const riskColor = getRiskColor(risk_level);
+  const careGuidance = [...recommendations, ...next_steps].filter(Boolean);
+  const recommendationDetails = [
+    'This supports your current low-risk profile and helps keep future changes visible.',
+    'Regular check-ups help confirm that your current readings and symptoms remain stable.',
+    'Report changes early so a clinician can review symptoms before they become more serious.',
+  ];
 
   // COMPREHENSIVE CHART CONFIGURATIONS
   const gaugeOptions = {
@@ -346,7 +365,7 @@ const Assessment = () => {
             show: true,
             name: { fontSize: '12px', color: '#94a3b8', fontWeight: 700, fontFamily: monoFont },
             value: { fontSize: '26px', color: '#f8fafc', fontWeight: 800, fontFamily: monoFont },
-            total: { show: true, label: 'Evaluated', fontSize: '11px', color: '#94a3b8', fontWeight: 700, fontFamily: monoFont, formatter: () => String(TOTAL_SYMPTOMS) }
+            total: { show: true, label: 'Evaluated', fontSize: '11px', color: '#94a3b8', fontWeight: 700, fontFamily: monoFont, formatter: () => String(evaluatedCount) }
           }
         }
       }
@@ -417,8 +436,8 @@ const Assessment = () => {
         <Container maxWidth={false} sx={{ px: { xs: 2, md: 3, xl: 5 } }}>
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
             <Paper sx={{ bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 1.5, p: { xs: 2, md: 3 }, mb: 2.5, boxShadow: '0 24px 70px rgba(0,0,0,0.34)' }}>
-              <Grid container spacing={2.5} alignItems="center">
-                <Grid item xs={12} lg={5}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(340px, 0.9fr) minmax(520px, 1.1fr)' }, gap: 2.5, alignItems: 'center' }}>
+                <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Box sx={{ width: 46, height: 46, borderRadius: 1.25, display: 'grid', placeItems: 'center', bgcolor: 'rgba(45,212,191,0.08)', border: '1px solid rgba(45,212,191,0.18)' }}>
                       <AssessmentIcon sx={{ color: '#5eead4' }} />
@@ -427,13 +446,13 @@ const Assessment = () => {
                       <Typography sx={{ color: '#f8fafc', fontWeight: 800, letterSpacing: 0, fontSize: { xs: '1.2rem', md: '1.45rem' } }}>
                         Diabetes Risk Assessment Report
                       </Typography>
-                      <Typography sx={{ color: 'rgba(203,213,225,0.66)', fontSize: '0.86rem', fontFamily: monoFont }}>
-                        AI-assisted clinical telemetry snapshot
+                      <Typography sx={{ color: 'rgba(203,213,225,0.72)', fontSize: '0.88rem' }}>
+                        Assessment based on your questionnaire answers and AI risk model output
                       </Typography>
                     </Box>
                   </Box>
-                </Grid>
-                <Grid item xs={12} lg={7}>
+                </Box>
+                <Box>
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '1.2fr repeat(3, 1fr)' }, gap: 1.25 }}>
                     <Box sx={{ p: 1.5, bgcolor: 'rgba(15,23,42,0.78)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1 }}>
                       <Typography sx={{ color: 'rgba(148,163,184,0.82)', fontFamily: monoFont, fontSize: '0.68rem', fontWeight: 700 }}>RISK LEVEL</Typography>
@@ -442,7 +461,7 @@ const Assessment = () => {
                     {[
                       ['PROBABILITY', formatPercent(probability, 0)],
                       ['CONFIDENCE', formatPercent(confidence, 0)],
-                      ['SYMPTOMS', `${presentCount}/${TOTAL_SYMPTOMS}`],
+                      ['SYMPTOMS', `${presentCount}/${evaluatedCount}`],
                     ].map(([label, value]) => (
                       <Box key={label} sx={{ p: 1.5, bgcolor: 'rgba(15,23,42,0.58)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1 }}>
                         <Typography sx={{ color: 'rgba(148,163,184,0.82)', fontFamily: monoFont, fontSize: '0.68rem', fontWeight: 700 }}>{label}</Typography>
@@ -450,13 +469,13 @@ const Assessment = () => {
                       </Box>
                     ))}
                   </Box>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             </Paper>
           </motion.div>
 
-          <Grid container spacing={2.5} sx={{ alignItems: 'stretch' }}>
-            <Grid item xs={12} xl={4}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2.5, alignItems: 'stretch' }}>
+            <Box>
               <StackPanel title="Risk Telemetry" subtitle="Probability and symptom distribution">
                 <Box sx={{ position: 'relative', display: 'grid', placeItems: 'center', minHeight: 276, '&:before': { content: '""', position: 'absolute', width: 232, height: 232, borderRadius: '50%', background: 'repeating-conic-gradient(from -150deg, rgba(94,234,212,0.34) 0deg 1deg, transparent 1deg 8deg)', opacity: 0.5, mask: 'radial-gradient(circle, transparent 59%, #000 60%, #000 64%, transparent 65%)' } }}>
                   <Chart options={gaugeOptions} series={gaugeSeries} type="radialBar" height={260} />
@@ -464,53 +483,55 @@ const Assessment = () => {
                 <Box sx={{ height: 1, bgcolor: 'rgba(255,255,255,0.06)', my: 1.5 }} />
                 <Chart options={donutOptions} series={donutSeries} type="donut" height={250} />
               </StackPanel>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} xl={4}>
+            <Box>
               <StackPanel title="AI Model Interpretability" subtitle="Feature impact and weighted importance">
                 <Chart options={radarOptions} series={radarSeries} type="radar" height={278} />
                 <Box sx={{ height: 1, bgcolor: 'rgba(255,255,255,0.06)', my: 1.5 }} />
                 <Chart options={barHorizontalOptions} series={barHorizontalSeries} type="bar" height={275} />
               </StackPanel>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} xl={4}>
-              <StackPanel title={`Present Symptoms Logs`} subtitle={`${presentCount} symptoms reported • ${TOTAL_SYMPTOMS} symptoms evaluated`}>
+            <Box>
+              <StackPanel title="Present Symptoms Logs" subtitle={`${presentCount} symptoms reported - ${evaluatedCount} symptoms evaluated`}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.2, mb: 2 }}>
                   <TelemetryTile label="Reported" value={presentCount} tone="#5eead4" />
-                  <TelemetryTile label="Evaluated" value={TOTAL_SYMPTOMS} tone="#93c5fd" />
+                  <TelemetryTile label="Evaluated" value={evaluatedCount} tone="#93c5fd" />
                   <TelemetryTile label="Absent" value={absentCount} tone="#cbd5e1" />
                   <TelemetryTile label="Status" value={presentCount === 0 ? 'CLEAR' : 'VERIFY'} tone={presentCount === 0 ? '#86efac' : '#fbbf24'} />
                 </Box>
-                <Box sx={{ flex: 1, minHeight: 390, overflowY: 'auto', pr: 0.5 }}>
+                <Box sx={{ flex: 1, maxHeight: { xs: 480, lg: 430 }, overflowY: 'auto', pr: 0.5 }}>
                   {presentCount === 0 ? (
-                    Array.from({ length: 7 }).map((_, index) => (
-                      <ClinicalLogRow key={index} title={`Symptom channel ${String(index + 1).padStart(2, '0')}`} detail="No positive signal detected" status="Verified clear" />
+                    evaluatedSymptoms.map((symptom) => (
+                      <ClinicalLogRow key={symptom} title={formatClinicalLabel(symptom)} detail="No positive response was recorded for this symptom." status="Not reported" />
                     ))
                   ) : (
-                    symptoms_present.map((symptom, index) => (
-                      <ClinicalLogRow key={symptom} title={symptom} detail={`Positive response recorded in channel ${String(index + 1).padStart(2, '0')}`} status="Present" active />
+                    symptoms_present.map((symptom) => (
+                      <ClinicalLogRow key={symptom} title={formatClinicalLabel(symptom)} detail="Positive response recorded for this symptom during the questionnaire." status="Present" active />
                     ))
                   )}
                 </Box>
               </StackPanel>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
           <Paper sx={{ mt: 2.5, bgcolor: 'rgba(17,24,39,0.92)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 1.5, p: { xs: 2, md: 2.75 } }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
               <Box>
                 <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '1.1rem' }}>Recommendations Matrix</Typography>
-                <Typography sx={{ color: 'rgba(203,213,225,0.62)', fontFamily: monoFont, fontSize: '0.78rem' }}>{recommendations.length} prioritized care guidance items</Typography>
+                <Typography sx={{ color: 'rgba(203,213,225,0.72)', fontSize: '0.82rem' }}>{careGuidance.length} practical next-step guidance items based on your answers</Typography>
               </Box>
               <Chip label="CLINICAL REVIEW ADVISED" sx={{ bgcolor: 'rgba(45,212,191,0.08)', color: '#99f6e4', border: '1px solid rgba(45,212,191,0.2)', fontFamily: monoFont, fontWeight: 700 }} />
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-              {(recommendations.length ? recommendations : ['Maintain regular health monitoring and follow up with a qualified clinician.']).map((rec, i) => (
-                <Box key={`${rec}-${i}`} sx={{ position: 'relative', p: 2, pl: 3, bgcolor: 'rgba(15,23,42,0.58)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1.25, '&:before': { content: '""', position: 'absolute', left: 12, top: 20, bottom: 20, width: 1, bgcolor: 'rgba(45,212,191,0.22)' } }}>
-                  <Box sx={{ position: 'absolute', left: 8.5, top: 20, width: 8, height: 8, borderRadius: '50%', bgcolor: '#2dd4bf', boxShadow: '0 0 14px rgba(45,212,191,0.72)' }} />
-                  <Typography sx={{ color: '#f8fafc', fontWeight: 760, lineHeight: 1.45, mb: 0.7 }}>{rec}</Typography>
-                  <Typography sx={{ color: 'rgba(203,213,225,0.62)', fontSize: '0.82rem', lineHeight: 1.6 }}>Telemetry recommendation #{String(i + 1).padStart(2, '0')} generated from the current assessment model outputs.</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
+              {(careGuidance.length ? careGuidance : ['Maintain regular health monitoring and follow up with a qualified clinician.']).map((rec, i) => (
+                <Box key={`${rec}-${i}`} sx={{ position: 'relative', p: { xs: 2, md: 2.25 }, pl: { xs: 4, md: 4.25 }, bgcolor: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.14)', borderRadius: 1.5, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)' }}>
+                  <Box sx={{ position: 'absolute', left: 18, top: 25, width: 9, height: 9, borderRadius: '50%', bgcolor: '#2dd4bf', boxShadow: '0 0 16px rgba(45,212,191,0.72)' }} />
+                  <Typography sx={{ color: '#ffffff', fontWeight: 800, lineHeight: 1.45, mb: 0.8, fontSize: '0.98rem' }}>{rec}</Typography>
+                  <Typography sx={{ color: 'rgba(226,232,240,0.78)', fontSize: '0.86rem', lineHeight: 1.65 }}>
+                    {recommendationDetails[i % recommendationDetails.length]}
+                  </Typography>
                 </Box>
               ))}
             </Box>

@@ -48,7 +48,7 @@ const AppContent = () => {
   
   // Pages where we don't want the universal header (landing `/` uses the same sticky header as the app)
   // Also hide header for admin/super-admin routes.
-  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/dashboard', '/admin-dashboard', '/onboarding', '/diagnosis-question', '/symptom-assessment'];
+  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/dashboard', '/admin-dashboard', '/onboarding', '/diagnosis-question', '/symptom-assessment', '/assessment'];
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/admin-') || location.pathname.startsWith('/admin/');
   const shouldShowHeader = !noHeaderPages.includes(location.pathname) && 
                           !isAdminRoute &&

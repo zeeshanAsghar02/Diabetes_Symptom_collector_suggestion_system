@@ -47,6 +47,9 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const googleButtonContainerRef = useRef(null);
     const theme = useTheme();
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const today = new Date();
+    const maxProfileDobDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
+    const maxProfileDob = maxProfileDobDate.toISOString().slice(0, 10);
 
     const getPendingOnboardingAnswers = () => {
         const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
@@ -139,9 +142,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         }
 
         const dobDate = new Date(profileDob);
-        const today = new Date();
-        if (Number.isNaN(dobDate.getTime()) || dobDate > today) {
-            setProfileError('Please enter a valid past date of birth.');
+        if (Number.isNaN(dobDate.getTime()) || dobDate > maxProfileDobDate) {
+            setProfileError('Please enter a valid date of birth. You must be at least 11 years old.');
             return;
         }
 
@@ -350,6 +352,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                             value={profileDob}
                             onChange={(e) => setProfileDob(e.target.value)}
                             InputLabelProps={{ shrink: true }}
+                            inputProps={{ max: maxProfileDob }}
                             sx={{ mb: 2 }}
                         />
 
