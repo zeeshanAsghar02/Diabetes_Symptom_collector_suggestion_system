@@ -62,11 +62,13 @@ export const updateProfile = async (req, res) => {
 
         // Update Personal Info
         if (personalInfo) {
-            // If personal info contains fullName, update the main User model as well
-            if (personalInfo.fullName) {
-                user.fullName = personalInfo.fullName;
-                await user.save();
-            }
+            // Keep core auth/profile fields in sync for assessment and onboarding flows.
+            if (personalInfo.fullName) user.fullName = personalInfo.fullName;
+            if (personalInfo.date_of_birth) user.date_of_birth = personalInfo.date_of_birth;
+            if (personalInfo.gender) user.gender = personalInfo.gender;
+            if (personalInfo.country !== undefined) user.country = personalInfo.country;
+            if (personalInfo.phone_number !== undefined) user.phone_number = personalInfo.phone_number;
+            await user.save();
             await UserPersonalInfo.findOneAndUpdate({ user_id: userId }, personalInfo, { upsert: true, new: true, runValidators: true });
         }
 

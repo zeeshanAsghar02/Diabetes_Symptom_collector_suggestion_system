@@ -15,6 +15,14 @@ import {
     InputAdornment,
     alpha,
     Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmailIcon from '@mui/icons-material/Email';
@@ -34,6 +42,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const [focusedField, setFocusedField] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+    const [pendingAuthPayload, setPendingAuthPayload] = useState(null);
+    const [profileDob, setProfileDob] = useState('');
+    const [profileGender, setProfileGender] = useState('');
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileError, setProfileError] = useState('');
     const googleButtonContainerRef = useRef(null);
     const theme = useTheme();
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -64,7 +78,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         return true;
     };
 
-    const handleAuthSuccess = async (payload) => {
+    const handleAuthSuccess = async (payload, options = {}) => {
         if (payload?.data?.user && payload?.data?.accessToken) {
             localStorage.setItem('accessToken', payload.data.accessToken);
             const roles = payload.data.user.roles || [];
@@ -81,14 +95,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 return;
             }
 
-            if (payload.data.user.profileCompletionRequired) {
-                if (returnTo === 'symptom-assessment') {
-                    sessionStorage.setItem('returnToSymptomAssessment', 'true');
-                }
-                navigate('/personalized-suggestions/personal-medical', {
-                    replace: true,
-                    state: { returnTo, profileCompletionRequired: true },
-                });
+            if (payload.data.user.profileCompletionRequired && !options.skipProfileCompletion) {
+                setPendingAuthPayload(payload);
+                setProfileDob(payload.data.user.date_of_birth ? String(payload.data.user.date_of_birth).slice(0, 10) : '');
+                setProfileGender(payload.data.user.gender || '');
+                setProfileError('');
+                setProfileDialogOpen(true);
                 return;
             }
 
@@ -122,6 +134,52 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         setErrorMessage(errorMsg);
         setError(errorMsg);
         setSuccess('');
+    };
+
+    const handleProfileCompletionSubmit = async () => {
+        if (!profileDob || !profileGender) {
+            setProfileError('Date of birth and gender are required.');
+            return;
+        }
+
+        const dobDate = new Date(profileDob);
+        const today = new Date();
+        if (Number.isNaN(dobDate.getTime()) || dobDate > today) {
+            setProfileError('Please enter a valid past date of birth.');
+            return;
+        }
+
+        setProfileSaving(true);
+        setProfileError('');
+        try {
+            await axiosInstance.put('/users/profile', {
+                personalInfo: {
+                    date_of_birth: profileDob,
+                    gender: profileGender,
+                },
+            });
+
+            const completedPayload = {
+                ...pendingAuthPayload,
+                data: {
+                    ...pendingAuthPayload.data,
+                    user: {
+                        ...pendingAuthPayload.data.user,
+                        date_of_birth: profileDob,
+                        gender: profileGender,
+                        profileCompletionRequired: false,
+                    },
+                },
+            };
+            setProfileDialogOpen(false);
+            setPendingAuthPayload(null);
+            await handleAuthSuccess(completedPayload, { skipProfileCompletion: true });
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Could not save profile details. Please try again.';
+            setProfileError(errorMsg);
+        } finally {
+            setProfileSaving(false);
+        }
     };
 
     const handleGoogleLogin = async (idToken) => {
@@ -508,6 +566,48 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     </Typography>
                 </motion.div>
             </Paper>
+            <Dialog open={profileDialogOpen} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    Complete your profile
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Google does not share date of birth or gender in the normal sign-in token. Please add these two details so your assessment can use the same profile data as manual signup.
+                    </Typography>
+                    {profileError && <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>}
+                    <TextField
+                        fullWidth
+                        label="Date of Birth"
+                        type="date"
+                        value={profileDob}
+                        onChange={(e) => setProfileDob(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ mb: 2 }}
+                    />
+                    <FormControl fullWidth>
+                        <InputLabel>Gender</InputLabel>
+                        <Select
+                            value={profileGender}
+                            label="Gender"
+                            onChange={(e) => setProfileGender(e.target.value)}
+                        >
+                            <MenuItem value="Male">Male</MenuItem>
+                            <MenuItem value="Female">Female</MenuItem>
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button
+                        variant="contained"
+                        onClick={handleProfileCompletionSubmit}
+                        disabled={profileSaving}
+                        fullWidth
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                        {profileSaving ? 'Saving...' : 'Continue'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </motion.div>
     );
 }
