@@ -39,7 +39,7 @@ import {
     CheckCircle as CheckCircleIcon,
     Warning as WarningIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance.js';
 import dayjs from 'dayjs';
 import { getCurrentUser } from '../utils/auth.js';
@@ -47,6 +47,7 @@ import { getCurrentUser } from '../utils/auth.js';
 const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     const { formatDate } = useDateFormat();
     const navigate = useNavigate();
+    const location = useLocation();
     const [personalInfo, setPersonalInfo] = useState(null);
     const [medicalInfo, setMedicalInfo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -87,6 +88,40 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         fetchData();
         loadUserProfile();
     }, []);
+
+    useEffect(() => {
+        if (location.state?.profileCompletionRequired) {
+            setEditMode(true);
+            setActiveStep(0);
+        }
+    }, [location.state]);
+
+    const getPendingOnboardingAnswers = () => {
+        const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
+        if (!pendingAnswersRaw) return [];
+
+        const parsed = JSON.parse(pendingAnswersRaw);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed?.answers && typeof parsed.answers === 'object') {
+            return Object.entries(parsed.answers).map(([questionId, answerText]) => ({
+                questionId,
+                answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : String(answerText),
+            }));
+        }
+        return [];
+    };
+
+    const savePendingOnboardingAnswers = async () => {
+        const pendingAnswers = getPendingOnboardingAnswers();
+        if (!pendingAnswers.length) return false;
+
+        await axiosInstance.post('/questions/batch-save-answers', {
+            answers: pendingAnswers,
+        });
+        sessionStorage.setItem('answersSavedAfterLogin', 'true');
+        sessionStorage.removeItem('pendingOnboardingAnswers');
+        return true;
+    };
 
     const loadUserProfile = async () => {
         try {
@@ -314,6 +349,17 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
             // Notify parent component that data was saved
             if (onDataSaved && typeof onDataSaved === 'function') {
                 onDataSaved();
+            }
+
+            if (location.state?.returnTo === 'symptom-assessment' || sessionStorage.getItem('returnToSymptomAssessment') === 'true') {
+                try {
+                    await savePendingOnboardingAnswers();
+                } catch (saveErr) {
+                    console.error('Failed to save onboarding answers after profile completion:', saveErr);
+                }
+                sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                navigate('/symptom-assessment', { replace: true });
+                return;
             }
             
             setTimeout(() => {

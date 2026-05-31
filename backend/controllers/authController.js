@@ -653,11 +653,11 @@ export const googleLogin = async (req, res) => {
             });
         }
 
-        let user = await User.findOne({ googleId: googleSub });
+        let user = await User.findOne({ googleId: googleSub, deleted_at: null });
 
         // Edge case: existing local account with same email should be linked
         if (!user) {
-            user = await User.findOne({ email });
+            user = await User.findOne({ email, deleted_at: null });
             if (user) {
                 user.googleId = googleSub;
                 user.authProvider = 'google';
@@ -709,6 +709,12 @@ export const googleLogin = async (req, res) => {
             const { UsersRoles } = await import('../models/User_Role.js');
             const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
             roles = userRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
+            if (roles.length === 0) {
+                const { assignDefaultUserRole } = await import('../utils/roleUtils.js');
+                await assignDefaultUserRole(user._id);
+                const refreshedRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+                roles = refreshedRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
+            }
         } catch (roleErr) {
             console.error('Error fetching user roles during Google login:', roleErr);
         }

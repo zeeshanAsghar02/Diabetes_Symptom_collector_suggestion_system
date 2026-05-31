@@ -49,8 +49,36 @@ const SymptomAssessment = () => {
   const [userGender, setUserGender] = useState(null);
   const [canProceed, setCanProceed] = useState(false);
   const [helpInfoOpen, setHelpInfoOpen] = useState(false);
+  const [responseSnapshot, setResponseSnapshot] = useState([]);
   const questionListRef = useRef();
   const accumulatedQuestionsRef = useRef(new Map());
+
+  const formatAnswerValue = (value) => {
+    if (value === undefined || value === null || value === '') return 'Not answered';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') return Object.values(value).filter(Boolean).join(', ') || JSON.stringify(value);
+    return String(value);
+  };
+
+  const updateResponseSnapshotFromMap = () => {
+    setResponseSnapshot(Array.from(accumulatedQuestionsRef.current.values()));
+  };
+
+  const hydrateResponseSnapshot = (diseaseData) => {
+    const nextSnapshot = new Map();
+    (diseaseData?.symptoms || []).forEach((symptom) => {
+      (symptom.questions || []).forEach((q) => {
+        const questionId = String(q.question_id || q._id || `${symptom.name}-${q.question}`);
+        nextSnapshot.set(questionId, {
+          symptomName: symptom.name || 'Symptom',
+          question: q.question || q.question_text || 'Saved assessment question',
+          answer: q.answer || q.current_answer || '',
+        });
+      });
+    });
+    accumulatedQuestionsRef.current = nextSnapshot;
+    setResponseSnapshot(Array.from(nextSnapshot.values()));
+  };
 
   useEffect(() => {
     console.log('🔍 ========== SYMPTOM ASSESSMENT MOUNTED ==========');
@@ -222,10 +250,11 @@ const SymptomAssessment = () => {
   const fetchUserAnsweredQuestions = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      if (!token) return;
+      if (!token) return null;
       const response = await axiosInstance.get('/users/my-disease-data');
       const data = response.data;
       if (data.success && data.data && data.data.symptoms) {
+        hydrateResponseSnapshot(data.data);
         const completionStatus = {};
         const completed = new Set();
         data.data.symptoms.forEach(symptom => {
@@ -245,9 +274,12 @@ const SymptomAssessment = () => {
         });
         setSymptomCompletionStatus(completionStatus);
         setCompletedSymptoms(completed);
+        return data.data;
       }
+      return null;
     } catch (err) {
       console.error('Error fetching answered questions:', err);
+      return null;
     }
   };
 
@@ -269,6 +301,7 @@ const SymptomAssessment = () => {
         console.error('Error saving answers:', error);
         return; // Don't proceed if save fails
       }
+      await fetchUserAnsweredQuestions();
     }
 
     if (activeStep === 0 && currentSymptomIndex < symptoms.length - 1) {
@@ -282,6 +315,7 @@ const SymptomAssessment = () => {
         // Show login dialog for unauthenticated users
         setShowLoginDialog(true);
       } else {
+        await fetchUserAnsweredQuestions();
         setActiveStep(1); // Show summary review screen
       }
     } else if (activeStep === 1) {
@@ -298,8 +332,10 @@ const SymptomAssessment = () => {
         accumulatedQuestionsRef.current.set(questionId, {
           symptomName,
           question: q.question_text,
+          answer: answers[q._id],
         });
       });
+      updateResponseSnapshotFromMap();
     }
 
     // Check if all questions have been answered
@@ -677,7 +713,7 @@ const SymptomAssessment = () => {
                     <Box sx={{ mb: 4 }}>
 
                       {(() => {
-                        const items = Array.from(accumulatedQuestionsRef.current.values());
+                        const items = responseSnapshot;
                         if (!items.length) {
                           return <Alert severity="info">Your answers have been saved. No individual question text available to display, but they are on record.</Alert>;
                         }
@@ -701,6 +737,9 @@ const SymptomAssessment = () => {
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                               ✓ Saved
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                              Answer: {formatAnswerValue(item.answer)}
                             </Typography>
                           </Paper>
                         ));
@@ -849,7 +888,8 @@ const SymptomAssessment = () => {
             <Button
               variant="contained"
               size="large"
-              onClick={() => {
+              onClick={async () => {
+                await fetchUserAnsweredQuestions();
                 setShowLoginDialog(false);
                 setActiveStep(1);
               }}
@@ -860,7 +900,7 @@ const SymptomAssessment = () => {
                 borderRadius: 3,
               }}
             >
-              Continue to Results
+              Continue to Summary
             </Button>
           ) : (
             // If user is not logged in, show signup/signin buttons

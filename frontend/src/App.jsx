@@ -66,6 +66,7 @@ const AppContent = () => {
       <Box> {/* Removed top padding to eliminate space between header and content */}
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<LandingPage />} />
           <Route path="/signin" element={<SignInSide />} />
           <Route path="/signup" element={<SignUpSide />} />
           <Route path="/activate/:token" element={<ActivateAccount />} />

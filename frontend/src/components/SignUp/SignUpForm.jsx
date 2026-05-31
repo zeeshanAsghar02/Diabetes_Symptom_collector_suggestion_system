@@ -130,10 +130,45 @@ export default function SignUpForm({ setSuccess, setError }) {
             const returnToAssessment = sessionStorage.getItem('returnToSymptomAssessment');
             
             if (fromOnboarding || returnToAssessment) {
-                const successMsg = 'Account created! Please check your email to activate your account. After activation, your onboarding answers will be saved.';
+                const accessToken = res.data?.data?.accessToken;
+                const roles = res.data?.data?.user?.roles || [];
+
+                if (accessToken) {
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('roles', JSON.stringify(roles));
+
+                    try {
+                        const parsedAnswers = fromOnboarding ? JSON.parse(fromOnboarding) : [];
+                        const pendingAnswers = Array.isArray(parsedAnswers)
+                            ? parsedAnswers
+                            : Object.entries(parsedAnswers?.answers || {}).map(([questionId, answerText]) => ({
+                                questionId,
+                                answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : String(answerText),
+                            }));
+
+                        if (pendingAnswers.length > 0) {
+                            await axiosInstance.post('/questions/batch-save-answers', {
+                                answers: pendingAnswers,
+                            });
+                            sessionStorage.setItem('answersSavedAfterLogin', 'true');
+                        }
+                    } catch (saveErr) {
+                        console.error('Failed to save onboarding answers after signup:', saveErr);
+                    } finally {
+                        sessionStorage.removeItem('pendingOnboardingAnswers');
+                    }
+
+                    sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                    const successMsg = 'Account created and your answers were saved.';
+                    setSuccessLocal(successMsg);
+                    if (setSuccess) setSuccess(successMsg);
+                    navigate('/symptom-assessment', { replace: true });
+                    return;
+                }
+
+                const successMsg = 'Account created! Please sign in to save your onboarding answers.';
                 setSuccessLocal(successMsg);
                 if (setSuccess) setSuccess(successMsg);
-                // Don't clear pending answers yet - they'll be saved after email verification and login
                 
                 // Redirect to signin with returnTo parameter if needed
                 if (returnToAssessment === 'true') {
@@ -342,7 +377,6 @@ export default function SignUpForm({ setSuccess, setError }) {
                                     >
                                         <MenuItem value="Male">Male</MenuItem>
                                         <MenuItem value="Female">Female</MenuItem>
-                                        <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
                                     </Select>
                                 </FormControl>
                             </motion.div>

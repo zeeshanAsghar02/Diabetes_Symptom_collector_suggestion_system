@@ -378,7 +378,7 @@ export const getMyDiseaseData = async (req, res) => {
         const disease = firstSymptom?.disease_id;
         const diseaseName = disease?.name || 'Unknown Disease';
         const lastUpdated = userAnswers.reduce((latest, ua) => {
-            const date = ua.createdAt || ua.updatedAt;
+            const date = ua.updatedAt || ua.createdAt;
             return (!latest || (date && date > latest)) ? date : latest;
         }, null);
 
@@ -392,17 +392,19 @@ export const getMyDiseaseData = async (req, res) => {
                 symptomMap[symptomName] = [];
             }
             symptomMap[symptomName].push({
+                symptom_id: symptom._id,
                 question_id: ua.question_id?._id,
                 question: ua.question_id?.question_text || 'Unknown Question',
                 answer: ua.answer_id?.answer_text || 'N/A',
-                date: ua.createdAt,
+                date: ua.updatedAt || ua.createdAt,
             });
         });
 
         // Format for frontend
         const symptoms = Object.entries(symptomMap).map(([name, questions]) => ({
             name,
-            questions,
+            _id: questions[0]?.symptom_id,
+            questions: questions.sort((a, b) => new Date(a.date) - new Date(b.date)),
         }));
 
         // Find all questions for this disease

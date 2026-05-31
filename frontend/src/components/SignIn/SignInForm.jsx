@@ -38,13 +38,41 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const theme = useTheme();
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+    const getPendingOnboardingAnswers = () => {
+        const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
+        if (!pendingAnswersRaw) return [];
+
+        const parsed = JSON.parse(pendingAnswersRaw);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed?.answers && typeof parsed.answers === 'object') {
+            return Object.entries(parsed.answers).map(([questionId, answerText]) => ({
+                questionId,
+                answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : String(answerText),
+            }));
+        }
+        return [];
+    };
+
+    const savePendingOnboardingAnswers = async () => {
+        const pendingAnswers = getPendingOnboardingAnswers();
+        if (!pendingAnswers.length) return false;
+
+        await axiosInstance.post('/questions/batch-save-answers', {
+            answers: pendingAnswers,
+        });
+        sessionStorage.setItem('answersSavedAfterLogin', 'true');
+        return true;
+    };
+
     const handleAuthSuccess = async (payload) => {
         if (payload?.data?.user && payload?.data?.accessToken) {
             localStorage.setItem('accessToken', payload.data.accessToken);
             const roles = payload.data.user.roles || [];
             localStorage.setItem('roles', JSON.stringify(roles));
 
-            sessionStorage.removeItem('returnToSymptomAssessment');
+            const searchParams = new URLSearchParams(location.search);
+            const returnTo = searchParams.get('returnTo');
+
             sessionStorage.removeItem('answersSavedAfterLogin');
 
             if (roles.includes('admin') || roles.includes('super_admin')) {
@@ -53,24 +81,24 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 return;
             }
 
-            const searchParams = new URLSearchParams(location.search);
-            const returnTo = searchParams.get('returnTo');
+            if (payload.data.user.profileCompletionRequired) {
+                if (returnTo === 'symptom-assessment') {
+                    sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                }
+                navigate('/personalized-suggestions/personal-medical', {
+                    replace: true,
+                    state: { returnTo, profileCompletionRequired: true },
+                });
+                return;
+            }
+
             if (returnTo === 'symptom-assessment') {
-                const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
-                if (pendingAnswersRaw) {
-                    try {
-                        const pendingAnswers = JSON.parse(pendingAnswersRaw);
-                        if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
-                            await axiosInstance.post('/questions/batch-save-answers', {
-                                answers: pendingAnswers,
-                            });
-                            sessionStorage.setItem('answersSavedAfterLogin', 'true');
-                        }
-                    } catch (saveErr) {
-                        console.error('Failed to batch-save onboarding answers:', saveErr);
-                    } finally {
-                        sessionStorage.removeItem('pendingOnboardingAnswers');
-                    }
+                try {
+                    await savePendingOnboardingAnswers();
+                } catch (saveErr) {
+                    console.error('Failed to batch-save onboarding answers:', saveErr);
+                } finally {
+                    sessionStorage.removeItem('pendingOnboardingAnswers');
                 }
                 sessionStorage.setItem('returnToSymptomAssessment', 'true');
                 navigate('/symptom-assessment', { replace: true });

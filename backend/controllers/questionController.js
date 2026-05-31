@@ -480,6 +480,10 @@ export const batchSaveOnboardingAnswers = async (req, res) => {
         
         if (totalQuestions > 0 && answeredQuestions >= totalQuestions) {
           user.onboardingCompleted = true;
+          user.onboardingCompletedAt = user.onboardingCompletedAt || new Date();
+          user.diseaseDataSubmittedAt = user.diseaseDataSubmittedAt || new Date();
+          user.diseaseDataEditingExpiresAt = user.diseaseDataEditingExpiresAt || new Date(Date.now() + (7 * 24 * 60 * 60 * 1000));
+          user.diseaseDataStatus = user.diseaseDataStatus || 'draft';
           await user.save();
           console.log('🎉 User completed onboarding via batch save!');
         }
