@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axiosInstance from '../../utils/axiosInstance';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
@@ -15,10 +15,6 @@ import {
     InputAdornment,
     alpha,
     Divider,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     FormControl,
     InputLabel,
     Select,
@@ -42,7 +38,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const [focusedField, setFocusedField] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+    const [googleProfileStep, setGoogleProfileStep] = useState(false);
     const [pendingAuthPayload, setPendingAuthPayload] = useState(null);
     const [profileDob, setProfileDob] = useState('');
     const [profileGender, setProfileGender] = useState('');
@@ -100,7 +96,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 setProfileDob(payload.data.user.date_of_birth ? String(payload.data.user.date_of_birth).slice(0, 10) : '');
                 setProfileGender(payload.data.user.gender || '');
                 setProfileError('');
-                setProfileDialogOpen(true);
+                setGoogleProfileStep(true);
                 return;
             }
 
@@ -171,7 +167,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     },
                 },
             };
-            setProfileDialogOpen(false);
+            setGoogleProfileStep(false);
             setPendingAuthPayload(null);
             await handleAuthSuccess(completedPayload, { skipProfileCompletion: true });
         } catch (err) {
@@ -182,7 +178,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         }
     };
 
-    const handleGoogleLogin = async (idToken) => {
+    const handleGoogleLogin = useCallback(async (idToken) => {
         if (!idToken) {
             const msg = 'Google token missing. Please try again.';
             setErrorMessage(msg);
@@ -206,25 +202,19 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         } finally {
             setGoogleLoading(false);
         }
-    };
+    }, [setError, setSuccess]);
 
     useEffect(() => {
         if (!googleClientId || !googleButtonContainerRef.current) return undefined;
 
-        const googleInitKey = '__diavise_google_initialized_client_id__';
         const setupGoogle = () => {
             if (!window.google?.accounts?.id) return;
-            // React StrictMode mounts effects twice in development.
-            // Initialize GIS once per client ID to avoid duplicate init warnings.
-            if (window[googleInitKey] !== googleClientId) {
-                window.google.accounts.id.initialize({
-                    client_id: googleClientId,
-                    callback: (response) => {
-                        handleGoogleLogin(response?.credential);
-                    },
-                });
-                window[googleInitKey] = googleClientId;
-            }
+            window.google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: (response) => {
+                    handleGoogleLogin(response?.credential);
+                },
+            });
             googleButtonContainerRef.current.innerHTML = '';
             window.google.accounts.id.renderButton(googleButtonContainerRef.current, {
                 type: 'standard',
@@ -252,7 +242,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 script.parentNode.removeChild(script);
             }
         };
-    }, [googleClientId]);
+    }, [googleClientId, handleGoogleLogin]);
 
     const validate = () => {
         if (!email || !password) {
@@ -328,6 +318,70 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.1)}`,
                 }}
             >
+                {googleProfileStep ? (
+                    <Box>
+                        <Box sx={{ mb: 3, textAlign: 'center' }}>
+                            <Typography
+                                variant="h4"
+                                fontWeight={700}
+                                sx={{
+                                    mb: 1,
+                                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                }}
+                            >
+                                Complete Profile
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Add the same required details used in manual signup
+                            </Typography>
+                        </Box>
+
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                            Google provides your name and email, but not date of birth or gender. Add these two details to continue.
+                        </Alert>
+                        {profileError && <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>}
+
+                        <TextField
+                            fullWidth
+                            label="Date of Birth"
+                            type="date"
+                            value={profileDob}
+                            onChange={(e) => setProfileDob(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ mb: 2 }}
+                        />
+
+                        <FormControl fullWidth sx={{ mb: 3 }}>
+                            <InputLabel>Gender</InputLabel>
+                            <Select
+                                value={profileGender}
+                                label="Gender"
+                                onChange={(e) => setProfileGender(e.target.value)}
+                            >
+                                <MenuItem value="Male">Male</MenuItem>
+                                <MenuItem value="Female">Female</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={handleProfileCompletionSubmit}
+                            disabled={profileSaving}
+                            sx={{
+                                py: 1.5,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                            }}
+                        >
+                            {profileSaving ? 'Saving...' : 'Continue'}
+                        </Button>
+                    </Box>
+                ) : (
+                <>
                 {/* Header */}
                 <motion.div variants={itemVariants}>
                     <Box sx={{ mb: 3, textAlign: 'center' }}>
@@ -565,49 +619,9 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                         </Link>
                     </Typography>
                 </motion.div>
+                </>
+                )}
             </Paper>
-            <Dialog open={profileDialogOpen} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ fontWeight: 800 }}>
-                    Complete your profile
-                </DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Google does not share date of birth or gender in the normal sign-in token. Please add these two details so your assessment can use the same profile data as manual signup.
-                    </Typography>
-                    {profileError && <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>}
-                    <TextField
-                        fullWidth
-                        label="Date of Birth"
-                        type="date"
-                        value={profileDob}
-                        onChange={(e) => setProfileDob(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ mb: 2 }}
-                    />
-                    <FormControl fullWidth>
-                        <InputLabel>Gender</InputLabel>
-                        <Select
-                            value={profileGender}
-                            label="Gender"
-                            onChange={(e) => setProfileGender(e.target.value)}
-                        >
-                            <MenuItem value="Male">Male</MenuItem>
-                            <MenuItem value="Female">Female</MenuItem>
-                        </Select>
-                    </FormControl>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button
-                        variant="contained"
-                        onClick={handleProfileCompletionSubmit}
-                        disabled={profileSaving}
-                        fullWidth
-                        sx={{ textTransform: 'none', fontWeight: 700 }}
-                    >
-                        {profileSaving ? 'Saving...' : 'Continue'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </motion.div>
     );
 }
