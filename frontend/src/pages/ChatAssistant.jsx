@@ -3,7 +3,6 @@ import {
   Avatar,
   Box,
   Button,
-  Chip,
   Container,
   IconButton,
   Paper,
@@ -13,18 +12,15 @@ import {
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../utils/axiosInstance';
 import { useSettings } from '../context/SettingsContext';
 
 const starterPrompts = [
-  'Suggest a light dinner for tonight',
-  'Explain my latest diet plan',
-  'How can I reduce post-meal sugar spikes?',
-  'What should I ask my doctor?',
-  'Give me safe exercise ideas',
+  'What is the structural difference between Type 1 and Type 2 diabetes?',
+  'I am living with Type 2 diabetes. What are the most important daily tracking habits I should maintain?',
+  'Can you list three simple, low-glycemic index foods that help stabilize morning blood sugar?',
 ];
 
 const ChatAssistant = ({ inModal = false }) => {
@@ -51,6 +47,9 @@ const ChatAssistant = ({ inModal = false }) => {
       const res = await axiosInstance.post('/chat/send', {
         message: trimmed,
         history: messages,
+        mode: 'general_education',
+        useProfileContext: false,
+        useRag: false,
       });
 
       setMessages([
@@ -58,8 +57,6 @@ const ChatAssistant = ({ inModal = false }) => {
         {
           role: 'assistant',
           content: res?.data?.reply || 'No response was returned.',
-          sources: res?.data?.sources || [],
-          contextUsed: Boolean(res?.data?.context_used),
         },
       ]);
     } catch (err) {
@@ -171,7 +168,7 @@ const ChatAssistant = ({ inModal = false }) => {
                   Diavise AI Assistant
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.58)', mt: 0.35, display: 'block', fontWeight: 520 }}>
-                  Personalized diabetes education and care suggestions from {siteTitle}.
+                  Independent diabetes education from {siteTitle}, without care-plan or tracking context.
                 </Typography>
               </Box>
             </Stack>
@@ -219,13 +216,13 @@ const ChatAssistant = ({ inModal = false }) => {
                     lineHeight: 1.65,
                   }}
                 >
-                  For urgent symptoms or treatment decisions, contact a qualified healthcare professional.
+                  These prompts are general educational questions. For urgent symptoms or treatment decisions, contact a qualified healthcare professional.
                 </Typography>
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
-                    gap: 1,
+                    gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+                    gap: 1.25,
                     width: '100%',
                     maxWidth: 980,
                     mt: 0.5,
@@ -237,24 +234,26 @@ const ChatAssistant = ({ inModal = false }) => {
                       variant="text"
                       onClick={() => sendMessage(prompt)}
                       sx={{
-                        borderRadius: 2,
+                        borderRadius: 1.5,
                         textTransform: 'none',
-                        justifyContent: 'center',
+                        justifyContent: 'flex-start',
                         textAlign: 'left',
-                        fontSize: '0.72rem',
-                        lineHeight: 1.35,
-                        fontWeight: 540,
-                        minHeight: 44,
-                        py: 0.85,
-                        px: 1.1,
-                        color: 'rgba(226,232,240,0.62)',
-                        bgcolor: 'rgba(255,255,255,0.025)',
-                        border: 'none',
-                        transition: 'color 220ms ease, background 220ms ease, transform 220ms ease',
+                        fontSize: '0.82rem',
+                        lineHeight: 1.55,
+                        fontWeight: 620,
+                        minHeight: 96,
+                        py: 1.4,
+                        px: 1.5,
+                        color: 'rgba(226,232,240,0.78)',
+                        bgcolor: 'rgba(255,255,255,0.035)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        boxShadow: '0 18px 42px rgba(2,6,23,0.18)',
+                        transition: 'color 220ms ease, background 220ms ease, transform 220ms ease, border-color 220ms ease',
                         '&:hover': {
                           color: '#fff',
-                          bgcolor: 'rgba(45,212,191,0.075)',
-                          transform: 'translateY(-1px)',
+                          bgcolor: 'rgba(45,212,191,0.07)',
+                          borderColor: 'rgba(45,212,191,0.22)',
+                          transform: 'translateY(-3px)',
                         },
                       }}
                     >
@@ -308,40 +307,6 @@ const ChatAssistant = ({ inModal = false }) => {
                       </Typography>
                     )}
                   </Paper>
-
-                  {msg.role === 'assistant' && msg.sources?.length > 0 && (
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                      <Chip
-                        icon={<MenuBookIcon />}
-                        label="Sources"
-                        size="small"
-                        sx={{
-                          fontWeight: 750,
-                          bgcolor: 'rgba(45,212,191,0.1)',
-                          color: '#a7f3d0',
-                          '& .MuiChip-icon': { color: '#a7f3d0' },
-                        }}
-                      />
-                      {msg.sources.slice(0, 3).map((source) => (
-                        <Chip
-                          key={source.id}
-                          label={`[${source.id}] ${String(source.title || 'Source').substring(0, 28)}`}
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontSize: '0.72rem', color: 'rgba(226,232,240,0.7)', borderColor: 'rgba(255,255,255,0.08)' }}
-                        />
-                      ))}
-                    </Stack>
-                  )}
-
-                  {msg.role === 'assistant' && msg.contextUsed && (
-                    <Chip
-                      icon={<MenuBookIcon sx={{ fontSize: 13 }} />}
-                      label="Based on available guidance"
-                      size="small"
-                      sx={{ mt: 0.75, fontSize: '0.72rem', bgcolor: 'rgba(16,185,129,0.14)', color: '#a7f3d0', '& .MuiChip-icon': { color: '#a7f3d0' } }}
-                    />
-                  )}
                 </Box>
 
                 {msg.role === 'user' && (

@@ -14,6 +14,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
 import ChatIcon from '@mui/icons-material/Chat';
 import MenuIcon from '@mui/icons-material/Menu';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import Button from '@mui/material/Button';
 import EditDiseaseData from '../components/Dashboard/EditDiseaseData';
 import ProgressDonut from '../components/DashboardNew/ProgressDonut';
@@ -38,6 +39,7 @@ import CheckRiskSection from '../components/Dashboard/sections/CheckRiskSection'
 import FeedbackSection from '../components/Dashboard/sections/FeedbackSection';
 import DiagnosedInsightsView from '../components/Dashboard/views/DiagnosedInsightsView';
 import UndiagnosedInsightsView from '../components/Dashboard/views/UndiagnosedInsightsView';
+import MyProfileView from '../components/Dashboard/views/MyProfileView';
 import PersonalizedSuggestionsView from '../components/Dashboard/views/PersonalizedSuggestionsView';
 import CarePlanView from '../components/Dashboard/views/CarePlanView';
 import dashboardTheme from '../theme/dashboardTheme';
@@ -55,6 +57,7 @@ const undiagnosedSections = [
   { label: 'Dashboard', icon: <DashboardIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
   { label: 'Check My Risk', icon: <AutoAwesomeIcon /> },
+  { label: 'My Profile', icon: <PersonOutlineIcon /> },
   { label: 'Feedback', icon: <FeedbackOutlinedIcon /> },
 ];
 
@@ -62,6 +65,7 @@ const diagnosedSections = [
   { label: 'Overview', icon: <DashboardIcon /> },
   { label: 'Care Plan', icon: <AutoAwesomeIcon /> },
   { label: 'AI Assistant', icon: <ChatIcon /> },
+  { label: 'My Profile', icon: <PersonOutlineIcon /> },
   { label: 'Feedback', icon: <FeedbackOutlinedIcon /> },
 ];
 
@@ -115,7 +119,9 @@ function Dashboard() {
   const isDiagnosedCarePlan = user?.diabetes_diagnosed === 'yes' && currentSection === 'Care Plan';
   const isDiagnosedAiAssistant = user?.diabetes_diagnosed === 'yes' && currentSection === 'AI Assistant';
   const isDiagnosedFeedback = user?.diabetes_diagnosed === 'yes' && currentSection === 'Feedback';
-  const isDiagnosedDarkWorkspace = isDiagnosedOverview || isDiagnosedCarePlan || isDiagnosedAiAssistant || isDiagnosedFeedback;
+  const isProfileSection = currentSection === 'My Profile';
+  const isDiagnosedDarkWorkspace = isDiagnosedOverview || isDiagnosedCarePlan || isDiagnosedAiAssistant || isDiagnosedFeedback || isProfileSection;
+  const isUndiagnosedDashboard = user?.diabetes_diagnosed !== 'yes' && currentSection === 'Dashboard';
 
   // Calculate health metrics using custom hook
   const metrics = useHealthMetrics({
@@ -231,7 +237,7 @@ function Dashboard() {
     <Box sx={{
       display: 'flex',
       minHeight: '100vh',
-      background: isDiagnosedDarkWorkspace
+      background: isDiagnosedDarkWorkspace || isUndiagnosedDashboard
         ? '#050816'
         : {
             xs: '#f8fafb',
@@ -275,7 +281,8 @@ function Dashboard() {
         ml: 0,
         mt: 0,
         minHeight: '100vh',
-        bgcolor: 'transparent',
+        bgcolor: isUndiagnosedDashboard ? '#090D16' : 'transparent',
+        borderLeft: { md: isUndiagnosedDashboard || isProfileSection ? '1px solid rgba(255,255,255,0.05)' : 'none' },
         position: 'relative',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         width: {
@@ -315,9 +322,9 @@ function Dashboard() {
         </IconButton>
         {/* Content container - Responsive Padding */}
         <Box sx={{
-          px: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace ? 0 : { xs: 2, sm: 2.5, md: 3, lg: 4 },
-          pt: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace ? 0 : { xs: 2, sm: 3, md: 4, lg: 5 },
-          pb: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace ? 0 : { xs: 4, sm: 5, md: 6 },
+          px: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace || isUndiagnosedDashboard ? 0 : { xs: 2, sm: 2.5, md: 3, lg: 4 },
+          pt: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace || isUndiagnosedDashboard ? 0 : { xs: 2, sm: 3, md: 4, lg: 5 },
+          pb: currentSection === 'AI Assistant' || isDiagnosedDarkWorkspace || isUndiagnosedDashboard ? 0 : { xs: 4, sm: 5, md: 6 },
           display: 'flex',
           justifyContent: 'center',
           position: 'relative',
@@ -331,7 +338,7 @@ function Dashboard() {
         }}>
           <Box sx={{
             width: '100%',
-            maxWidth: currentSection === 'Overview' || currentSection === 'Dashboard'
+            maxWidth: currentSection === 'Overview' || currentSection === 'Dashboard' || isProfileSection
               ? '100%'
               : currentSection === 'Care Plan'
               ? '100%'
@@ -387,6 +394,10 @@ function Dashboard() {
 
             {currentSection === 'Check My Risk' && (
               <CheckRiskSection />
+            )}
+
+            {currentSection === 'My Profile' && (
+              <MyProfileView user={user} />
             )}
 
             {currentSection === 'Care Plan' && user?.diabetes_diagnosed === 'yes' && (

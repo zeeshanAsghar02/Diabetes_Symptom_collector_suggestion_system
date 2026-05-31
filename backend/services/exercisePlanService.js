@@ -363,7 +363,14 @@ class ExercisePlanService {
       ? context.chunks.slice(0,5).map((c,i) => `[${i+1}] ${c.substring(0,100)}`).join('\n')
       : 'No regional documents available - use your built-in exercise physiology knowledge for diabetes patients.';
     
-    return `You are an exercise physiologist specializing in diabetes care.
+    return `CRITICAL CONSTRAINT (AGE PROFILE PROCESSING):
+- Before compiling targets, evaluate user.age directly.
+- IF user.age > 50:
+  * The daily calorie target ceiling MUST be strictly restricted to a range between 900 and 1200 kcal/day (override the standard 1500 to 2200 kcal/day limits entirely).
+  * The exercise engine MUST explicitly exclude all high-intensity, hard, or strenuous weight routines.
+  * The generation output MUST strictly prioritize low-impact, safe, light physical activities tailored for geriatric health, specifically tracking habits like walking, light mobility tracking, and low-resistance stretching.
+
+You are an exercise physiologist specializing in diabetes care.
 Create a daily exercise plan for DATE: ${dateStr}
 
 PATIENT PROFILE:
@@ -389,6 +396,8 @@ REQUIREMENTS:
 - Create 2-3 exercise sessions (morning, afternoon, or evening)
 - Total daily duration: 45-90 minutes
 - Include mix of: aerobic, resistance/strength, flexibility
+- If age is greater than 50, exclude all high-intensity, hard, strenuous, heavy resistance, heavy weight, HIIT, sprinting, jumping, or maximal-effort routines.
+- If age is greater than 50, prioritize walking, light mobility tracking, gentle range-of-motion, balance-safe low-resistance stretching, and low-impact geriatric-safe activity.
 - If age is 60 or older, keep intensity low-to-moderate, avoid high-impact movements, use balance-safe exercises, and include longer warm-up/cool-down periods.
 - All numerical values must be plain numbers (no units in JSON)
 - duration_min: number of minutes (e.g., 15, 30)
@@ -419,7 +428,14 @@ Return ONLY valid JSON with this structure:
    * Method name is kept for compatibility with the existing service flow.
    */
   async callLMStudio(prompt, options = {}) {
-    const systemPrompt = options.systemPrompt || 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations outside JSON. Keep exercise safe for age, BMI, glucose risk, medications, and comorbidities.';
+    const systemPrompt = options.systemPrompt || `CRITICAL CONSTRAINT (AGE PROFILE PROCESSING):
+- Before compiling targets, evaluate user.age directly.
+- IF user.age > 50:
+  * The daily calorie target ceiling MUST be strictly restricted to a range between 900 and 1200 kcal/day (override the standard 1500 to 2200 kcal/day limits entirely).
+  * The exercise engine MUST explicitly exclude all high-intensity, hard, or strenuous weight routines.
+  * The generation output MUST strictly prioritize low-impact, safe, light physical activities tailored for geriatric health, specifically tracking habits like walking, light mobility tracking, and low-resistance stretching.
+
+You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations outside JSON. Keep exercise safe for age, BMI, glucose risk, medications, and comorbidities.`;
     return generateText({ systemPrompt, userPrompt: prompt, timeoutMs: options.timeoutMs || 120000 });
   }
   async repairExerciseJson(rawResponse) {

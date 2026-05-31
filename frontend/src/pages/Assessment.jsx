@@ -526,12 +526,28 @@ const Assessment = () => {
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
               {(careGuidance.length ? careGuidance : ['Maintain regular health monitoring and follow up with a qualified clinician.']).map((rec, i) => (
-                <Box key={`${rec}-${i}`} sx={{ position: 'relative', p: { xs: 2, md: 2.25 }, pl: { xs: 4, md: 4.25 }, bgcolor: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.14)', borderRadius: 1.5, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)' }}>
-                  <Box sx={{ position: 'absolute', left: 18, top: 25, width: 9, height: 9, borderRadius: '50%', bgcolor: '#2dd4bf', boxShadow: '0 0 16px rgba(45,212,191,0.72)' }} />
-                  <Typography sx={{ color: '#ffffff', fontWeight: 800, lineHeight: 1.45, mb: 0.8, fontSize: '0.98rem' }}>{rec}</Typography>
-                  <Typography sx={{ color: 'rgba(226,232,240,0.78)', fontSize: '0.86rem', lineHeight: 1.65 }}>
-                    {recommendationDetails[i % recommendationDetails.length]}
-                  </Typography>
+                <Box
+                  key={`${rec}-${i}`}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '14px 1fr',
+                    columnGap: 1.4,
+                    p: { xs: 2, md: 2.25 },
+                    bgcolor: 'rgba(15,23,42,0.72)',
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    borderRadius: 1.5,
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'center', pt: '0.42rem' }}>
+                    <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#2dd4bf', boxShadow: '0 0 14px rgba(45,212,191,0.72)' }} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ color: '#ffffff', fontWeight: 800, lineHeight: 1.42, mb: 0.8, fontSize: '0.98rem' }}>{rec}</Typography>
+                    <Typography sx={{ color: 'rgba(226,232,240,0.78)', fontSize: '0.86rem', lineHeight: 1.65 }}>
+                      {recommendationDetails[i % recommendationDetails.length]}
+                    </Typography>
+                  </Box>
                 </Box>
               ))}
             </Box>

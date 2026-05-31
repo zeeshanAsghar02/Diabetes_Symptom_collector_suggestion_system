@@ -3,10 +3,46 @@ import { Symptom } from "../models/Symptom.js";
 import { Answer } from '../models/Answer.js';
 import { QuestionsAnswers } from '../models/Questions_Answers.js';
 import { UsersAnswers } from '../models/Users_Answers.js';
+import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import mongoose from "mongoose";
 import { generateRiskAssessmentPDF } from '../services/pdfGenerationService.js';
 import { sendRiskAssessmentEmail } from '../services/emailService.js';
 import encryptionService from '../services/encryptionService.js';
+
+const normalizeMeasurement = (featureName, answerText) => {
+  const feature = String(featureName || '').toLowerCase();
+  if (!feature.includes('height') && !feature.includes('weight')) return {};
+
+  const numeric = Number.parseFloat(String(answerText || '').replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(numeric)) return {};
+
+  if (feature.includes('height')) {
+    const height = Math.round(numeric);
+    return height >= 80 && height <= 260 ? { height } : {};
+  }
+
+  const weight = Number(numeric.toFixed(1));
+  return weight >= 20 && weight <= 400 ? { weight } : {};
+};
+
+const syncProfileMeasurementsFromAnswer = async (userId, question, answerText) => {
+  const measurement = normalizeMeasurement(question?.ml_feature_mapping?.feature_name, answerText);
+  if (!measurement.height && !measurement.weight) return;
+
+  let personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+  if (!personalInfo) {
+    personalInfo = new UserPersonalInfo({ user_id: userId });
+  }
+
+  if (measurement.height) personalInfo.height = measurement.height;
+  if (measurement.weight) personalInfo.weight = measurement.weight;
+  await personalInfo.save();
+
+  console.log('Synced assessment measurement into personal profile:', {
+    userId: String(userId),
+    ...measurement,
+  });
+};
 
 // Get all questions for a disease (populate symptom)
 export const getQuestionsByDisease = async (req, res) => {
@@ -129,6 +165,7 @@ export const saveUserAnswer = async (req, res) => {
     
     // Find the user's disease (from the most recent answer)
     const question = await Question.findById(questionId).populate({ path: 'symptom_id', populate: { path: 'disease_id' } });
+    await syncProfileMeasurementsFromAnswer(userId, question, answerText);
     const disease = question?.symptom_id?.disease_id;
     
     if (disease && !user.onboardingCompleted) {
@@ -428,6 +465,9 @@ export const batchSaveOnboardingAnswers = async (req, res) => {
           answer_id: answer._id 
         });
         console.log(`   ✅ Users_Answers created with ID: ${ua._id}`);
+
+        const answeredQuestion = await Question.findById(questionId).select('question_text ml_feature_mapping');
+        await syncProfileMeasurementsFromAnswer(userId, answeredQuestion, answerText);
 
         savedAnswers.push({ questionId, answerId: answer._id, usersAnswersId: ua._id });
         console.log(`   ✅ Successfully saved answer for question ${questionId}`);

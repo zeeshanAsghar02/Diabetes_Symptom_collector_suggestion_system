@@ -75,7 +75,7 @@ const clipHistory = (history) => {
 export const completeChat = async (req, res) => {
   try {
     console.log('[CHAT] Starting chat completion request');
-    const { message, history = [] } = req.body || {};
+    const { message, history = [], mode, useProfileContext = true, useRag = true } = req.body || {};
     const userId = req.user?._id;
     console.log('[CHAT] UserId:', userId, 'Message:', message?.substring(0, 50));
 
@@ -84,6 +84,41 @@ export const completeChat = async (req, res) => {
     }
     if (message.length > MAX_INPUT_CHARS) {
       return res.status(400).json({ success: false, error: `Message too long. Limit ${MAX_INPUT_CHARS} characters.` });
+    }
+
+    const generalEducationMode = mode === 'general_education' || useProfileContext === false || useRag === false;
+
+    if (generalEducationMode) {
+      const recentHistory = clipHistory(history);
+      const systemPrompt = `You are Diavise, a general diabetes education assistant.
+
+CRITICAL CHAT MODE:
+- Answer using general medical education knowledge only.
+- Do not fetch, infer, or rely on the user's diet logs, exercise routines, active care plans, medical history matrices, profile records, RAG/vector context, or personalized tracking data.
+- Do not diagnose, prescribe, or replace a clinician.
+- Keep answers clear, practical, and concise.
+- For urgent symptoms or treatment decisions, advise contacting a qualified healthcare professional.`;
+
+      const userPromptWithHistory = recentHistory.length > 0
+        ? `Previous conversation:\n${recentHistory.map(h => `${h.role}: ${h.content}`).join('\n')}\n\nCurrent general education question: ${message}`
+        : message;
+
+      const aiMessage = await generateText({
+        systemPrompt,
+        userPrompt: userPromptWithHistory,
+        timeoutMs: 90000,
+      });
+
+      if (!aiMessage) {
+        throw new Error('AI service returned an empty response.');
+      }
+
+      return res.status(200).json({
+        success: true,
+        reply: aiMessage,
+        sources: [],
+        context_used: false,
+      });
     }
 
     // Fetch profile data (without .lean() to trigger decryption middleware)

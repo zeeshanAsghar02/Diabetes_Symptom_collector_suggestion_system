@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
-import { fetchMyDiseaseData, assessDiabetesRisk } from '../utils/api';
+import { fetchMyDiseaseData, getLatestDiabetesAssessment } from '../utils/api';
 import axiosInstance from '../utils/axiosInstance';
 
 /**
@@ -111,9 +111,9 @@ const useDashboardDataFetching = ({
     }
   }, [currentSection, setDiseaseData, setLoading, setError]);
 
-  // Fetch assessment summary for Insights
+  // Fetch assessment summary for Dashboard, Insights and Overview
   useEffect(() => {
-    if (!user || (currentSection !== 'Insights' && currentSection !== 'Overview')) return;
+    if (!user || !['Dashboard', 'Insights', 'Overview'].includes(currentSection)) return;
 
     const fetchSummary = async () => {
       try {

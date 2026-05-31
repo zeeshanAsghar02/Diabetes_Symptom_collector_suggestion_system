@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDateFormat } from '../../../hooks/useDateFormat';
 import {
   Box,
-  Grid,
-  Paper,
   Typography,
   Button,
   Stack,
-  Divider,
   Chip,
   Avatar,
   IconButton,
-  Popover,
-  alpha
 } from '@mui/material';
 import {
   FavoriteBorder as FavoriteBorderIcon,
@@ -24,565 +19,313 @@ import {
   HealthAndSafety as HealthAndSafetyIcon,
   MenuBook as MenuBookIcon,
   ArrowOutward as ArrowOutwardIcon,
+  ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
 
-// Import components
 import ProgressDonut from '../../DashboardNew/ProgressDonut';
-import ActivityTimeline from '../../DashboardNew/ActivityTimeline';
-import ThemeToggle from '../../Common/ThemeToggle';
+
+const monoFont = '"JetBrains Mono", "Roboto Mono", Consolas, monospace';
+
+const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
+
+const deriveRiskFromProbability = (probability) => {
+  if (probability == null) return 'Pending';
+  const score = clamp01(probability);
+  if (score >= 0.7) return 'High';
+  if (score >= 0.3) return 'Moderate';
+  return 'Low';
+};
+
+const getRiskDisplay = (assessmentSummary, user) => {
+  const rawProbability = assessmentSummary?.probability ?? user?.last_assessment_probability;
+  const probability = rawProbability == null ? null : clamp01(rawProbability);
+  const rawLevel = assessmentSummary?.risk_level || user?.last_assessment_risk_level;
+  const riskLevel = rawLevel
+    ? `${String(rawLevel).charAt(0).toUpperCase()}${String(rawLevel).slice(1).toLowerCase()}`
+    : deriveRiskFromProbability(probability);
+
+  return {
+    riskLevel,
+    probability,
+    percent: probability == null ? null : Math.round(probability * 100),
+  };
+};
 
 function UndiagnosedInsightsView({
   diseaseData,
   completionPct,
   activityItems,
   assessmentSummary,
-  user
+  user,
 }) {
   const { formatDate } = useDateFormat();
   const navigate = useNavigate();
   const answeredQuestions = diseaseData?.answeredQuestions ?? 0;
   const totalQuestions = diseaseData?.totalQuestions ?? 0;
-  const progress = Number.isFinite(completionPct) ? completionPct : 0;
-  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
+  const progress = Number.isFinite(completionPct) ? Math.round(completionPct) : 0;
   const accountActive = user?.isActive ?? user?.active ?? true;
   const accountStatusLabel = accountActive ? 'Active' : 'Inactive';
-  const statusColor = accountActive ? '#16A34A' : '#DC2626';
+  const updatedDate = diseaseData?.lastUpdated ? formatDate(diseaseData.lastUpdated) : 'Not started';
+  const riskDisplay = useMemo(() => getRiskDisplay(assessmentSummary, user), [assessmentSummary, user]);
 
-  const openProfilePopover = (event) => setProfileAnchorEl(event.currentTarget);
-  const closeProfilePopover = () => setProfileAnchorEl(null);
-  const isProfilePopoverOpen = Boolean(profileAnchorEl);
+  const resumeAssessment = () => {
+    if (progress >= 100) {
+      navigate('/assessment');
+      return;
+    }
+    sessionStorage.setItem('resumeAssessmentIndex', String(Math.max(answeredQuestions, 0)));
+    navigate('/symptom-assessment?resume=1');
+  };
+
+  const recentRows = useMemo(() => {
+    if (Array.isArray(activityItems) && activityItems.length > 0) {
+      return activityItems.slice(0, 4).map((item, index) => ({
+        title: item.title || item.label || `Activity ${index + 1}`,
+        detail: item.description || item.detail || 'Progress updated',
+        date: item.date || item.time || diseaseData?.lastUpdated,
+      }));
+    }
+    return [
+      { title: progress >= 100 ? 'Assessment completed' : 'Assessment in progress', detail: `${answeredQuestions}/${totalQuestions || 0} answers saved`, date: diseaseData?.lastUpdated },
+      { title: 'Disease data updated', detail: diseaseData?.disease || 'Questionnaire data pending', date: diseaseData?.lastUpdated },
+      { title: 'Risk report status', detail: progress >= 100 ? 'Ready to view' : 'Complete assessment to unlock', date: null },
+    ];
+  }, [activityItems, answeredQuestions, diseaseData, progress, totalQuestions]);
+
+  const telemetry = [
+    {
+      label: 'Condition',
+      value: diseaseData?.disease || 'Diabetes',
+      helper: updatedDate,
+      icon: <FavoriteBorderIcon sx={{ fontSize: 18 }} />,
+    },
+    {
+      label: 'Progress',
+      value: `${progress}%`,
+      helper: progress === 100 ? 'Assessment complete' : 'Resume required',
+      icon: <TrendingUpIcon sx={{ fontSize: 18 }} />,
+    },
+    {
+      label: 'Questions',
+      value: `${answeredQuestions}/${totalQuestions || 0}`,
+      helper: 'Answers saved',
+      icon: <AssignmentTurnedInIcon sx={{ fontSize: 18 }} />,
+    },
+    {
+      label: 'Next Action',
+      value: 'Assessment',
+      helper: progress === 100 ? 'Open report' : 'Continue check-in',
+      icon: <BoltIcon sx={{ fontSize: 18 }} />,
+      onClick: resumeAssessment,
+    },
+  ];
+
+  const quickActions = [
+    { label: progress >= 100 ? 'View Assessment Report' : 'Start Assessment', desc: progress >= 100 ? 'Open finalized risk report' : 'Resume your check-in', icon: <AssignmentTurnedInIcon fontSize="small" />, action: resumeAssessment },
+    { label: 'Check My Risk', desc: 'Review your risk evaluation', icon: <BoltIcon fontSize="small" />, action: () => (progress >= 100 ? navigate('/assessment') : resumeAssessment()) },
+    { label: 'Health Resources', desc: 'Read diabetes guidance', icon: <MenuBookIcon fontSize="small" />, action: () => navigate('/articles') },
+  ];
 
   return (
-    <Box>
-      {/* Component 1: Welcome header + KPI strip + assessment hero */}
-      <Box sx={{ mb: 4 }}>
-        <Box
-          sx={{
-            mb: 2.25,
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 1.25,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.1 }}>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', mb: 0.25 }}>
-                Welcome back, {user?.fullName?.split(' ')[0] || 'Patient'}! 👋
+    <Box sx={{ minHeight: '100vh', bgcolor: '#090D16', color: '#fff', px: { xs: 2, md: 3.5 }, py: { xs: 3, md: 4 } }}>
+      <Box sx={{ mb: 3.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+        <Box>
+          <Typography sx={{ color: '#fff', fontWeight: 850, fontSize: { xs: '1.45rem', md: '1.9rem' }, letterSpacing: '-0.02em' }}>
+            Welcome back, {user?.fullName?.split(' ')[0] || 'Patient'}!
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1, mt: 0.7, flexWrap: 'wrap' }}>
+            <Typography sx={{ color: 'rgba(203,213,225,0.72)', fontSize: '0.95rem' }}>
+              Your assessment workspace is ready.
+            </Typography>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65 }}>
+              <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: accountActive ? '#5eead4' : '#fb7185', boxShadow: accountActive ? '0 0 14px rgba(94,234,212,0.72)' : '0 0 14px rgba(251,113,133,0.6)' }} />
+              <Typography sx={{ color: accountActive ? '#99f6e4' : '#fecdd3', fontSize: '0.78rem', fontFamily: monoFont, fontWeight: 700 }}>
+                Status: {accountStatusLabel}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Here&apos;s your health overview for today.
-                </Typography>
-                <Chip
-                  size="small"
-                  label={`Status: ${accountStatusLabel}`}
-                  sx={{
-                    fontWeight: 700,
-                    bgcolor: alpha(statusColor, 0.12),
-                    color: statusColor,
-                    border: `1px solid ${alpha(statusColor, 0.3)}`,
-                  }}
-                />
-              </Box>
             </Box>
-          </Box>
-
-          <Box sx={{ mt: { xs: 0, sm: 0.2 }, display: 'flex', alignItems: 'center', gap: 0.7 }}>
-            <ThemeToggle size="medium" />
-            <IconButton
-              onClick={openProfilePopover}
-              sx={{
-                p: 0.25,
-                borderRadius: '50%',
-                border: `1px solid ${alpha('#4F46E5', 0.24)}`,
-                bgcolor: alpha('#4F46E5', 0.05),
-              }}
-            >
-              <Avatar
-                sx={{
-                  width: 34,
-                  height: 34,
-                  bgcolor: '#4F46E5',
-                  fontSize: '0.86rem',
-                  fontWeight: 700,
-                }}
-              >
-                {user?.fullName?.[0]?.toUpperCase() || 'U'}
-              </Avatar>
-            </IconButton>
           </Box>
         </Box>
 
-        <Popover
-          open={isProfilePopoverOpen}
-          anchorEl={profileAnchorEl}
-          onClose={closeProfilePopover}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-          PaperProps={{
-            sx: {
-              mt: 0.8,
-              p: 1.4,
-              width: 260,
-              borderRadius: 2,
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.75)}`,
-              boxShadow: (t) => `0 12px 28px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.42 : 0.12)}`,
-            },
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1, mb: 1.1 }}>
-            <Avatar sx={{ width: 34, height: 34, bgcolor: '#4F46E5', fontSize: '0.85rem' }}>
-              {user?.fullName?.[0]?.toUpperCase() || 'U'}
-            </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: '0.86rem', fontWeight: 700, color: 'text.primary' }} noWrap>
-                {user?.fullName || 'Patient'}
-              </Typography>
-              <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }} noWrap>
-                {user?.email || 'patient@health.app'}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'grid', gap: 0.75 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Account status</Typography>
-              <Chip
-                size="small"
-                label={accountStatusLabel}
-                sx={{
-                  height: 22,
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  bgcolor: alpha(statusColor, 0.12),
-                  color: statusColor,
-                }}
-              />
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Role</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.primary' }}>
-                {user?.role || 'Patient'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Patient ID</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.primary' }}>
-                {user?.id || user?._id || 'Not assigned'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Phone</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.primary' }}>
-                {user?.phone || user?.phoneNumber || 'Not provided'}
-              </Typography>
-            </Box>
-          </Box>
-        </Popover>
-
-        <Box
-          sx={{
-            mb: 2.5,
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, minmax(0, 1fr))',
-              md: 'repeat(4, minmax(0, 1fr))',
-            },
-            gap: 2,
-            alignItems: 'stretch',
-          }}
-        >
-          {[
-            {
-              label: 'Condition Status',
-              value: diseaseData?.disease || 'Not Set',
-              helper: diseaseData?.lastUpdated ? `Updated ${formatDate(diseaseData.lastUpdated)}` : 'Start your assessment',
-              icon: <FavoriteBorderIcon sx={{ fontSize: 18 }} />,
-              color: '#6366F1',
-              tint: alpha('#6366F1', 0.12),
-            },
-            {
-              label: 'Progress',
-              value: `${progress}%`,
-              helper: progress === 100 ? 'Assessment complete' : 'Keep going',
-              icon: <TrendingUpIcon sx={{ fontSize: 18 }} />,
-              color: '#22C55E',
-              tint: alpha('#22C55E', 0.12),
-            },
-            {
-              label: 'Questions Completed',
-              value: `${answeredQuestions}/${totalQuestions}`,
-              helper: 'Answers saved',
-              icon: <AssignmentTurnedInIcon sx={{ fontSize: 18 }} />,
-              color: '#3B82F6',
-              tint: alpha('#3B82F6', 0.12),
-            },
-            {
-              label: 'Next Action',
-              value: 'Assessment',
-              helper: progress === 100 ? 'Open your report' : 'Finish onboarding',
-              icon: <BoltIcon sx={{ fontSize: 18 }} />,
-              color: '#F59E0B',
-              tint: alpha('#F59E0B', 0.12),
-            },
-          ].map((item) => (
-            <Box key={item.label} sx={{ display: 'flex', minWidth: 0 }}>
-              <Paper
-                elevation={0}
-                onClick={item.label === 'Next Action' ? () => (progress === 100 ? navigate('/assessment') : navigate('/onboarding')) : undefined}
-                sx={{
-                  p: 2.25,
-                  borderRadius: 2.5,
-                  border: (t) => `1px solid ${alpha(t.palette.divider, 0.8)}`,
-                  background: (t) => alpha(t.palette.background.paper, 0.92),
-                  backdropFilter: 'blur(8px)',
-                  height: '100%',
-                  width: '100%',
-                  minHeight: 156,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  cursor: item.label === 'Next Action' ? 'pointer' : 'default',
-                  transition: 'all 0.2s ease',
-                  boxShadow: (t) => `0 4px 12px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.25 : 0.04)}`,
-                  '&:hover': item.label === 'Next Action'
-                    ? {
-                        borderColor: alpha(item.color, 0.5),
-                        boxShadow: `0 10px 20px ${alpha(item.color, 0.14)}`,
-                        transform: 'translateY(-1px)',
-                      }
-                    : undefined,
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.2 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'text.secondary',
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      lineHeight: 1.2,
-                      minHeight: 30,
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                  <Box
-                    sx={{
-                      color: item.color,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      bgcolor: item.tint,
-                    }}
-                  >
-                    {item.icon}
-                  </Box>
-                </Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                    mb: 0.45,
-                    fontSize: { xs: '1.2rem', md: '1.3rem' },
-                    minHeight: 32,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  {item.value}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'text.secondary',
-                    fontWeight: 500,
-                    fontSize: '0.82rem',
-                    lineHeight: 1.35,
-                    minHeight: 30,
-                  }}
-                >
-                  {item.helper}
-                </Typography>
-              </Paper>
-            </Box>
-          ))}
-        </Box>
-
-        <Box
-          sx={{
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 1fr)' },
-            gap: 2,
-            alignItems: 'stretch',
-          }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, md: 2.5 },
-              borderRadius: 3,
-              border: (t) => `1px solid ${alpha('#6366F1', 0.18)}`,
-              background: (t) =>
-                `linear-gradient(135deg, ${alpha('#6366F1', t.palette.mode === 'dark' ? 0.2 : 0.1)} 0%, ${alpha(
-                  '#3B82F6',
-                  t.palette.mode === 'dark' ? 0.14 : 0.08
-                )} 100%)`,
-              minHeight: 250,
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={8}>
-                  <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 800, letterSpacing: '0.08em' }}>
-                    Continue Your Health Assessment
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, fontSize: { xs: '1.6rem', sm: '2rem' }, lineHeight: 1.15 }}>
-                    Complete Your{' '}
-                    <Box component="span" sx={{ color: '#4F46E5' }}>
-                      Onboarding
-                    </Box>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2, maxWidth: 420 }}>
-                    Answer a few simple questions to help us understand your health better and provide personalized insights.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    endIcon={<ChevronRightIcon />}
-                    onClick={() => navigate('/onboarding')}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      borderRadius: 2,
-                      px: 2.25,
-                      py: 1.1,
-                      background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-                      boxShadow: '0 10px 20px rgba(99,102,241,0.28)',
-                      '&:hover': { background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)' },
-                    }}
-                  >
-                    Continue Assessment
-                  </Button>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'center' } }}>
-                  <ProgressDonut value={progress} label="Complete" size={120} />
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, md: 2.5 },
-              borderRadius: 3,
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.8)}`,
-              background: (t) => alpha(t.palette.background.paper, 0.92),
-              minHeight: 250,
-              height: '100%',
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1rem' }}>
-                Recent Activity
-              </Typography>
-              <Button size="small" sx={{ textTransform: 'none', fontWeight: 700 }}>
-                View all
-              </Button>
-            </Box>
-            <Divider sx={{ mb: 2 }} />
-            <ActivityTimeline items={activityItems} />
-          </Paper>
-        </Box>
+        <IconButton sx={{ p: 0.25, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.08)', bgcolor: 'rgba(255,255,255,0.03)' }}>
+          <Avatar sx={{ width: 38, height: 38, bgcolor: '#2dd4bf', color: '#06211f', fontWeight: 900 }}>
+            {user?.fullName?.[0]?.toUpperCase() || 'U'}
+          </Avatar>
+        </IconButton>
       </Box>
 
-      {/* Component 2: Lower 3 cards row (Health Insights / Risk Overview / Quick Actions) */}
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1.5, md: 2 }, mb: 3 }}>
+        {telemetry.map((item) => (
+          <Box
+            key={item.label}
+            onClick={item.onClick}
             sx={{
-              p: 2.5,
-              borderRadius: 3,
-              minHeight: 230,
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.7)}`,
-              background: (t) => alpha(t.palette.background.paper, 0.92),
+              py: 1.4,
+              px: { xs: 0, sm: 0.5 },
+              cursor: item.onClick ? 'pointer' : 'default',
+              borderBottom: { xs: '1px solid rgba(255,255,255,0.05)', xl: 'none' },
+              '&:hover .telemetry-arrow': { color: '#fff', transform: 'translateX(3px)' },
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1rem' }}>
-                Health Insights
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Box sx={{ color: '#5eead4', display: 'inline-flex' }}>{item.icon}</Box>
+              <Typography sx={{ color: 'rgba(148,163,184,0.72)', fontSize: '0.68rem', fontFamily: monoFont, fontWeight: 800, textTransform: 'uppercase' }}>
+                {item.label}
               </Typography>
-              <Button size="small" sx={{ textTransform: 'none', fontWeight: 700 }}>
-                View all
-              </Button>
+              {item.onClick && <ArrowForwardIcon className="telemetry-arrow" sx={{ ml: 'auto', color: 'rgba(148,163,184,0.5)', fontSize: 16, transition: 'all 0.18s ease' }} />}
             </Box>
-            <Divider sx={{ mb: 2 }} />
-            <Box sx={{ textAlign: 'center', pt: 1 }}>
-              <Box
+            <Typography sx={{ color: '#fff', fontWeight: 850, fontSize: { xs: '1.35rem', md: '1.55rem' }, lineHeight: 1.1 }}>
+              {item.value}
+            </Typography>
+            <Typography sx={{ color: 'rgba(203,213,225,0.58)', fontSize: '0.74rem', fontFamily: monoFont, mt: 0.65 }}>
+              {item.helper}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1.7fr) minmax(280px, 0.8fr)' }, gap: 2.2, mb: 2.6 }}>
+        <Box sx={{ bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1.5, p: { xs: 2.2, md: 2.8 } }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1fr) 150px' }, gap: 2.5, alignItems: 'center' }}>
+            <Box>
+              <Typography sx={{ color: 'rgba(148,163,184,0.72)', fontSize: '0.72rem', fontFamily: monoFont, fontWeight: 800, textTransform: 'uppercase', mb: 1 }}>
+                Continue health assessment
+              </Typography>
+              <Typography sx={{ color: '#fff', fontWeight: 850, fontSize: { xs: '1.45rem', md: '2rem' }, letterSpacing: '-0.02em', lineHeight: 1.12 }}>
+                Complete your onboarding
+              </Typography>
+              <Typography sx={{ color: 'rgba(203,213,225,0.68)', mt: 1.1, maxWidth: 560, lineHeight: 1.7 }}>
+                Continue from your saved answers and unlock a personalized risk report once every required question is complete.
+              </Typography>
+              <Button
+                endIcon={<ChevronRightIcon />}
+                onClick={resumeAssessment}
                 sx={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  mx: 'auto',
-                  mb: 1.25,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: alpha('#22C55E', 0.14),
-                  color: '#16A34A',
+                  mt: 2.2,
+                  px: 2.3,
+                  py: 1,
+                  borderRadius: 1.25,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontWeight: 800,
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.28)' },
                 }}
               >
-                <HealthAndSafetyIcon />
-              </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Start your journey
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.6 }}>
-                Complete the assessment to unlock personalized insights and recommendations.
+                {progress >= 100 ? 'View Assessment Report' : 'Continue Assessment'}
+              </Button>
+            </Box>
+            <Box sx={{ position: 'relative', display: 'grid', placeItems: 'center', minHeight: 150 }}>
+              <Box sx={{ position: 'absolute', width: 132, height: 132, borderRadius: '50%', background: 'repeating-conic-gradient(from -90deg, rgba(94,234,212,0.36) 0deg 1deg, transparent 1deg 8deg)', opacity: 0.65, mask: 'radial-gradient(circle, transparent 58%, #000 59%, #000 64%, transparent 65%)' }} />
+              <ProgressDonut value={progress} label="Complete" size={126} />
+            </Box>
+          </Box>
+        </Box>
+
+        <DarkLedger title="Recent Activity" rows={recentRows} empty="No recent activity yet" />
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2.2 }}>
+        <DarkPanel title="Health Insights" action>
+          <Box sx={{ display: 'flex', gap: 1.35, alignItems: 'flex-start' }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: 1.3, display: 'grid', placeItems: 'center', bgcolor: 'rgba(45,212,191,0.08)', color: '#5eead4' }}>
+              <HealthAndSafetyIcon />
+            </Box>
+            <Box>
+              <Typography sx={{ color: '#fff', fontWeight: 780, mb: 0.4 }}>Assessment unlocks insights</Typography>
+              <Typography sx={{ color: 'rgba(203,213,225,0.66)', fontSize: '0.86rem', lineHeight: 1.7 }}>
+                Finish your saved questionnaire to generate a clearer risk profile and recommendations.
               </Typography>
             </Box>
-          </Paper>
-        </Grid>
+          </Box>
+        </DarkPanel>
 
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              minHeight: 230,
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.7)}`,
-              background: (t) => alpha(t.palette.background.paper, 0.92),
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1rem', mb: 2 }}>
-              Risk Overview
-            </Typography>
-            <Divider sx={{ mb: 2.25 }} />
-            <Box sx={{ textAlign: 'center' }}>
-              <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'center' }}>
-                <Box
-                  sx={{
-                    width: 170,
-                    height: 86,
-                    borderTopLeftRadius: 170,
-                    borderTopRightRadius: 170,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    background:
-                      'conic-gradient(from 180deg at 50% 100%, #22C55E 0deg, #EAB308 90deg, #F97316 130deg, #EF4444 180deg, transparent 180deg)',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      bottom: -1,
-                      transform: 'translateX(-50%)',
-                      width: 112,
-                      height: 58,
-                      borderTopLeftRadius: 112,
-                      borderTopRightRadius: 112,
-                      bgcolor: (t) => t.palette.background.paper,
-                    }}
-                  />
-                </Box>
-              </Box>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                Risk Level: {assessmentSummary ? `${assessmentSummary.risk_level}` : '-'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Complete your assessment to see your risk profile.
-              </Typography>
+        <DarkPanel title="Risk Overview">
+          <Box sx={{ display: 'grid', placeItems: 'center', py: 1 }}>
+            <Box sx={{ width: 190, height: 92, borderTopLeftRadius: 190, borderTopRightRadius: 190, overflow: 'hidden', position: 'relative', background: `conic-gradient(from 180deg at 50% 100%, #22c55e 0deg, #eab308 72deg, #f97316 126deg, #ef4444 ${Math.max(16, Math.round((riskDisplay.probability ?? 0) * 180))}deg, rgba(15,23,42,0.62) ${Math.max(16, Math.round((riskDisplay.probability ?? 0) * 180))}deg 180deg, transparent 180deg)` }}>
+              <Box sx={{ position: 'absolute', left: '50%', bottom: -1, transform: 'translateX(-50%)', width: 148, height: 72, borderTopLeftRadius: 148, borderTopRightRadius: 148, bgcolor: '#090D16' }} />
             </Box>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              minHeight: 230,
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.7)}`,
-              background: (t) => alpha(t.palette.background.paper, 0.92),
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1rem', mb: 2 }}>
-              Quick Actions
+            <Typography sx={{ color: '#fff', fontWeight: 760, mt: 1.4 }}>
+              Risk Level: {riskDisplay.riskLevel}
             </Typography>
-            <Divider sx={{ mb: 1.5 }} />
-            <Stack spacing={1.2}>
-              {[
-                { label: 'Start Assessment', desc: 'Begin your health check', icon: <AssignmentTurnedInIcon fontSize="small" />, action: () => navigate('/onboarding') },
-                { label: 'Check My Risk', desc: 'Get your risk evaluation', icon: <BoltIcon fontSize="small" />, action: () => navigate('/assessment') },
-                { label: 'Health Resources', desc: 'Learn more about diabetes', icon: <MenuBookIcon fontSize="small" />, action: () => navigate('/articles') },
-              ].map((item) => (
-                <Box
-                  key={item.label}
-                  onClick={item.action}
-                  sx={{
-                    p: 1.2,
-                    borderRadius: 1.8,
-                    border: (t) => `1px solid ${alpha(t.palette.divider, 0.7)}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    transition: 'all 0.18s ease',
-                    '&:hover': {
-                      borderColor: alpha('#6366F1', 0.45),
-                      boxShadow: `0 8px 16px ${alpha('#6366F1', 0.1)}`,
-                      transform: 'translateY(-1px)',
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1 }}>
-                    <Box
-                      sx={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 1.4,
-                        bgcolor: alpha('#6366F1', 0.12),
-                        color: '#4F46E5',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {item.icon}
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
-                        {item.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.desc}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <ArrowOutwardIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            {riskDisplay.percent != null && (
+              <Typography sx={{ color: '#5eead4', fontFamily: monoFont, fontWeight: 850, fontSize: '0.82rem', mt: 0.4 }}>
+                Probability: {riskDisplay.percent}%
+              </Typography>
+            )}
+            <Typography sx={{ color: 'rgba(203,213,225,0.62)', fontSize: '0.82rem', mt: 0.6, textAlign: 'center' }}>
+              {progress >= 100 ? 'Your latest report is ready.' : 'Complete your assessment to calculate risk.'}
+            </Typography>
+          </Box>
+        </DarkPanel>
+
+        <DarkPanel title="Quick Actions">
+          <Stack spacing={1}>
+            {quickActions.map((item) => (
+              <Box
+                key={item.label}
+                onClick={item.action}
+                sx={{
+                  p: 1.35,
+                  borderRadius: 1.25,
+                  bgcolor: 'rgba(255,255,255,0.02)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.2,
+                  cursor: 'pointer',
+                  '&:hover .quick-arrow': { color: '#fff', transform: 'translate(2px, -2px)' },
+                }}
+              >
+                <Box sx={{ color: '#5eead4', display: 'inline-flex' }}>{item.icon}</Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ color: '#fff', fontWeight: 760, fontSize: '0.9rem' }}>{item.label}</Typography>
+                  <Typography sx={{ color: 'rgba(203,213,225,0.55)', fontSize: '0.74rem' }}>{item.desc}</Typography>
                 </Box>
-              ))}
-            </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+                <ArrowOutwardIcon className="quick-arrow" sx={{ fontSize: 16, color: 'rgba(148,163,184,0.55)', transition: 'all 0.18s ease' }} />
+              </Box>
+            ))}
+          </Stack>
+        </DarkPanel>
+      </Box>
+    </Box>
+  );
+}
+
+function DarkPanel({ title, children, action = false }) {
+  return (
+    <Box sx={{ minHeight: 230, bgcolor: 'rgba(255,255,255,0.015)', borderRadius: 1.5, p: 2.2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography sx={{ color: '#fff', fontWeight: 820, fontSize: '1rem' }}>{title}</Typography>
+        {action && <ArrowOutwardIcon sx={{ color: 'rgba(255,255,255,0.78)', fontSize: 17 }} />}
+      </Box>
+      {children}
+    </Box>
+  );
+}
+
+function DarkLedger({ title, rows, empty }) {
+  const { formatDate } = useDateFormat();
+  const visibleRows = rows?.length
+    ? rows
+    : [{ title: empty, detail: 'Complete your first action to populate this ledger.', date: null }];
+
+  return (
+    <Box sx={{ minHeight: 250, p: { xs: 2, md: 2.4 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.2 }}>
+        <Typography sx={{ color: '#fff', fontWeight: 820, fontSize: '1rem' }}>{title}</Typography>
+        <ArrowOutwardIcon sx={{ color: 'rgba(255,255,255,0.75)', fontSize: 17 }} />
+      </Box>
+      {visibleRows.map((row, index) => (
+        <Box key={`${row.title}-${index}`} sx={{ py: 1.25, borderBottom: index === visibleRows.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1.5 }}>
+            <Typography sx={{ color: '#fff', fontWeight: 720, fontSize: '0.9rem' }}>{row.title}</Typography>
+            <Typography sx={{ color: 'rgba(203,213,225,0.55)', fontFamily: monoFont, fontSize: '0.68rem', whiteSpace: 'nowrap' }}>
+              {row.date ? formatDate(row.date) : '--'}
+            </Typography>
+          </Box>
+          <Typography sx={{ color: 'rgba(203,213,225,0.55)', fontSize: '0.74rem', mt: 0.25 }}>{row.detail}</Typography>
+        </Box>
+      ))}
     </Box>
   );
 }

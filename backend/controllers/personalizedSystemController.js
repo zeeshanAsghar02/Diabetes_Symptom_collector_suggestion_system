@@ -1,8 +1,36 @@
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { User } from '../models/User.js';
+import { UsersAnswers } from '../models/Users_Answers.js';
 import { createAuditLog } from '../middlewares/auditMiddleware.js';
 import encryptionService from '../services/encryptionService.js';
+
+const extractProfileMeasurementsFromAnswers = async (userId) => {
+    const answers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+        .populate({ path: 'question_id', select: 'ml_feature_mapping question_text' })
+        .populate({ path: 'answer_id', select: 'answer_text' });
+
+    const measurements = {};
+    answers.forEach((item) => {
+        const feature = String(item.question_id?.ml_feature_mapping?.feature_name || '').toLowerCase();
+        if (!feature.includes('height') && !feature.includes('weight')) return;
+
+        const numeric = Number.parseFloat(String(item.answer_id?.answer_text || '').replace(/[^\d.]/g, ''));
+        if (!Number.isFinite(numeric)) return;
+
+        if (feature.includes('height')) {
+            const height = Math.round(numeric);
+            if (height >= 80 && height <= 260) measurements.height = height;
+        }
+
+        if (feature.includes('weight')) {
+            const weight = Number(numeric.toFixed(1));
+            if (weight >= 20 && weight <= 400) measurements.weight = weight;
+        }
+    });
+
+    return measurements;
+};
 
 // Get user's personal information
 export const getPersonalInfo = async (req, res) => {
@@ -21,6 +49,15 @@ export const getPersonalInfo = async (req, res) => {
         });
         
         if (!personalInfo) {
+            const answerMeasurements = await extractProfileMeasurementsFromAnswers(userId);
+            if (answerMeasurements.height || answerMeasurements.weight) {
+                const syncedInfo = new UserPersonalInfo({
+                    user_id: userId,
+                    ...answerMeasurements,
+                });
+                await syncedInfo.save();
+            }
+
             // Return user data even if personal info doesn't exist yet
             return res.status(200).json({
                 success: true,
@@ -28,7 +65,9 @@ export const getPersonalInfo = async (req, res) => {
                     fullName: user?.fullName || '',
                     country: user?.country || '',
                     country_code: user?.country_code || '',
-                    phone_number: user?.phone_number || ''
+                    phone_number: user?.phone_number || '',
+                    height: answerMeasurements.height || null,
+                    weight: answerMeasurements.weight || null,
                 }
             });
         }
@@ -81,13 +120,23 @@ export const getPersonalInfo = async (req, res) => {
             country: decryptIfNeeded(personalInfo.address.country)
         } : undefined;
         
+        const answerMeasurements = (!height || !weight)
+            ? await extractProfileMeasurementsFromAnswers(userId)
+            : {};
+
+        if ((answerMeasurements.height && !height) || (answerMeasurements.weight && !weight)) {
+            if (answerMeasurements.height && !height) personalInfo.height = answerMeasurements.height;
+            if (answerMeasurements.weight && !weight) personalInfo.weight = answerMeasurements.weight;
+            await personalInfo.save();
+        }
+
         const responseData = {
             _id: personalInfo._id,
             user_id: personalInfo.user_id,
             date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
             gender,
-            height: height ? parseFloat(height) : null,
-            weight: weight ? parseFloat(weight) : null,
+            height: height ? parseFloat(height) : answerMeasurements.height || null,
+            weight: weight ? parseFloat(weight) : answerMeasurements.weight || null,
             activity_level,
             dietary_preference,
             smoking_status,
@@ -418,6 +467,30 @@ export const upsertMedicalInfo = async (req, res) => {
                 success: false,
                 message: 'Diabetes type and diagnosis date are required.',
             });
+        }
+
+        const diagnosisDateValue = new Date(diagnosis_date);
+        if (Number.isNaN(diagnosisDateValue.getTime()) || diagnosisDateValue > new Date()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Diagnosis date must be a valid date on or before today.',
+            });
+        }
+
+        const user = await User.findById(userId).select('date_of_birth');
+        const personalInfoForDob = await UserPersonalInfo.findOne({ user_id: userId });
+        let birthDateRaw = user?.date_of_birth || personalInfoForDob?.date_of_birth;
+        if (typeof birthDateRaw === 'string' && encryptionService.isEncrypted(birthDateRaw)) {
+            birthDateRaw = encryptionService.decrypt(birthDateRaw);
+        }
+        if (birthDateRaw) {
+            const birthDateValue = new Date(birthDateRaw);
+            if (!Number.isNaN(birthDateValue.getTime()) && diagnosisDateValue < birthDateValue) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Diagnosis date cannot be before date of birth.',
+                });
+            }
         }
         
         const medicalInfoData = {

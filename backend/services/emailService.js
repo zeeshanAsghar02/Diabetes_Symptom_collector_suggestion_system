@@ -1,6 +1,32 @@
 import nodemailer from 'nodemailer';
 import { cleanupTemporaryFile } from './pdfGenerationService.js';
 
+const DEFAULT_FRONTEND_URL = 'https://diavise.live';
+
+function getFrontendBaseUrl() {
+  const configuredUrl = process.env.PUBLIC_FRONTEND_URL
+    || process.env.FRONTEND_URL
+    || process.env.CLIENT_URL
+    || process.env.APP_URL
+    || DEFAULT_FRONTEND_URL;
+
+  const normalizedUrl = configuredUrl
+    .trim()
+    .replace(/\/+$/, '')
+    .replace('staging.diavise.live', 'diavise.live');
+
+  if (normalizedUrl.toLowerCase().includes('staging')) {
+    return DEFAULT_FRONTEND_URL;
+  }
+
+  return normalizedUrl;
+}
+
+function frontendUrl(path = '/') {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${getFrontendBaseUrl()}${normalizedPath}`;
+}
+
 export async function sendActivationEmail(email, token) {
   const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
   const smtpPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
@@ -18,7 +44,7 @@ export async function sendActivationEmail(email, token) {
       pass: smtpPass,
         },
     });
-    const activationUrl = `${process.env.FRONTEND_URL}/activate/${token}`;
+    const activationUrl = frontendUrl(`/activate/${token}`);
     const html = `
     <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
       <div style="max-width: 480px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
@@ -59,7 +85,7 @@ export async function sendResetPasswordEmail(email, token) {
       pass: smtpPass,
         },
     });
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const resetUrl = frontendUrl(`/reset-password/${token}`);
     const html = `
     <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
       <div style="max-width: 480px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
@@ -152,7 +178,7 @@ export async function sendOnboardingCompletionEmail(email, userName, diseaseName
         </div>
         
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background: #1976d2; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);">Go to Dashboard</a>
+          <a href="${frontendUrl('/dashboard')}" style="display: inline-block; padding: 14px 36px; background: #1976d2; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);">Go to Dashboard</a>
         </div>
         <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
         <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
@@ -257,7 +283,7 @@ export async function sendDietPlanEmail(email, userName, pdfFilepath, dietPlan) 
         </ul>
         
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL}/personalized-system/diet" style="display: inline-block; padding: 14px 36px; background: #059669; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);">View in Dashboard</a>
+          <a href="${frontendUrl('/personalized-suggestions/diet-plan')}" style="display: inline-block; padding: 14px 36px; background: #059669; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);">View in Dashboard</a>
         </div>
         
         <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
@@ -362,7 +388,7 @@ export async function sendExercisePlanEmail(email, userName, pdfFilepath, exerci
         </ul>
         
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL}/personalized-system/exercise" style="display: inline-block; padding: 14px 36px; background: #7c3aed; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">View in Dashboard</a>
+          <a href="${frontendUrl('/personalized-suggestions/exercise-plan')}" style="display: inline-block; padding: 14px 36px; background: #7c3aed; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">View in Dashboard</a>
         </div>
         
         <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 16px; margin: 24px 0; border-radius: 4px;">
@@ -467,7 +493,7 @@ export async function sendLifestyleTipsEmail(email, userName, pdfFilepath, lifes
         </ul>
         
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL}/personalized-system/lifestyle" style="display: inline-block; padding: 14px 36px; background: #10b981; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);">View in Dashboard</a>
+          <a href="${frontendUrl('/personalized-suggestions/lifestyle-tips')}" style="display: inline-block; padding: 14px 36px; background: #10b981; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);">View in Dashboard</a>
         </div>
         
         <div style="background: #dbeafe; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
@@ -579,7 +605,7 @@ export async function sendRiskAssessmentEmail(email, userName, riskLevel, pdfFil
         </ul>
         
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background: #dc2626; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);">View Dashboard</a>
+          <a href="${frontendUrl('/dashboard')}" style="display: inline-block; padding: 14px 36px; background: #dc2626; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);">View Dashboard</a>
         </div>
         
         <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">

@@ -240,6 +240,11 @@ const SymptomAssessment = () => {
       }
 
       setSymptoms(allSymptoms);
+      const resumeIndex = Number(sessionStorage.getItem('resumeAssessmentIndex'));
+      if (Number.isInteger(resumeIndex) && resumeIndex > 0 && allSymptoms.length > 0) {
+        setCurrentSymptomIndex(Math.min(resumeIndex, allSymptoms.length - 1));
+        sessionStorage.removeItem('resumeAssessmentIndex');
+      }
     } catch (err) {
       console.error('Error fetching all symptoms:', err);
     } finally {

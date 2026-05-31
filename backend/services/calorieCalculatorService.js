@@ -134,7 +134,11 @@ class CalorieCalculatorService {
       const bmi = this.calculateBMI(weight, height);
       
       // Apply diabetic adjustments
-      const targetCalories = this.applyDiabeticAdjustments(tdee, diabetes_type, goal, bmi);
+      const initialTargetCalories = this.applyDiabeticAdjustments(tdee, diabetes_type, goal, bmi);
+      const numericAge = Number(age);
+      const targetCalories = Number.isFinite(numericAge) && numericAge > 50
+        ? Math.max(900, Math.min(1200, initialTargetCalories))
+        : initialTargetCalories;
       
       // Calculate macronutrient distribution (diabetic-friendly)
       const macros = this.calculateMacros(targetCalories);

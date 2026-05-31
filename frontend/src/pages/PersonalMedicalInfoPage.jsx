@@ -225,22 +225,40 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         fetchData(); // Refresh data
     };
 
+    const sanitizePhoneNumber = (value, countryCode = formData.country_code) => {
+        const raw = String(value || '').replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+        if (!raw) return '';
+        if (raw.startsWith('+')) return raw;
+
+        const digits = raw.replace(/\D/g, '');
+        const cleanCountryCode = String(countryCode || '').trim();
+        const countryDigits = cleanCountryCode.replace(/\D/g, '');
+
+        if (!cleanCountryCode || !digits) return digits;
+        if (countryDigits && digits.startsWith(countryDigits)) return `+${digits}`;
+        return `${cleanCountryCode}${digits}`;
+    };
+
+    const isValidPhoneNumber = (value) => /^\+\d{7,15}$/.test(String(value || '').trim());
+
+    const getBirthDateLimit = () => {
+        if (!formData.date_of_birth || !dayjs(formData.date_of_birth).isValid()) return null;
+        return dayjs(formData.date_of_birth).startOf('day');
+    };
+
     const handleInputChange = (field, value) => {
-        if (['date_of_birth', 'diagnosis_date'].includes(field) && value && dayjs(value).isAfter(dayjs(), 'day')) {
-            setFormErrors(prev => ({ ...prev, [field]: 'Please select a valid past date.' }));
-            return;
-        }
+        const nextValue = field === 'phone_number' ? sanitizePhoneNumber(value) : value;
         setFormErrors(prev => {
             const next = { ...prev };
             delete next[field];
             return next;
         });
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData(prev => ({ ...prev, [field]: nextValue }));
     };
 
     const getLiveFieldError = (field) => {
         if (formErrors[field]) return formErrors[field];
-        if (field === 'phone_number' && formData.phone_number && !String(formData.phone_number).trim().startsWith('+')) {
+        if (field === 'phone_number' && formData.phone_number && !isValidPhoneNumber(formData.phone_number)) {
             return 'invalid number';
         }
         return '';
@@ -264,6 +282,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
             ],
             2: [
                 ['diabetes_type', 'Diagnostic type is required'],
+                ['diagnosis_date', 'Diagnosis date is required'],
             ],
         };
 
@@ -272,7 +291,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
             if (!formData[field] && formData[field] !== 0) nextErrors[field] = message;
         });
 
-        if (formData.phone_number && !String(formData.phone_number).trim().startsWith('+')) {
+        if (formData.phone_number && !isValidPhoneNumber(formData.phone_number)) {
             nextErrors.phone_number = 'invalid number';
         }
         if (formData.date_of_birth && dayjs(formData.date_of_birth).isAfter(dayjs(), 'day')) {
@@ -280,6 +299,10 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         }
         if (formData.diagnosis_date && dayjs(formData.diagnosis_date).isAfter(dayjs(), 'day')) {
             nextErrors.diagnosis_date = 'Please select a valid past date.';
+        }
+        const birthDate = getBirthDateLimit();
+        if (formData.diagnosis_date && birthDate && dayjs(formData.diagnosis_date).isBefore(birthDate, 'day')) {
+            nextErrors.diagnosis_date = 'Diagnosis date cannot be before date of birth.';
         }
 
         setFormErrors(nextErrors);
@@ -317,7 +340,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 gender: formData.gender,
                 country: formData.country,
                 country_code: formData.country_code,
-                phone_number: formData.phone_number,
+                phone_number: sanitizePhoneNumber(formData.phone_number),
                 weight: parseFloat(formData.weight) || null,
                 height: parseFloat(formData.height) || null,
                 activity_level: formData.activity_level,
@@ -405,6 +428,39 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     const fieldSx = {
         minWidth: 0,
         width: '100%',
+    };
+
+    const requiredFieldSx = {
+        ...fieldSx,
+        '& .MuiInputLabel-root': {
+            color: 'rgba(226,232,240,0.92) !important',
+            fontWeight: '800 !important',
+        },
+        '& .MuiFormLabel-asterisk': {
+            color: '#22d3ee',
+        },
+    };
+
+    const optionalFieldSx = {
+        ...fieldSx,
+        '& .MuiInputLabel-root': {
+            color: 'rgba(148,163,184,0.56) !important',
+            fontWeight: '700 !important',
+        },
+    };
+
+    const hasStoredValue = (value) => {
+        if (value === undefined || value === null) return false;
+        if (typeof value === 'string') return value.trim() !== '';
+        return true;
+    };
+
+    const lockedFields = {
+        fullName: hasStoredValue(personalInfo?.fullName || userProfile?.fullName),
+        gender: hasStoredValue(personalInfo?.gender || userProfile?.gender),
+        date_of_birth: hasStoredValue(personalInfo?.date_of_birth || userProfile?.date_of_birth),
+        diabetes_type: hasStoredValue(medicalInfo?.diabetes_type),
+        diagnosis_date: hasStoredValue(medicalInfo?.diagnosis_date),
     };
 
     const selectMenuProps = {
@@ -560,17 +616,17 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('fullName', e.target.value)}
                                 variant="outlined"
                                 placeholder="Enter your full name"
-                                disabled={Boolean(formData.fullName)}
+                                disabled={lockedFields.fullName}
                                 error={Boolean(getLiveFieldError('fullName'))}
                                 helperText={getLiveFieldError('fullName')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             />
                         </Grid>
                         <Grid item xs={12} md={6} sx={{ order: { md: 2 } }}>
                             <Autocomplete
                                 fullWidth
                                 {...autocompletePaperProps}
-                                disabled
+                                disabled={lockedFields.gender}
                                 options={["Male", "Female", "Other"]}
                                 value={formData.gender || null}
                                 onChange={(e, newValue) => handleInputChange('gender', newValue || '')}
@@ -583,7 +639,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                         placeholder="Select your gender"
                                         error={Boolean(getLiveFieldError('gender'))}
                                         helperText={getLiveFieldError('gender')}
-                                        sx={fieldSx}
+                                        sx={requiredFieldSx}
                                     />
                                 )}
                             />
@@ -591,11 +647,11 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                         <Grid item xs={12} md={6} sx={{ order: { md: 4 } }}>
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                                 <DatePicker
-                                    disabled
+                                    disabled={lockedFields.date_of_birth}
                                     label="Date of Birth"
                                     value={formData.date_of_birth}
                                     onChange={(newValue) => handleInputChange('date_of_birth', newValue)}
-                                    slotProps={{ textField: { fullWidth: true, required: true, variant: "outlined", error: Boolean(getLiveFieldError('date_of_birth')), helperText: getLiveFieldError('date_of_birth'), sx: fieldSx }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
+                                    slotProps={{ textField: { fullWidth: true, required: true, variant: "outlined", error: Boolean(getLiveFieldError('date_of_birth')), helperText: getLiveFieldError('date_of_birth'), sx: requiredFieldSx }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
                                     maxDate={dayjs()}
                                     sx={{ width: '100%' }}
                                 />
@@ -616,13 +672,25 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                         'United Kingdom': '+44', 'UAE': '+971', 'Saudi Arabia': '+966',
                                         'Bangladesh': '+880', 'Canada': '+1', 'Australia': '+61', 'Other': ''
                                     };
-                                    handleInputChange('country', selectedCountry);
-                                    handleInputChange('country_code', countryCodes[selectedCountry] || '');
+                                    const nextCountryCode = countryCodes[selectedCountry] || '';
+                                    setFormErrors(prev => {
+                                        const next = { ...prev };
+                                        delete next.country;
+                                        delete next.country_code;
+                                        if (formData.phone_number) delete next.phone_number;
+                                        return next;
+                                    });
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        country: selectedCountry,
+                                        country_code: nextCountryCode,
+                                        phone_number: prev.phone_number ? sanitizePhoneNumber(prev.phone_number, nextCountryCode) : '',
+                                    }));
                                 }}
                                 variant="outlined"
                                 error={Boolean(getLiveFieldError('country'))}
                                 helperText={getLiveFieldError('country')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             >
                                 <MenuItem value="Pakistan">🇵🇰 Pakistan</MenuItem>
                                 <MenuItem value="India">🇮🇳 India</MenuItem>
@@ -645,10 +713,9 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('phone_number', e.target.value)}
                                 variant="outlined"
                                 placeholder={formData.country_code ? `${formData.country_code} XXXXXXXXXX` : "Enter phone number"}
-                                disabled={Boolean(formData.phone_number)}
                                 error={Boolean(getLiveFieldError('phone_number'))}
                                 helperText={getLiveFieldError('phone_number') || (formData.country_code ? `Format: ${formData.country_code} followed by your number` : 'Select country first')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             />
                         </Grid>
                     </Grid>
@@ -668,7 +735,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 variant="outlined"
                                 error={Boolean(getLiveFieldError('weight'))}
                                 helperText={getLiveFieldError('weight')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                                 placeholder="e.g., 70"
                                 InputProps={unitAdornment('kg')}
                             />
@@ -691,7 +758,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 variant="outlined"
                                 error={Boolean(getLiveFieldError('heightFeet'))}
                                 helperText={getLiveFieldError('heightFeet')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             >
                                 {[3, 4, 5, 6, 7, 8].map(ft => (
                                     <MenuItem key={ft} value={ft}>{ft} ft</MenuItem>
@@ -716,7 +783,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 variant="outlined"
                                 error={Boolean(getLiveFieldError('heightInches'))}
                                 helperText={getLiveFieldError('heightInches')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             >
                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(inch => (
                                     <MenuItem key={inch} value={inch}>{inch} in</MenuItem>
@@ -732,7 +799,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e, newValue) => handleInputChange('activity_level', newValue || '')}
                                 disableClearable
                                 renderInput={(params) => (
-                                    <TextField {...params} fullWidth label="Activity Level" placeholder="Select activity level" error={Boolean(getLiveFieldError('activity_level'))} helperText={getLiveFieldError('activity_level')} sx={fieldSx} />
+                                    <TextField {...params} fullWidth required label="Activity Level" placeholder="Select activity level" error={Boolean(getLiveFieldError('activity_level'))} helperText={getLiveFieldError('activity_level')} sx={requiredFieldSx} />
                                 )}
                             />
                         </Grid>
@@ -750,7 +817,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 InputProps={unitAdornment('hrs')}
                                 error={Boolean(getLiveFieldError('sleep_hours'))}
                                 helperText={getLiveFieldError('sleep_hours')}
-                                sx={fieldSx}
+                                sx={requiredFieldSx}
                             />
                         </Grid>
                     </Grid>
@@ -763,23 +830,23 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                             <Autocomplete
                                 fullWidth
                                 {...autocompletePaperProps}
-                                disabled
+                                disabled={lockedFields.diabetes_type}
                                 options={["Type 1", "Type 2", "Gestational", "Prediabetes", "Other"]}
                                 value={formData.diabetes_type || null}
                                 onChange={(e, newValue) => handleInputChange('diabetes_type', newValue || '')}
                                 renderInput={(params) => (
-                                    <TextField {...params} label="Diabetes Type" placeholder="Select type" />
+                                    <TextField {...params} required label="Diabetes Type" placeholder="Select type" error={Boolean(getLiveFieldError('diabetes_type'))} helperText={getLiveFieldError('diabetes_type')} sx={requiredFieldSx} />
                                 )}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                                 <DatePicker
-                                    disabled
+                                    disabled={lockedFields.diagnosis_date}
                                     label="Diagnosis Date"
                                     value={formData.diagnosis_date}
                                     onChange={(newVal) => handleInputChange('diagnosis_date', newVal)}
-                                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
+                                    slotProps={{ textField: { fullWidth: true, required: true, variant: 'outlined', error: Boolean(getLiveFieldError('diagnosis_date')), helperText: getLiveFieldError('diagnosis_date'), sx: requiredFieldSx }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
                                     maxDate={dayjs()}
                                     sx={{ width: '100%' }}
                                 />
@@ -795,6 +862,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('medications', e.target.value)}
                                 variant="outlined"
                                 placeholder="List medications you're taking"
+                                sx={optionalFieldSx}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -807,6 +875,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('family_history', e.target.value)}
                                 variant="outlined"
                                 placeholder="Family health history"
+                                sx={optionalFieldSx}
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -817,6 +886,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('allergies', e.target.value)}
                                 variant="outlined"
                                 placeholder="List any allergies"
+                                sx={optionalFieldSx}
                             />
                         </Grid>
                     </Grid>

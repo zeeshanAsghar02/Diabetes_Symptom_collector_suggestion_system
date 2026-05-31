@@ -450,7 +450,14 @@ class MonthlyDietPlanService {
       ).join(',\n    ')}\n  ]`
     ).join(',') + '\n}';
 
-    const promptText = `You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
+    const promptText = `CRITICAL CONSTRAINT (AGE PROFILE PROCESSING):
+- Before compiling targets, evaluate user.age directly.
+- IF user.age > 50:
+  * The daily calorie target ceiling MUST be strictly restricted to a range between 900 and 1200 kcal/day (override the standard 1500 to 2200 kcal/day limits entirely).
+  * The exercise engine MUST explicitly exclude all high-intensity, hard, or strenuous weight routines.
+  * The generation output MUST strictly prioritize low-impact, safe, light physical activities tailored for geriatric health, specifically tracking habits like walking, light mobility tracking, and low-resistance stretching.
+
+You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
 
 PATIENT: Age ${personal.age}, ${personal.gender}, Region: ${region}, ${medical.diabetes_type}, Diet: ${personal.dietary_preference}
 CALORIE TARGETS: ${calTargets}
@@ -631,7 +638,14 @@ ${skeleton}`;
   buildMealOptionPrompt(mealName, targetCalories, personal, medical, foodContext, region, numOptions) {
     const ageDietRules = this.getAgeDietRules(personal.age);
 
-    return `You are an expert diabetes dietitian creating ${numOptions} diverse meal options for ${mealName}.
+    return `CRITICAL CONSTRAINT (AGE PROFILE PROCESSING):
+- Before compiling targets, evaluate user.age directly.
+- IF user.age > 50:
+  * The daily calorie target ceiling MUST be strictly restricted to a range between 900 and 1200 kcal/day (override the standard 1500 to 2200 kcal/day limits entirely).
+  * The exercise engine MUST explicitly exclude all high-intensity, hard, or strenuous weight routines.
+  * The generation output MUST strictly prioritize low-impact, safe, light physical activities tailored for geriatric health, specifically tracking habits like walking, light mobility tracking, and low-resistance stretching.
+
+You are an expert diabetes dietitian creating ${numOptions} diverse meal options for ${mealName}.
 
 PATIENT PROFILE:
 - Age: ${personal.age}, Gender: ${personal.gender}
@@ -692,7 +706,14 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
    * Call Diabetica-7B through the unified Ollama GPU service.
    */
   async callDiabetica(prompt) {
-    const systemPrompt = `You are a diabetes nutrition expert AI.
+    const systemPrompt = `CRITICAL CONSTRAINT (AGE PROFILE PROCESSING):
+- Before compiling targets, evaluate user.age directly.
+- IF user.age > 50:
+  * The daily calorie target ceiling MUST be strictly restricted to a range between 900 and 1200 kcal/day (override the standard 1500 to 2200 kcal/day limits entirely).
+  * The exercise engine MUST explicitly exclude all high-intensity, hard, or strenuous weight routines.
+  * The generation output MUST strictly prioritize low-impact, safe, light physical activities tailored for geriatric health, specifically tracking habits like walking, light mobility tracking, and low-resistance stretching.
+
+You are a diabetes nutrition expert AI.
 Respond with ONLY valid JSON - no markdown, no code blocks, and no explanations outside JSON.
 Create diverse, culturally appropriate diabetic meal plans using modest portions and low-GI foods.
 If the patient is age 60 or older, meals must be strictly light, low-oil, low-salt, easy to digest, and dinner must be the lightest main meal.`;
