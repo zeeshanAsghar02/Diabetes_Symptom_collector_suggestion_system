@@ -48,6 +48,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const theme = useTheme();
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const today = new Date();
+    const minProfileDob = '1850-01-01';
+    const minProfileDobDate = new Date(minProfileDob);
     const maxProfileDobDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
     const maxProfileDob = maxProfileDobDate.toISOString().slice(0, 10);
 
@@ -142,8 +144,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         }
 
         const dobDate = new Date(profileDob);
-        if (Number.isNaN(dobDate.getTime()) || dobDate > maxProfileDobDate) {
-            setProfileError('Please enter a valid date of birth. You must be at least 11 years old.');
+        if (Number.isNaN(dobDate.getTime()) || dobDate < minProfileDobDate || dobDate > maxProfileDobDate) {
+            setProfileError('Please enter a valid date of birth between 1850 and the minimum age limit of 11 years.');
             return;
         }
 
@@ -352,7 +354,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                             value={profileDob}
                             onChange={(e) => setProfileDob(e.target.value)}
                             InputLabelProps={{ shrink: true }}
-                            inputProps={{ max: maxProfileDob }}
+                            inputProps={{ min: minProfileDob, max: maxProfileDob }}
                             sx={{ mb: 2 }}
                         />
 

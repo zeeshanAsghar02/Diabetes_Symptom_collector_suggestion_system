@@ -438,7 +438,7 @@ const SymptomAssessment = () => {
         overflowY: 'auto',
       }}
     >
-      <AuthBackground />
+      <AuthBackground paused={showLoginDialog} />
       <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Fade in timeout={500}>
@@ -846,10 +846,17 @@ const SymptomAssessment = () => {
         onClose={() => {}} 
         maxWidth="sm" 
         fullWidth
+        BackdropProps={{
+          sx: {
+            bgcolor: 'rgba(2, 6, 23, 0.78)',
+            backdropFilter: 'blur(2px)',
+          },
+        }}
         PaperProps={{
           sx: {
             borderRadius: 4,
             p: 2,
+            bgcolor: (theme) => alpha(theme.palette.background.paper, 0.98),
           }
         }}
       >

@@ -91,6 +91,29 @@ export const register = async (req, res) => {
                 message: 'Gender must be either Male or Female.' 
             });
         }
+
+        const dobDate = new Date(date_of_birth);
+        const minDobDate = new Date('1850-01-01T00:00:00.000Z');
+        const maxDobDate = new Date();
+        maxDobDate.setFullYear(maxDobDate.getFullYear() - 11);
+        if (Number.isNaN(dobDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid date of birth format.',
+            });
+        }
+        if (dobDate < minDobDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Date of birth cannot be before 1850.',
+            });
+        }
+        if (dobDate > maxDobDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'User must be at least 11 years old.',
+            });
+        }
         
         // Check if an ACTIVE user already has this email
         const existingUser = await User.findOne({ email: normalizedEmail, deleted_at: null });

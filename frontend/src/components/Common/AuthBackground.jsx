@@ -27,7 +27,7 @@ const diabeticIcons = [
   { Icon: BiotechIcon, size: 95 },
 ];
 
-export default function AuthBackground() {
+export default function AuthBackground({ paused = false }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const freshPalette = ['#22D3EE', '#38BDF8', '#60A5FA', '#84CC16', '#A3E635'];
@@ -73,7 +73,7 @@ export default function AuthBackground() {
                 ? alpha(freshColor, 0.2)
                 : alpha(freshColor, 0.18),
               opacity: isDark ? 0.8 : 0.7, // Higher opacity for better visibility
-              animation: `float ${15 + index * 2}s ease-in-out infinite`,
+              animation: paused ? 'none' : `float ${15 + index * 2}s ease-in-out infinite`,
               animationDelay: `${index * 0.5}s`,
               '--rotate': `${pos.rotate}deg`,
             }}

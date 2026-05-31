@@ -69,6 +69,14 @@ export default function SignUpForm({ setSuccess, setError }) {
                 if (setError) setError(errorMsg);
                 return false;
             }
+            const minDob = new Date(1850, 0, 1);
+            const maxDob = new Date(new Date().getFullYear() - 11, new Date().getMonth(), new Date().getDate());
+            if (dob < minDob || dob > maxDob) {
+                const errorMsg = 'Please enter a valid date of birth between 1850 and the minimum age limit of 11 years.';
+                setErrorLocal(errorMsg);
+                if (setError) setError(errorMsg);
+                return false;
+            }
         } else if (step === 1) {
             if (!email || !password) {
                 const errorMsg = 'Email and password are required.';
@@ -192,6 +200,7 @@ export default function SignUpForm({ setSuccess, setError }) {
     };
 
     const today = new Date();
+    const minDate = new Date(1850, 0, 1);
     const maxDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
 
     const getPasswordStrength = () => {
@@ -340,6 +349,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                                             label="Date of Birth"
                                             value={dob}
                                             onChange={setDob}
+                                            minDate={minDate}
                                             maxDate={maxDate}
                                             slotProps={{
                                                 textField: {

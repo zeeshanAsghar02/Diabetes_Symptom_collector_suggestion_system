@@ -17,6 +17,24 @@ const normalizeRoleName = (roleName) => {
     return roleName.trim().toLowerCase().replace(/\s+/g, '_');
 };
 
+const validateDateOfBirth = (dateOfBirth, minAge = 11) => {
+    const dobDate = new Date(dateOfBirth);
+    const minDate = new Date('1850-01-01T00:00:00.000Z');
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() - minAge);
+
+    if (Number.isNaN(dobDate.getTime())) {
+        return 'Invalid date of birth format';
+    }
+    if (dobDate < minDate) {
+        return 'Date of birth cannot be before 1850';
+    }
+    if (dobDate > maxDate) {
+        return `User must be at least ${minAge} years old`;
+    }
+    return '';
+};
+
 
 // Get current user controller
 export const getProfile = async (req, res) => {
@@ -62,6 +80,12 @@ export const updateProfile = async (req, res) => {
 
         // Update Personal Info
         if (personalInfo) {
+            if (personalInfo.date_of_birth) {
+                const dobError = validateDateOfBirth(personalInfo.date_of_birth);
+                if (dobError) {
+                    return res.status(400).json({ success: false, message: dobError });
+                }
+            }
             // Keep core auth/profile fields in sync for assessment and onboarding flows.
             if (personalInfo.fullName) user.fullName = personalInfo.fullName;
             if (personalInfo.date_of_birth) user.date_of_birth = personalInfo.date_of_birth;
@@ -211,31 +235,9 @@ export const updateUser = async (req, res) => {
 
         // Validate date of birth if provided
         if (date_of_birth) {
-            const dobDate = new Date(date_of_birth);
-            const today = new Date();
-            
-            if (isNaN(dobDate.getTime())) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Invalid date of birth format" 
-                });
-            }
-            
-            if (dobDate > today) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Date of birth cannot be in the future" 
-                });
-            }
-            
-            // Check if user is at least 5 years old (reasonable minimum)
-            const minAge = new Date();
-            minAge.setFullYear(minAge.getFullYear() - 5);
-            if (dobDate > minAge) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "User must be at least 5 years old" 
-                });
+            const dobError = validateDateOfBirth(date_of_birth);
+            if (dobError) {
+                return res.status(400).json({ success: false, message: dobError });
             }
         }
 
