@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import {
-  Box,
-  Paper,
-  Typography,
-  Button,
-  CircularProgress,
   Alert,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box,
+  Button,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Paper,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -43,6 +43,7 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
   const [editingFeedback, setEditingFeedback] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
   const showForm = controlledShowForm !== undefined ? controlledShowForm : internalShowForm;
+
   const setShowForm = useCallback((value) => {
     if (onShowFormChange) onShowFormChange(value);
     if (controlledShowForm === undefined) setInternalShowForm(value);
@@ -52,11 +53,8 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
     loadFeedback();
   }, []);
 
-  // Update form visibility when prop changes
   useEffect(() => {
-    if (showFormOnMount) {
-      setShowForm(true);
-    }
+    if (showFormOnMount) setShowForm(true);
   }, [showFormOnMount, setShowForm]);
 
   const loadFeedback = async () => {
@@ -109,126 +107,110 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
     setEditingFeedback(null);
   };
 
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, index) => {
-      if (index < rating) {
-        return <StarIcon key={index} sx={{ color: '#FFB800', fontSize: '1.2rem' }} />;
-      }
-      return <StarBorderIcon key={index} sx={{ color: 'text.disabled', fontSize: '1.2rem' }} />;
-    });
-  };
+  const renderStars = (rating) => (
+    Array.from({ length: 5 }, (_, index) => (
+      index < rating
+        ? <StarIcon key={index} sx={{ color: '#fbbf24', fontSize: '1rem', filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.28))' }} />
+        : <StarBorderIcon key={index} sx={{ color: 'rgba(255,255,255,0.1)', fontSize: '1rem' }} />
+    ))
+  );
 
-
-  // Derived user stats for a lightweight header
   const totalCount = feedback.length;
   const averageRating =
     totalCount > 0 ? (feedback.reduce((sum, f) => sum + (f.rating || 0), 0) / totalCount).toFixed(2) : '0.00';
   const latestDate =
     totalCount > 0
-      ? formatDate(
-          feedback
-            .slice()
-            .sort((a, b) => new Date(b.submitted_on) - new Date(a.submitted_on))[0]?.submitted_on
-        )
+      ? formatDate(feedback.slice().sort((a, b) => new Date(b.submitted_on) - new Date(a.submitted_on))[0]?.submitted_on)
       : null;
 
   return (
-    <Box>
-      {/* Header */}
-      <Paper
-        elevation={0}
-        sx={{
-          mb: 3,
-          p: 3,
-          borderRadius: 3,
-          background: (t) => t.palette.background.paper,
-          border: (t) => `1px solid ${t.palette.divider}`,
-        }}
-      >
+    <Box sx={{ color: '#f8fafc' }}>
+      <Box sx={{ mb: 3.5 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
           <Box>
-            <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={560} sx={{ mb: 0.5, color: '#fff', letterSpacing: '-0.045em' }}>
               Your Feedback
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
               Share what feels helpful, confusing, or missing in your Diavise experience.
             </Typography>
           </Box>
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<AddIcon />}
             onClick={handleNewFeedback}
             sx={{
-              borderRadius: 2,
+              borderRadius: 999,
               textTransform: 'none',
-              fontWeight: 700,
-              px: 3,
+              fontWeight: 720,
+              px: 2.4,
+              color: '#fff',
+              bgcolor: 'rgba(255,255,255,0.025)',
+              borderColor: 'rgba(34,211,238,0.3)',
+              boxShadow: 'none',
+              '&:hover': {
+                borderColor: 'rgba(45,212,191,0.7)',
+                bgcolor: 'rgba(45,212,191,0.08)',
+                boxShadow: '0 0 28px rgba(45,212,191,0.12)',
+              },
             }}
           >
             Submit New Feedback
           </Button>
         </Box>
 
-        {/* Quick stats */}
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-            gap: 2,
-            mt: 3,
+            gap: 0,
+            mt: 3.2,
           }}
         >
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              border: (t) => `1px solid ${t.palette.divider}`,
-              background: (t) => t.palette.background.default,
-            }}
-          >
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
+          <Box sx={{ py: 1.5, pr: { xs: 0, sm: 3 } }}>
+            <Typography variant="overline" sx={{ fontWeight: 740, color: 'rgba(148,163,184,0.72)', letterSpacing: '0.14em' }}>
               Total submissions
             </Typography>
-            <Typography variant="h5" fontWeight={800}>{totalCount}</Typography>
-          </Paper>
-          <Paper
-            elevation={0}
+            <Typography variant="h5" fontWeight={380} sx={{ color: '#fff', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace' }}>
+              {totalCount}
+            </Typography>
+          </Box>
+          <Box
             sx={{
-              p: 2,
-              borderRadius: 2,
-              border: (t) => `1px solid ${t.palette.divider}`,
-              background: (t) => t.palette.background.default,
+              py: 1.5,
+              px: { xs: 0, sm: 3 },
+              borderLeft: { xs: 'none', sm: '1px solid rgba(255,255,255,0.1)' },
+              mt: { xs: 1.5, sm: 0 },
             }}
           >
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
+            <Typography variant="overline" sx={{ fontWeight: 740, color: 'rgba(148,163,184,0.72)', letterSpacing: '0.14em' }}>
               Avg rating
             </Typography>
             <Box display="flex" alignItems="center" gap={1}>
-              <StarIcon sx={{ color: '#FFB800', fontSize: 20 }} />
-              <Typography variant="h5" fontWeight={800}>{averageRating}</Typography>
+              <StarIcon sx={{ color: '#fbbf24', fontSize: 17, filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.28))' }} />
+              <Typography variant="h5" fontWeight={380} sx={{ color: '#fff', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace' }}>
+                {averageRating}
+              </Typography>
             </Box>
-          </Paper>
-          <Paper
-            elevation={0}
+          </Box>
+          <Box
             sx={{
-              p: 2,
-              borderRadius: 2,
-              border: (t) => `1px solid ${t.palette.divider}`,
-              background: (t) => t.palette.background.default,
+              py: 1.5,
+              pl: { xs: 0, sm: 3 },
+              borderLeft: { xs: 'none', sm: '1px solid rgba(255,255,255,0.1)' },
+              mt: { xs: 1.5, sm: 0 },
             }}
           >
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
+            <Typography variant="overline" sx={{ fontWeight: 740, color: 'rgba(148,163,184,0.72)', letterSpacing: '0.14em' }}>
               Most recent
             </Typography>
-            <Typography variant="body1" fontWeight={700}>
-              {latestDate || '—'}
+            <Typography variant="body1" fontWeight={380} sx={{ color: '#fff', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace' }}>
+              {latestDate || '-'}
             </Typography>
-          </Paper>
+          </Box>
         </Box>
-      </Paper>
+      </Box>
 
-      {/* Feedback Form */}
       {showForm && (
         <Box sx={{ mb: 4 }}>
           <FeedbackSubmissionForm
@@ -239,13 +221,12 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
         </Box>
       )}
 
-      {/* Feedback List */}
       {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: '#2dd4bf' }} />
         </Box>
       ) : error ? (
-        <Alert severity="error" sx={{ borderRadius: 3 }}>
+        <Alert severity="error" sx={{ borderRadius: 3, bgcolor: 'rgba(251,146,60,0.1)', color: '#fed7aa' }}>
           {error}
         </Alert>
       ) : feedback.length === 0 ? (
@@ -255,20 +236,27 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
             p: 6,
             textAlign: 'center',
             borderRadius: 3,
-            background: (t) => t.palette.background.paper,
-            border: (t) => `1px dashed ${t.palette.divider}`,
+            background: 'rgba(17,24,39,0.72)',
+            border: '1px dashed rgba(255,255,255,0.08)',
           }}
         >
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+          <Typography variant="h6" fontWeight={560} sx={{ mb: 2, color: '#fff' }}>
             No Feedback Yet
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ mb: 3, color: 'rgba(203,213,225,0.62)' }}>
             Tell us what could be improved in your care dashboard, plans, assessment, or AI assistant.
           </Typography>
           <Button
-            variant="contained"
+            variant="outlined"
             onClick={handleNewFeedback}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+            sx={{
+              borderRadius: 999,
+              textTransform: 'none',
+              fontWeight: 720,
+              color: '#fff',
+              borderColor: 'rgba(34,211,238,0.3)',
+              '&:hover': { borderColor: 'rgba(45,212,191,0.7)', bgcolor: 'rgba(45,212,191,0.08)' },
+            }}
           >
             Submit Your First Feedback
           </Button>
@@ -288,94 +276,82 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
               sx={{
                 p: 3,
                 borderRadius: 3,
-                background: (t) => t.palette.background.paper,
-                border: (t) => `1px solid ${t.palette.divider}`,
-                boxShadow: '0 6px 22px rgba(0,0,0,0.06)',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                background: 'rgba(17,24,39,0.78)',
+                border: '1px solid rgba(255,255,255,0.05)',
+                boxShadow: 'none',
+                transition: 'transform 0.18s ease, background 0.18s ease, border-color 0.18s ease',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 10px 28px rgba(0,0,0,0.10)',
+                  background: 'rgba(17,24,39,0.92)',
+                  borderColor: 'rgba(255,255,255,0.09)',
                 },
               }}
             >
               <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={2}>
                 <Box sx={{ flex: 1 }}>
-                  {/* Rating and Date */}
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5} flexWrap="wrap" gap={1}>
-                    <Box display="flex" alignItems="center" gap={1}>
+                    <Box display="flex" alignItems="center" gap={0.35}>
                       {renderStars(item.rating)}
                     </Box>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.76)' }}>
                       {formatDate(item.submitted_on)}
                     </Typography>
                   </Box>
 
-                  {/* Comment */}
                   {item.comment && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
+                    <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.65, color: 'rgba(203,213,225,0.72)' }}>
                       {item.comment}
                     </Typography>
                   )}
 
-                  {/* Category ratings (if any) */}
                   {item.category_ratings && Object.keys(item.category_ratings).length > 0 && (
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: '1fr' },
-                        gap: 1,
-                        mb: 1.5,
-                        mt: 1,
-                      }}
-                    >
+                    <Box sx={{ display: 'grid', gap: 0.35, mb: 1.5, mt: 1 }}>
                       {categoryList.map((cat) => {
                         const val = item.category_ratings?.[cat];
                         if (!val) return null;
                         return (
-                          <Paper
+                          <Box
                             key={cat}
-                            elevation={0}
                             sx={{
-                              p: 1.25,
-                              borderRadius: 2,
-                              border: (t) => `1px solid ${t.palette.divider}`,
-                              background: (t) => t.palette.background.default,
+                              py: 0.85,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               gap: 1,
                             }}
                           >
-                            <Typography variant="caption" fontWeight={700} sx={{ color: 'text.secondary' }}>
+                            <Typography variant="caption" fontWeight={640} sx={{ color: 'rgba(203,213,225,0.58)' }}>
                               {cat}
                             </Typography>
-                            <Box display="flex" alignItems="center" gap={0.5}>
+                            <Box display="flex" alignItems="center" gap={0.35}>
                               {renderStars(val)}
                             </Box>
-                          </Paper>
+                          </Box>
                         );
                       })}
                     </Box>
                   )}
 
-                  {/* Anonymous Badge */}
                   {item.is_anonymous && (
                     <Chip
                       label="Submitted anonymously"
                       size="small"
-                      sx={{ mt: 1, fontWeight: 600, color: 'text.secondary', borderRadius: 2 }}
+                      sx={{ mt: 1, fontWeight: 600, color: 'rgba(203,213,225,0.62)', borderRadius: 2, borderColor: 'rgba(255,255,255,0.08)' }}
                       variant="outlined"
                     />
                   )}
                 </Box>
 
-                {/* Actions */}
-                <Box display="flex" gap={1}>
+                <Box display="flex" gap={0.5}>
                   <Tooltip title="Edit feedback">
                     <IconButton
                       size="small"
                       onClick={() => handleEditFeedback(item)}
-                      sx={{ color: 'primary.main' }}
+                      sx={{
+                        color: 'rgba(148,163,184,0.46)',
+                        '& svg': { fontSize: 19 },
+                        '&:hover': { color: '#60a5fa', bgcolor: 'rgba(96,165,250,0.08)' },
+                      }}
                     >
                       <EditIcon />
                     </IconButton>
@@ -384,7 +360,11 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
                     <IconButton
                       size="small"
                       onClick={() => handleDeleteClick(item._id)}
-                      sx={{ color: 'error.main' }}
+                      sx={{
+                        color: 'rgba(148,163,184,0.46)',
+                        '& svg': { fontSize: 19 },
+                        '&:hover': { color: '#f87171', bgcolor: 'rgba(248,113,113,0.08)' },
+                      }}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -396,17 +376,28 @@ export default function UserFeedbackHistory({ showFormOnMount = false, showForm:
         </Box>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null })}>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, id: null })}
+        PaperProps={{
+          sx: {
+            bgcolor: '#0b0f19',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 3,
+            boxShadow: '0 24px 80px rgba(2,6,23,0.45)',
+          },
+        }}
+      >
         <DialogTitle>Delete Feedback</DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ color: 'rgba(203,213,225,0.72)' }}>
             Are you sure you want to delete this feedback? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null })}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+          <Button onClick={() => setDeleteDialog({ open: false, id: null })} sx={{ color: 'rgba(203,213,225,0.7)' }}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="text">
             Delete
           </Button>
         </DialogActions>

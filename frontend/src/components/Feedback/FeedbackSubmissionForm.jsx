@@ -11,7 +11,6 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import StarIcon from '@mui/icons-material/Star';
 import { submitFeedback, updateFeedbackById } from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -104,28 +103,29 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
       sx={{
         p: 4,
         borderRadius: 3,
-        background: (t) => t.palette.background.paper,
-        border: (t) => `1px solid ${t.palette.divider}`,
+        background: 'rgba(17,24,39,0.78)',
+        border: '1px solid rgba(255,255,255,0.05)',
+        boxShadow: 'none',
       }}
     >
-      <Typography variant="h5" fontWeight={800} sx={{ mb: 3 }}>
+      <Typography variant="h5" fontWeight={560} sx={{ mb: 1, color: '#fff', letterSpacing: '-0.045em' }}>
         {initialData?._id ? 'Edit Your Feedback' : 'Share Your Feedback'}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+      <Typography variant="body2" sx={{ mb: 4, color: 'rgba(203,213,225,0.62)' }}>
         Help us improve by sharing your experience. Your feedback is valuable to us.
       </Typography>
 
       <form onSubmit={handleSubmit}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2, bgcolor: 'rgba(251,146,60,0.1)', color: '#fed7aa' }}>
             {error}
           </Alert>
         )}
 
         {/* Rating */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-            Overall Rating <span style={{ color: 'red' }}>*</span>
+          <Typography variant="subtitle1" fontWeight={640} sx={{ mb: 1.5, color: '#fff' }}>
+            Overall Rating <span style={{ color: '#f87171' }}>*</span>
           </Typography>
           <Box
             sx={{
@@ -134,7 +134,7 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
               gap: 2,
               p: 2,
               borderRadius: 2,
-              background: (t) => alpha(t.palette.primary.main, 0.04),
+              background: 'rgba(255,255,255,0.025)',
             }}
           >
             <Rating
@@ -146,15 +146,16 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
               size="large"
               sx={{
                 '& .MuiRating-iconFilled': {
-                  color: '#FFB800',
+                  color: '#fbbf24',
+                  filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.28))',
                 },
                 '& .MuiRating-iconEmpty': {
-                  color: 'text.disabled',
+                  color: 'rgba(255,255,255,0.1)',
                 },
               }}
             />
             {rating > 0 && (
-              <Typography variant="body1" fontWeight={600} color="text.secondary">
+              <Typography variant="body1" fontWeight={520} sx={{ color: 'rgba(203,213,225,0.66)' }}>
                 {rating} {rating === 1 ? 'star' : 'stars'}
               </Typography>
             )}
@@ -163,7 +164,7 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
 
         {/* Comment */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={640} sx={{ mb: 1.5, color: '#fff' }}>
             Comments or Suggestions (Optional)
           </Typography>
           <TextField
@@ -177,6 +178,13 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
+                bgcolor: 'rgba(2,6,23,0.55)',
+                color: '#fff',
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.08)' },
+                '&:hover fieldset': { borderColor: 'rgba(45,212,191,0.28)' },
+                '&.Mui-focused fieldset': { borderColor: 'rgba(45,212,191,0.55)' },
+                '& textarea': { color: '#fff' },
+                '& textarea::placeholder': { color: 'rgba(203,213,225,0.44)', opacity: 1 },
               },
             }}
           />
@@ -184,7 +192,7 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
 
         {/* Category Ratings Grid */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={640} sx={{ mb: 1.5, color: '#fff' }}>
             Category Ratings (Optional)
           </Typography>
           <Box
@@ -201,11 +209,11 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
                 sx={{
                   p: 2,
                   borderRadius: 2,
-                  border: (t) => `1px solid ${t.palette.divider}`,
-                  background: (t) => t.palette.background.paper,
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  background: 'rgba(2,6,23,0.35)',
                 }}
               >
-                <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="body2" fontWeight={620} sx={{ mb: 1, color: 'rgba(203,213,225,0.68)' }}>
                   {cat}
                 </Typography>
                 <Rating
@@ -216,8 +224,8 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
                   }}
                   precision={1}
                   sx={{
-                    '& .MuiRating-iconFilled': { color: '#FFB800' },
-                    '& .MuiRating-iconEmpty': { color: 'text.disabled' },
+                    '& .MuiRating-iconFilled': { color: '#fbbf24', filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.28))' },
+                    '& .MuiRating-iconEmpty': { color: 'rgba(255,255,255,0.1)' },
                   }}
                 />
               </Paper>
@@ -235,13 +243,13 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
                 sx={{
                   color: 'primary.main',
                   '&.Mui-checked': {
-                    color: 'primary.main',
+                    color: '#2dd4bf',
                   },
                 }}
               />
             }
             label={
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
                 Submit anonymously (Your feedback will be visible to others, but your name will be hidden)
               </Typography>
             }
@@ -255,16 +263,33 @@ export default function FeedbackSubmissionForm({ onSuccess, onCancel, initialDat
               variant="outlined"
               onClick={onCancel}
               disabled={loading}
-              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 3 }}
+              sx={{
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 3,
+                color: 'rgba(203,213,225,0.78)',
+                borderColor: 'rgba(255,255,255,0.1)',
+                '&:hover': { borderColor: 'rgba(255,255,255,0.2)', bgcolor: 'rgba(255,255,255,0.04)' },
+              }}
             >
               Cancel
             </Button>
           )}
           <Button
             type="submit"
-            variant="contained"
+            variant="outlined"
             disabled={loading || rating === 0}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}
+            sx={{
+              borderRadius: 999,
+              textTransform: 'none',
+              fontWeight: 720,
+              px: 4,
+              color: '#fff',
+              borderColor: 'rgba(34,211,238,0.3)',
+              '&:hover': { borderColor: 'rgba(45,212,191,0.7)', bgcolor: 'rgba(45,212,191,0.08)' },
+              '&.Mui-disabled': { color: 'rgba(148,163,184,0.38)', borderColor: 'rgba(255,255,255,0.06)' },
+            }}
           >
             {loading ? (
               <Box display="flex" alignItems="center" gap={1}>

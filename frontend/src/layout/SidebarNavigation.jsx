@@ -66,8 +66,9 @@ export default function SidebarNavigation({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: '#ffffff',
-          borderRight: (t) => `1px solid ${alpha(t.palette.divider, 0.9)}`,
+          background: '#0B0F19',
+          borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+          boxShadow: 'none',
           transition: 'width 0.3s ease, padding 0.3s ease',
           overflowX: 'hidden',
         },
@@ -95,7 +96,7 @@ export default function SidebarNavigation({
             borderRadius: 1.5,
             cursor: 'pointer',
             '&:hover': {
-              bgcolor: alpha('#4F46E5', 0.06),
+              bgcolor: 'rgba(255, 255, 255, 0.04)',
             },
           }}
         >
@@ -103,8 +104,9 @@ export default function SidebarNavigation({
             sx={{
               width: 28,
               height: 28,
-              background: alpha('#4F46E5', 0.12),
-              color: '#4F46E5',
+              background: 'rgba(34, 211, 238, 0.1)',
+              color: '#67E8F9',
+              border: '1px solid rgba(103, 232, 249, 0.28)',
               fontWeight: 700,
               fontSize: '0.92rem',
             }}
@@ -113,10 +115,10 @@ export default function SidebarNavigation({
           </Avatar>
           {sidebarOpen && (
             <Box>
-              <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.02rem', lineHeight: 1.1 }}>
+              <Typography sx={{ fontWeight: 800, color: '#F8FAFC', fontSize: '0.95rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                 Diavise
               </Typography>
-              <Typography sx={{ color: '#4F46E5', fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.1 }}>
+              <Typography sx={{ color: '#67E8F9', fontWeight: 700, fontSize: '0.68rem', lineHeight: 1.1, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 Care
               </Typography>
             </Box>
@@ -142,31 +144,44 @@ export default function SidebarNavigation({
                   selected={selectedIndex === index}
                   onClick={() => onSectionChange(index)}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 1.4,
                     mb: 0,
                     px: sidebarOpen ? 1.2 : 1,
                     py: 0.95,
                     justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                    position: 'relative',
                     transition: 'all 0.2s ease',
                     '&.Mui-selected': {
-                      bgcolor: alpha('#4F46E5', 0.1),
+                      bgcolor: 'transparent',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: -7,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 2,
+                        height: 26,
+                        borderRadius: 999,
+                        bgcolor: '#22D3EE',
+                        boxShadow: '0 0 18px rgba(34, 211, 238, 0.72)',
+                      },
                       '& .MuiListItemIcon-root': {
-                        color: '#4F46E5',
+                        color: '#E0F2FE',
                       },
                       '& .MuiListItemText-primary': {
-                        color: '#4F46E5',
-                        fontWeight: 700,
+                        color: '#F8FAFC',
+                        fontWeight: 780,
                       },
                     },
                     '&:hover': {
-                      bgcolor: alpha('#4F46E5', 0.06),
+                      bgcolor: 'rgba(255, 255, 255, 0.045)',
                     },
                   }}
                 >
                   <ListItemIcon
                     sx={{
                       minWidth: sidebarOpen ? 36 : 'auto',
-                      color: '#64748B',
+                      color: 'rgba(203, 213, 225, 0.56)',
                       transition: 'color 0.2s ease',
                       justifyContent: 'center',
                     }}
@@ -178,9 +193,10 @@ export default function SidebarNavigation({
                       primary={sec.label}
                       primaryTypographyProps={{
                         component: 'span',
-                        fontWeight: 600,
-                        fontSize: '0.8rem',
-                        color: '#334155',
+                        fontWeight: 650,
+                        fontSize: '0.72rem',
+                        color: 'rgba(203, 213, 225, 0.58)',
+                        letterSpacing: '0.01em',
                       }}
                     />
                   )}
@@ -210,10 +226,10 @@ export default function SidebarNavigation({
                 textTransform: 'none',
                 fontSize: '0.78rem',
                 fontWeight: 700,
-                color: '#64748B',
+                color: 'rgba(203, 213, 225, 0.58)',
                 '&:hover': {
-                  bgcolor: alpha('#EF4444', 0.1),
-                  color: '#DC2626',
+                  bgcolor: 'rgba(248, 113, 113, 0.1)',
+                  color: '#FCA5A5',
                 },
               }}
             >
@@ -222,19 +238,19 @@ export default function SidebarNavigation({
           </Tooltip>
         )}
 
-        <Divider sx={{ mb: 0.9 }} />
+        <Divider sx={{ mb: 0.9, borderColor: 'rgba(255, 255, 255, 0.06)' }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.9 }}>
-            <Avatar sx={{ width: 28, height: 28, bgcolor: '#4F46E5', fontSize: '0.75rem' }}>
+            <Avatar sx={{ width: 24, height: 24, bgcolor: 'rgba(34, 211, 238, 0.12)', color: '#BAE6FD', border: '1px solid rgba(125, 211, 252, 0.32)', fontSize: '0.66rem', fontWeight: 800 }}>
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </Avatar>
             {sidebarOpen && (
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
-                  {user?.fullName || 'Sarah Khan'}
+                <Typography sx={{ fontSize: '0.68rem', fontWeight: 760, color: '#F8FAFC', lineHeight: 1.2, maxWidth: 116 }} noWrap>
+                  {user?.fullName || user?.name || 'Patient'}
                 </Typography>
-                <Typography sx={{ fontSize: '0.65rem', color: '#64748B', lineHeight: 1.2 }}>
+                <Typography sx={{ fontSize: '0.56rem', color: 'rgba(203, 213, 225, 0.52)', lineHeight: 1.2, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                   Patient
                 </Typography>
               </Box>
@@ -242,13 +258,13 @@ export default function SidebarNavigation({
           </Box>
           {sidebarOpen && (
             <IconButton size="small" onClick={onSidebarToggle}>
-              <KeyboardArrowDownIcon sx={{ fontSize: 18, color: '#94A3B8' }} />
+              <KeyboardArrowDownIcon sx={{ fontSize: 18, color: 'rgba(203, 213, 225, 0.55)' }} />
             </IconButton>
           )}
           {!sidebarOpen && (
             <Tooltip title="Expand Sidebar" placement="right">
               <IconButton size="small" onClick={onSidebarToggle}>
-                <ChevronRightIcon fontSize="small" sx={{ color: '#94A3B8' }} />
+                <ChevronRightIcon fontSize="small" sx={{ color: 'rgba(203, 213, 225, 0.55)' }} />
               </IconButton>
             </Tooltip>
           )}

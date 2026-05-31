@@ -86,7 +86,7 @@ const useDashboardDataFetching = ({
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('showFeedback') === 'true') {
-      setSelectedIndex(4);
+      setSelectedIndex(3);
       setShowFeedbackForm(true);
       navigate('/dashboard', { replace: true });
     }
@@ -94,7 +94,7 @@ const useDashboardDataFetching = ({
 
   // Fetch disease data for Dashboard, Insights and My Disease Data sections
   useEffect(() => {
-    if (currentSection === 'Dashboard' || currentSection === 'Insights' || currentSection === 'My Disease Data') {
+    if (currentSection === 'Dashboard' || currentSection === 'Overview' || currentSection === 'Insights' || currentSection === 'My Disease Data') {
       setLoading(true);
       setError(null);
       console.log('Fetching disease data for section:', currentSection);
@@ -113,7 +113,7 @@ const useDashboardDataFetching = ({
 
   // Fetch assessment summary for Insights
   useEffect(() => {
-    if (!user || currentSection !== 'Insights') return;
+    if (!user || (currentSection !== 'Insights' && currentSection !== 'Overview')) return;
 
     const fetchSummary = async () => {
       try {
@@ -174,7 +174,15 @@ const useDashboardDataFetching = ({
   // Fetch profile and plan data for diagnosed users
   useEffect(() => {
     if (!user || user.diabetes_diagnosed !== 'yes') return;
-    if (currentSection !== 'Personalized Suggestions' && currentSection !== 'Dashboard' && currentSection !== 'Insights') return;
+    const shouldFetchProfileData = [
+      'Personalized Suggestions',
+      'Dashboard',
+      'Overview',
+      'Care Plan',
+      'AI Assistant',
+      'Insights',
+    ].includes(currentSection);
+    if (!shouldFetchProfileData) return;
 
     const fetchCompletion = async () => {
       try {
@@ -314,7 +322,7 @@ const useDashboardDataFetching = ({
 
   // Animate progress bars
   useEffect(() => {
-    if (currentSection === 'Insights' && bmiAnalytics) {
+    if ((currentSection === 'Insights' || currentSection === 'Overview' || currentSection === 'Care Plan') && bmiAnalytics) {
       setTimeout(() => {
         setAnimatedValues(prev => ({ ...prev, bmi: bmiAnalytics.pct }));
       }, 100);
@@ -323,7 +331,7 @@ const useDashboardDataFetching = ({
 
   // Keyboard shortcuts (placeholder - full implementation in original)
   useEffect(() => {
-    if (currentSection !== 'Insights') return;
+    if (currentSection !== 'Insights' && currentSection !== 'Overview' && currentSection !== 'Care Plan') return;
     // Keyboard event handler would go here
   }, [currentSection]);
 

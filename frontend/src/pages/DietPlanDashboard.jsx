@@ -67,7 +67,7 @@ const StatTile = ({ label, value, accent, icon }) => (
 
 const DietPlanDashboard = ({ inModal = false }) => {
   const { formatDate } = useDateFormat();
-  const [activeTab, setActiveTab] = useState(0); // 0 = Daily, 1 = Monthly
+  const [activeTab, setActiveTab] = useState(0); // 0 = Monthly, 1 = Daily
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -81,6 +81,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    setSelectedPlan(null);
   };
 
   // Calculate actual calories from meals - ALWAYS calculate from actual meal data
@@ -101,19 +102,19 @@ const DietPlanDashboard = ({ inModal = false }) => {
         }
         return sum;
       }, 0);
-      
+
       if (mealTotal > 0) {
         console.log(`Plan ${plan._id}: Calculated from meals = ${mealTotal}`);
         return Math.round(mealTotal);
       }
     }
-    
+
     // Priority 2: Check nutritional_totals.calories (backup)
     if (plan.nutritional_totals && typeof plan.nutritional_totals.calories === 'number' && plan.nutritional_totals.calories > 0) {
       console.log(`Plan ${plan._id}: Using nutritional_totals.calories = ${plan.nutritional_totals.calories}`);
       return Math.round(plan.nutritional_totals.calories);
     }
-    
+
     // Priority 3: Fall back to total_calories (target value)
     console.log(`Plan ${plan._id}: Using total_calories fallback = ${plan.total_calories}`);
     return Math.round(plan.total_calories || 0);
@@ -123,7 +124,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
   const generateDateOptions = () => {
     const options = [];
     const today = new Date();
-    
+
     for (let i = 0; i <= 5; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
@@ -133,7 +134,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
         dateObj: date
       });
     }
-    
+
     return options;
   };
 
@@ -153,7 +154,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
       // Fetch diet plan history
       const historyRes = await axiosInstance.get('/diet-plan/history?limit=10');
       const plans = historyRes.data.plans || [];
-      
+
       // Log each plan's calorie data for debugging
       console.log('📋 Diet Plans Loaded:');
       plans.forEach(plan => {
@@ -164,19 +165,8 @@ const DietPlanDashboard = ({ inModal = false }) => {
           meals_count: plan.meals?.length
         });
       });
-      
-      setDietHistory(plans);
 
-      // Try to fetch today's plan
-      const today = new Date().toISOString().split('T')[0];
-      try {
-        const todayRes = await axiosInstance.get(`/diet-plan/date/${today}`);
-        if (todayRes.data.plan) {
-          setSelectedPlan(todayRes.data.plan);
-        }
-      } catch (err) {
-        // No plan for today - that's okay
-      }
+      setDietHistory(plans);
 
     } catch (err) {
       console.error('Error fetching initial data:', err);
@@ -206,7 +196,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
         setSuccess('Diet plan generated successfully!' + emailMessage);
         setSelectedPlan(response.data.plan);
         setShowGenerator(false);
-        
+
         // Refresh history
         const historyRes = await axiosInstance.get('/diet-plan/history?limit=10');
         setDietHistory(historyRes.data.plans || []);
@@ -231,11 +221,11 @@ const DietPlanDashboard = ({ inModal = false }) => {
     try {
       await axiosInstance.delete(`/diet-plan/${planId}`);
       setSuccess('Diet plan deleted successfully');
-      
+
       // Refresh history
       const historyRes = await axiosInstance.get('/diet-plan/history?limit=10');
       setDietHistory(historyRes.data.plans || []);
-      
+
       // If deleted plan was selected, clear it
       if (selectedPlan?._id === planId) {
         setSelectedPlan(null);
@@ -246,69 +236,61 @@ const DietPlanDashboard = ({ inModal = false }) => {
     }
   };
 
-  // If a plan is selected, show the detailed view
-  if (selectedPlan) {
-    return (
-      <DietPlanView 
-        plan={selectedPlan} 
-        onBack={() => setSelectedPlan(null)}
-        onDelete={handleDeletePlan}
-      />
-    );
-  }
-
   // If Monthly tab is active, show MonthlyDietPlanDashboard
-  if (activeTab === 1) {
+  if (activeTab === 0) {
     return (
-      <Box>
+      <Box sx={{ minHeight: '100%', bgcolor: '#0f1420', color: '#f8fafc' }}>
         {/* Tab Navigation */}
-        <Container maxWidth="lg" sx={{ pt: inModal ? 2 : 4, mt: inModal ? 0 : 6 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              p: { xs: 2, md: 3 },
-              mb: 3,
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              border: '1px solid #d1fae5'
-            }}
-          >
+        <Container maxWidth="lg" sx={{ pt: inModal ? 2.5 : 4, mt: inModal ? 0 : 6 }}>
+          <Box sx={{ mb: 3 }}>
             <Tabs
               value={activeTab}
               onChange={handleTabChange}
               sx={{
                 '& .MuiTabs-indicator': {
-                  backgroundColor: '#10b981',
-                  height: 3,
-                  borderRadius: '3px 3px 0 0'
+                  backgroundColor: '#2dd4bf',
+                  height: 2,
+                  borderRadius: 999,
+                  boxShadow: '0 0 14px rgba(45,212,191,0.55)',
                 },
                 '& .MuiTab-root': {
                   textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                  minHeight: 56,
-                  color: '#64748b',
+                  fontWeight: 620,
+                  fontSize: '0.9rem',
+                  minHeight: 42,
+                  color: 'rgba(203,213,225,0.52)',
                   '&.Mui-selected': {
-                    color: '#10b981'
+                    color: '#fff'
                   }
                 }
               }}
             >
               <Tab
-                icon={<TodayIcon sx={{ fontSize: 20 }} />}
-                iconPosition="start"
-                label="Daily Plans"
-              />
-              <Tab
                 icon={<DateRangeIcon sx={{ fontSize: 20 }} />}
                 iconPosition="start"
                 label="Monthly Plans"
               />
+              <Tab
+                icon={<TodayIcon sx={{ fontSize: 20 }} />}
+                iconPosition="start"
+                label="Daily Plans"
+              />
             </Tabs>
-          </Paper>
+          </Box>
         </Container>
         <MonthlyDietPlanDashboard inModal={inModal} />
       </Box>
+    );
+  }
+
+  // Only show the daily detail view after the user explicitly opens or generates one.
+  if (selectedPlan) {
+    return (
+      <DietPlanView
+        plan={selectedPlan}
+        onBack={() => setSelectedPlan(null)}
+        onDelete={handleDeletePlan}
+      />
     );
   }
 
@@ -321,101 +303,80 @@ const DietPlanDashboard = ({ inModal = false }) => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: inModal ? 2 : 4, mt: inModal ? 0 : 6, position: 'relative', color: '#0f172a' }}>
+    <Container
+      maxWidth="lg"
+      sx={{
+        py: inModal ? 3 : 4,
+        mt: inModal ? 0 : 6,
+        position: 'relative',
+        color: '#f8fafc',
+        minHeight: inModal ? '85vh' : '100vh',
+        bgcolor: '#0f1420',
+        fontFamily: '"Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }}
+    >
       <Box
         sx={{
           position: 'absolute',
           inset: 0,
-          borderRadius: 6,
-          background: 'radial-gradient(circle at 20% 20%, rgba(16,185,129,0.06), transparent 30%), radial-gradient(circle at 80% 0%, rgba(245,158,11,0.08), transparent 28%), linear-gradient(135deg, #f8fafc 0%, #ecfdf5 50%, #fef3c7 100%)',
+          background: 'radial-gradient(circle at 18% 6%, rgba(45,212,191,0.13), transparent 30%), radial-gradient(circle at 86% 12%, rgba(34,211,238,0.11), transparent 28%), linear-gradient(135deg, #0f1420 0%, #111827 54%, #0b0f19 100%)',
           zIndex: -1
         }}
       />
 
       <Stack spacing={3}>
         {/* Tabs Navigation */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            p: { xs: 2, md: 2 },
-            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-            border: '1px solid #d1fae5'
-          }}
-        >
+        <Box>
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
             sx={{
               '& .MuiTabs-indicator': {
-                backgroundColor: '#10b981',
-                height: 3,
-                borderRadius: '3px 3px 0 0'
+                backgroundColor: '#2dd4bf',
+                height: 2,
+                borderRadius: 999,
+                boxShadow: '0 0 14px rgba(45,212,191,0.55)',
               },
               '& .MuiTab-root': {
                 textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '1rem',
-                minHeight: 56,
-                color: '#64748b',
+                fontWeight: 620,
+                fontSize: '0.9rem',
+                minHeight: 42,
+                color: 'rgba(203,213,225,0.52)',
                 '&.Mui-selected': {
-                  color: '#10b981'
+                  color: '#fff'
                 }
               }
             }}
           >
             <Tab
-              icon={<TodayIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
-              label="Daily Plans"
-            />
-            <Tab
               icon={<DateRangeIcon sx={{ fontSize: 20 }} />}
               iconPosition="start"
               label="Monthly Plans"
             />
+            <Tab
+              icon={<TodayIcon sx={{ fontSize: 20 }} />}
+              iconPosition="start"
+              label="Daily Plans"
+            />
           </Tabs>
-        </Paper>
+        </Box>
 
         {/* Hero Header */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            p: { xs: 3, md: 4 },
-            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-            color: '#1f2937',
-            border: '1px solid #d1fae5'
-          }}
-        >
+        <Box sx={{ p: { xs: 0, md: 0 }, color: '#f8fafc' }}>
           <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" gap={2}>
             <Box>
-              <Typography variant="h4" fontWeight="700" sx={{ letterSpacing: '-0.5px', color: '#1e293b', mb: 1 }}>
-                <RestaurantIcon sx={{ fontSize: 32, verticalAlign: 'middle', mr: 1, color: '#10b981' }} />
+              <Typography variant="h4" fontWeight={560} sx={{ letterSpacing: '-0.055em', color: '#fff', mb: 0.75 }}>
+                <RestaurantIcon sx={{ fontSize: 27, verticalAlign: 'middle', mr: 1, color: '#2dd4bf', filter: 'drop-shadow(0 0 12px rgba(45,212,191,0.25))' }} />
                 Nutrition & Diet Plan
               </Typography>
-              <Typography variant="body1" sx={{ color: '#64748b', fontSize: '0.95rem' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)', fontSize: '0.84rem' }}>
                 Personalized meal plans powered by evidence-based dietary guidelines
               </Typography>
-              <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" gap={1}>
-                {regionCoverage ? (
-                  <Chip
-                    label={`${regionCoverage.region}`}
-                    size="small"
-                    sx={{ bgcolor: '#ffffff', color: '#10b981', borderColor: '#d1fae5', fontWeight: 600 }}
-                    variant="outlined"
-                  />
-                ) : null}
-                <Chip 
-                  label={`${dietHistory.length} Plans`} 
-                  size="small"
-                  sx={{ bgcolor: '#ffffff', color: '#64748b', fontWeight: 600 }} 
-                />
-              </Stack>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
-                variant="contained"
+                variant="outlined"
                 size="medium"
                 onClick={() => {
                   setShowGenerator(true);
@@ -424,12 +385,13 @@ const DietPlanDashboard = ({ inModal = false }) => {
                 startIcon={<RestaurantIcon />}
                 sx={{
                   textTransform: 'none',
-                  fontWeight: 600,
+                  fontWeight: 650,
                   px: 3,
-                  bgcolor: '#10b981',
                   color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.025)',
+                  borderColor: 'rgba(255,255,255,0.1)',
                   boxShadow: 'none',
-                  '&:hover': { bgcolor: '#059669', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }
+                  '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.36)' }
                 }}
               >
                 Create Diet Plan
@@ -440,143 +402,118 @@ const DietPlanDashboard = ({ inModal = false }) => {
                 onClick={fetchInitialData}
                 sx={{
                   textTransform: 'none',
-                  fontWeight: 600,
-                  color: '#64748b',
-                  borderColor: '#e2e8f0',
-                  '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' }
+                  fontWeight: 650,
+                  color: 'rgba(226,232,240,0.78)',
+                  borderColor: 'rgba(255,255,255,0.1)',
+                  bgcolor: 'rgba(255,255,255,0.02)',
+                  '&:hover': { borderColor: 'rgba(255,255,255,0.18)', bgcolor: 'rgba(255,255,255,0.05)' }
                 }}
               >
                 Refresh
               </Button>
             </Stack>
           </Box>
-        </Paper>
+        </Box>
 
         {/* Alerts */}
         {error && (
-          <Alert severity="error" sx={{ borderRadius: 2 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ borderRadius: 2, bgcolor: 'rgba(251,146,60,0.1)', color: '#fed7aa' }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
         {success && (
-          <Alert severity="success" sx={{ borderRadius: 2 }} onClose={() => setSuccess(null)}>
+          <Alert severity="success" sx={{ borderRadius: 2, bgcolor: 'rgba(16,185,129,0.1)', color: '#a7f3d0' }} onClose={() => setSuccess(null)}>
             {success}
           </Alert>
         )}
 
       {/* Diet History Section - Full Width */}
-      <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1e293b' }}>
-            <TrendingUpIcon sx={{ mr: 1, color: '#10b981' }} />
+      <Box sx={{ py: { xs: 2.25, md: 3 }, px: 0 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 560, color: '#fff', letterSpacing: '-0.035em' }}>
+            <TrendingUpIcon sx={{ mr: 1, color: '#2dd4bf', fontSize: 20 }} />
             Your Diet History
           </Typography>
-          <Divider sx={{ my: 2 }} />
-          
+          <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.06)' }} />
+
           {dietHistory.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 6 }}>
-              <RestaurantIcon sx={{ fontSize: 64, color: '#cbd5e1', mb: 2 }} />
-              <Typography variant="body1" sx={{ color: '#64748b', mb: 1, fontWeight: 500 }}>
+              <RestaurantIcon sx={{ fontSize: 54, color: 'rgba(45,212,191,0.38)', mb: 2 }} />
+              <Typography variant="body1" sx={{ color: '#fff', mb: 1, fontWeight: 520 }}>
                 No diet plans yet
               </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.55)' }}>
                 Click "Create Diet Plan" above to generate your first personalized meal plan
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={2}>
-              {dietHistory.map((plan) => (
-                <Grid item xs={12} sm={6} md={4} key={plan._id}>
-                  <Paper
-                    elevation={0}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+                columnGap: { xs: 0, md: 5 },
+                rowGap: 0,
+                pt: 1,
+                pb: 1.5,
+              }}
+            >
+              {dietHistory.slice(0, 6).map((plan, index) => (
+                <Box
+                  key={plan._id}
+                  onClick={() => handleViewPlan(plan)}
+                  sx={{
+                    py: { xs: 2.4, md: 2.8 },
+                    pl: { xs: 0, md: index % 2 === 1 ? 3.2 : 0 },
+                    pr: { xs: 0, md: index % 2 === 0 ? 3.2 : 0 },
+                    borderLeft: { xs: 'none', md: index % 2 === 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' },
+                    borderTop: index > 1 ? '1px solid rgba(255,255,255,0.045)' : { xs: index > 0 ? '1px solid rgba(255,255,255,0.045)' : 'none', md: 'none' },
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease, opacity 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateX(4px)',
+                      opacity: 0.92,
+                    },
+                  }}
+                >
+                  <Typography variant="h6" fontWeight={500} sx={{ color: '#fff', letterSpacing: '-0.035em', mb: 0.65 }}>
+                    {formatDate(plan.target_date, 'DD MMMM')}
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    fontWeight={320}
                     sx={{
-                      p: 2.5,
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 2,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      '&:hover': { 
-                        borderColor: '#10b981', 
-                        bgcolor: '#f0fdf4', 
-                        transform: 'translateY(-4px)', 
-                        boxShadow: '0 8px 20px rgba(16,185,129,0.15)' 
-                      }
+                      color: '#67e8f9',
+                      fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
+                      textShadow: '0 0 18px rgba(103,232,249,0.24)',
+                      letterSpacing: '-0.04em',
                     }}
-                    onClick={() => handleViewPlan(plan)}
                   >
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 0.5 }}>
-                        {formatDate(plan.target_date, 'DD MMMM')}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.75rem' }}>
-                        {formatDate(plan.target_date)}
-                      </Typography>
-                    </Box>
-                    
-                    <Box sx={{ 
-                      bgcolor: '#f0fdf4', 
-                      borderRadius: 1.5, 
-                      p: 1.5, 
-                      mb: 2,
-                      border: '1px solid #d1fae5'
-                    }}>
-                      <Typography variant="h5" fontWeight="700" sx={{ color: '#10b981', mb: 0.5 }}>
-                        {calculateActualCalories(plan)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#059669', fontWeight: 600 }}>
-                        kcal
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-                      <Typography variant="caption" sx={{ color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                        <PublicIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                        {plan.region}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        label={plan.status}
-                        sx={{
-                          bgcolor: plan.status === 'completed' ? '#ecfdf5' : '#f1f5f9',
-                          color: plan.status === 'completed' ? '#10b981' : '#64748b',
-                          fontWeight: 600,
-                          fontSize: '0.7rem',
-                          height: 22,
-                          border: '1px solid',
-                          borderColor: plan.status === 'completed' ? '#d1fae5' : '#e2e8f0'
-                        }}
-                      />
-                    </Box>
-                  </Paper>
-                </Grid>
+                    {calculateActualCalories(plan)} kcal
+                  </Typography>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           )}
-        </CardContent>
-      </Card>
+      </Box>
 
       {/* Important Notes */}
-      <Card elevation={0} sx={{ mt: 3, bgcolor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 2 }}>
+      <Card elevation={0} sx={{ mt: 3, bgcolor: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.12)', borderRadius: 3, boxShadow: 'none' }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1e293b' }}>
-            <WarningIcon sx={{ mr: 1, color: '#f59e0b' }} />
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 560, color: '#fff' }}>
+            <WarningIcon sx={{ mr: 1, color: '#fbbf24', fontSize: 20 }} />
             Important Notes
           </Typography>
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 2, borderColor: 'rgba(251,191,36,0.12)' }} />
           <Stack spacing={1.5}>
-            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(254,243,199,0.72)', lineHeight: 1.6 }}>
               • Diet plans are personalized based on your profile and regional dietary guidelines
             </Typography>
-            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(254,243,199,0.72)', lineHeight: 1.6 }}>
               • Plans will adjust based on your glucose levels (when glucose monitoring is enabled)
             </Typography>
-            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(254,243,199,0.72)', lineHeight: 1.6 }}>
               • Only one diet plan can be generated per day
             </Typography>
-            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(254,243,199,0.72)', lineHeight: 1.6 }}>
               • Consult your doctor before making major dietary changes
             </Typography>
           </Stack>
@@ -584,15 +521,29 @@ const DietPlanDashboard = ({ inModal = false }) => {
       </Card>
 
       {/* Date Selection Dialog */}
-      <Dialog open={showGenerator} onClose={() => setShowGenerator(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
+      <Dialog
+        open={showGenerator}
+        onClose={() => setShowGenerator(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#111827',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 3,
+            boxShadow: '0 28px 90px rgba(2,6,23,0.5)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: '#fff' }}>
           Generate Diet Plan
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" paragraph>
+          <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.65)' }} paragraph>
             Select a date to generate your personalized meal plan:
           </Typography>
-          
+
           <FormControl component="fieldset" fullWidth>
             <RadioGroup
               value={selectedDate}
@@ -602,40 +553,40 @@ const DietPlanDashboard = ({ inModal = false }) => {
                 <FormControlLabel
                   key={option.value}
                   value={option.value}
-                  control={<Radio />}
+                  control={<Radio sx={{ color: 'rgba(203,213,225,0.42)', '&.Mui-checked': { color: '#2dd4bf' } }} />}
                   label={
                     <Box>
-                      <Typography variant="body1">{option.label}</Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="body1" sx={{ color: '#fff' }}>{option.label}</Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.55)' }}>
                         {formatDate(option.dateObj)}
                       </Typography>
                     </Box>
                   }
-                  sx={{ my: 1, p: 1.5, border: '1px solid #e0e0e0', borderRadius: 1 }}
+                  sx={{ my: 1, p: 1.5, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.025)' }}
                 />
               ))}
             </RadioGroup>
           </FormControl>
 
           {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
+            <Alert severity="error" sx={{ mt: 2, bgcolor: 'rgba(251,146,60,0.1)', color: '#fed7aa' }}>
               {error}
             </Alert>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowGenerator(false)} disabled={generating}>
+          <Button onClick={() => setShowGenerator(false)} disabled={generating} sx={{ color: 'rgba(203,213,225,0.7)' }}>
             Cancel
           </Button>
           <Button
-            variant="contained"
+            variant="outlined"
             onClick={handleGeneratePlan}
             disabled={!selectedDate || generating}
             startIcon={generating ? <CircularProgress size={20} /> : <RestaurantIcon />}
             sx={{
-              bgcolor: '#10b981',
               color: '#fff',
-              '&:hover': { bgcolor: '#059669' },
+              borderColor: 'rgba(45,212,191,0.35)',
+              '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.7)' },
               textTransform: 'none',
               fontWeight: 600
             }}

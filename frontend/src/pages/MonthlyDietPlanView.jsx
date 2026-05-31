@@ -61,10 +61,10 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
 
   const NutrientBox = ({ label, value, unit, color }) => (
     <Box sx={{ textAlign: 'center', flex: 1 }}>
-      <Typography variant="h5" fontWeight={700} sx={{ color, lineHeight: 1.2 }}>
+      <Typography variant="h5" fontWeight={420} sx={{ color, lineHeight: 1.2, fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace' }}>
         {typeof value === 'number' ? Math.round(value) : value}
       </Typography>
-      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+      <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.72)', fontWeight: 500 }}>
         {unit ? `${label} (${unit})` : label}
       </Typography>
     </Box>
@@ -78,12 +78,15 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 2,
-          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.18)'
+          borderRadius: 1.5,
+          bgcolor: '#111827',
+          color: '#fff',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 28px 90px rgba(2,6,23,0.62)'
         }
       }}
     >
-      <DialogTitle sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+      <DialogTitle sx={{ pb: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Box
             sx={{
@@ -91,18 +94,19 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
               height: 44,
               borderRadius: 1.5,
               bgcolor: alpha('#10b981', 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 24px rgba(16,185,129,0.12)'
             }}
           >
             <RestaurantIcon sx={{ color: '#10b981', fontSize: 22 }} />
           </Box>
           <Box flex={1}>
-            <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+            <Typography variant="h6" fontWeight={560} sx={{ color: '#fff', letterSpacing: '-0.03em' }}>
               {option.option_name}
             </Typography>
-            <Typography variant="body2" sx={{ color: '#64748b' }}>
+            <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
               {mealType}
             </Typography>
           </Box>
@@ -128,7 +132,7 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
         <Stack spacing={3}>
           {/* Description */}
           {option.description && (
-            <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.68)', lineHeight: 1.6 }}>
               {option.description}
             </Typography>
           )}
@@ -136,8 +140,8 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
           {/* Prep Time */}
           {option.preparation_time && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <TimeIcon sx={{ fontSize: 18, color: '#64748b' }} />
-              <Typography variant="body2" sx={{ color: '#64748b' }}>
+              <TimeIcon sx={{ fontSize: 18, color: 'rgba(148,163,184,0.72)' }} />
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.68)' }}>
                 Preparation time: <strong>{option.preparation_time}</strong>
               </Typography>
             </Stack>
@@ -148,71 +152,71 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
             elevation={0}
             sx={{
               p: 2.5,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: '#e2e8f0',
-              bgcolor: '#f8fafc'
+              borderRadius: 1.5,
+              border: '1px solid rgba(255,255,255,0.06)',
+              bgcolor: 'rgba(15,20,32,0.72)'
             }}
           >
-            <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b', mb: 2 }}>
+            <Typography variant="subtitle2" fontWeight={560} sx={{ color: '#fff', mb: 2 }}>
               Nutritional Summary
             </Typography>
-            <Stack direction="row" spacing={2} divider={<Divider orientation="vertical" flexItem />}>
-              <NutrientBox label="Calories" value={totals.calories} unit="kcal" color="#ea580c" />
-              <NutrientBox label="Carbs" value={totals.carbs.toFixed(1)} unit="g" color="#3b82f6" />
+            <Stack direction="row" spacing={2} divider={<Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}>
+              <NutrientBox label="Calories" value={totals.calories} unit="kcal" color="#67e8f9" />
+              <NutrientBox label="Carbs" value={totals.carbs.toFixed(1)} unit="g" color="#60a5fa" />
               <NutrientBox label="Protein" value={totals.protein.toFixed(1)} unit="g" color="#10b981" />
-              <NutrientBox label="Fat" value={totals.fat.toFixed(1)} unit="g" color="#ef4444" />
-              <NutrientBox label="Fiber" value={totals.fiber.toFixed(1)} unit="g" color="#8b5cf6" />
+              <NutrientBox label="Fat" value={totals.fat.toFixed(1)} unit="g" color="#f87171" />
+              <NutrientBox label="Fiber" value={totals.fiber.toFixed(1)} unit="g" color="#a78bfa" />
             </Stack>
           </Paper>
 
           {/* Food Items Table */}
           <Box>
-            <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b', mb: 1.5 }}>
+            <Typography variant="subtitle2" fontWeight={560} sx={{ color: '#fff', mb: 1.5 }}>
               Ingredients & Portions
             </Typography>
             <TableContainer 
-              component={Paper} 
-              elevation={0} 
-              sx={{ border: '1px solid', borderColor: '#e2e8f0', borderRadius: 1.5 }}
+              sx={{ bgcolor: 'transparent' }}
             >
-              <Table size="small">
+              <Table size="small" sx={{ bgcolor: 'transparent' }}>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Food Item</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Portion</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Cal</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Carbs</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Protein</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Fat</TableCell>
+                  <TableRow>
+                    {['Food Item', 'Portion', 'Cal', 'Carbs', 'Protein', 'Fat'].map((heading, index) => (
+                      <TableCell
+                        key={heading}
+                        align={index > 1 ? 'right' : 'left'}
+                        sx={{ fontWeight: 650, color: 'rgba(148,163,184,0.72)', borderBottom: '1px solid rgba(255,255,255,0.05)', letterSpacing: '0.07em', textTransform: 'uppercase', fontSize: '0.68rem' }}
+                      >
+                        {heading}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {option.items?.map((item, index) => (
-                    <TableRow key={index} sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                    <TableRow key={index} sx={{ '& td': { borderBottom: '1px solid rgba(255,255,255,0.04)' }, '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
                       <TableCell>
-                        <Typography variant="body2" fontWeight={500} sx={{ color: '#1e293b' }}>
+                        <Typography variant="body2" fontWeight={500} sx={{ color: '#fff' }}>
                           {item.food}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
                           {item.portion}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" fontWeight={600} sx={{ color: '#ea580c' }}>
+                        <Typography variant="body2" fontWeight={380} sx={{ color: '#67e8f9', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace' }}>
                           {item.calories}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>{item.carbs}g</Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>{item.carbs}g</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>{item.protein}g</Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>{item.protein}g</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>{item.fat}g</Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>{item.fat}g</Typography>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -226,14 +230,15 @@ const MealOptionDetailModal = ({ open, onClose, option, mealType }) => {
       <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
         <Button
           onClick={onClose}
-          variant="contained"
+          variant="outlined"
           sx={{
-            bgcolor: '#10b981',
+            borderColor: 'rgba(45,212,191,0.35)',
+            color: '#fff',
             textTransform: 'none',
             fontWeight: 600,
             borderRadius: 1.5,
             boxShadow: 'none',
-            '&:hover': { bgcolor: '#059669' }
+            '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.7)' }
           }}
         >
           Close
@@ -276,10 +281,11 @@ const MealCategorySection = ({ category, onViewOption }) => {
     <Card
       elevation={0}
       sx={{
-        border: '1px solid',
-        borderColor: '#e2e8f0',
-        borderRadius: 2,
-        overflow: 'hidden'
+        bgcolor: 'transparent',
+        border: 0,
+        borderRadius: 0,
+        overflow: 'visible',
+        boxShadow: 'none'
       }}
     >
       {/* Header */}
@@ -287,12 +293,16 @@ const MealCategorySection = ({ category, onViewOption }) => {
         sx={{
           px: 3,
           py: 2,
-          bgcolor: alpha(color, 0.04),
-          borderBottom: '1px solid',
-          borderColor: '#e2e8f0',
+          bgcolor: 'rgba(22,30,46,0.72)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 1.5,
           cursor: 'pointer',
-          transition: 'background-color 0.15s',
-          '&:hover': { bgcolor: alpha(color, 0.08) }
+          transition: 'all 0.25s ease',
+          '&:hover': {
+            bgcolor: 'rgba(22,30,46,0.92)',
+            borderColor: alpha(color, 0.22),
+            boxShadow: `0 0 32px ${alpha(color, 0.08)}`
+          }
         }}
         onClick={() => setExpanded(!expanded)}
       >
@@ -303,22 +313,23 @@ const MealCategorySection = ({ category, onViewOption }) => {
                 width: 40,
                 height: 40,
                 borderRadius: 1.5,
-                bgcolor: alpha(color, 0.1),
+                bgcolor: alpha(color, 0.12),
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                boxShadow: `0 0 24px ${alpha(color, 0.12)}`
               }}
             >
               <Icon sx={{ color, fontSize: 20 }} />
             </Box>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b' }}>
+              <Typography variant="subtitle1" fontWeight={620} sx={{ color: '#fff', letterSpacing: '-0.02em' }}>
                 {category.meal_type}
               </Typography>
               {category.timing && (
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <ScheduleIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  <ScheduleIcon sx={{ fontSize: 14, color: 'rgba(148,163,184,0.72)' }} />
+                  <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.64)' }}>
                     {category.timing}
                   </Typography>
                 </Stack>
@@ -330,23 +341,26 @@ const MealCategorySection = ({ category, onViewOption }) => {
               label={`${category.target_calories} kcal`}
               size="small"
               sx={{
-                bgcolor: '#fff',
-                border: '1px solid',
-                borderColor: '#e2e8f0',
-                fontWeight: 600,
-                color: '#475569'
+                bgcolor: 'transparent',
+                border: '1px solid rgba(255,255,255,0.08)',
+                fontWeight: 520,
+                color: '#67e8f9',
+                fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
+                '.MuiChip-label': { px: 1.2 }
               }}
             />
             <Chip
               label={`${category.options?.length || 0} options`}
               size="small"
               sx={{
-                bgcolor: alpha(color, 0.1),
+                bgcolor: 'transparent',
+                border: `1px solid ${alpha(color, 0.24)}`,
                 color,
-                fontWeight: 600
+                fontWeight: 520,
+                '.MuiChip-label': { px: 1.2 }
               }}
             />
-            <IconButton size="small" sx={{ color: '#64748b' }}>
+            <IconButton size="small" sx={{ color: 'rgba(203,213,225,0.58)', '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.04)' } }}>
               {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </IconButton>
           </Stack>
@@ -355,15 +369,27 @@ const MealCategorySection = ({ category, onViewOption }) => {
 
       {/* Options Table */}
       <Collapse in={expanded}>
-        <TableContainer>
-          <Table size="small">
+        <TableContainer sx={{ bgcolor: 'transparent', mt: 1.5 }}>
+          <Table size="small" sx={{ bgcolor: 'transparent' }}>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Option</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Difficulty</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Calories</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Items</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 1.5, width: 80 }}>Details</TableCell>
+              <TableRow>
+                {['Option', 'Difficulty', 'Calories', 'Items'].map((heading) => (
+                  <TableCell
+                    key={heading}
+                    sx={{
+                      fontWeight: 650,
+                      color: 'rgba(148,163,184,0.72)',
+                      py: 1.35,
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    {heading}
+                  </TableCell>
+                ))}
+                <TableCell align="center" sx={{ fontWeight: 650, color: 'rgba(148,163,184,0.72)', py: 1.35, width: 80, borderBottom: '1px solid rgba(255,255,255,0.04)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.7rem' }}>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -371,17 +397,18 @@ const MealCategorySection = ({ category, onViewOption }) => {
                 <TableRow 
                   key={index}
                   sx={{ 
-                    transition: 'background-color 0.15s',
-                    '&:hover': { bgcolor: '#f8fafc' },
-                    '&:last-child td': { borderBottom: 0 }
+                    transition: 'background-color 0.25s ease',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+                    '& td': { borderBottom: '1px solid rgba(255,255,255,0.04)' },
+                    '&:last-child td': { borderBottom: '1px solid rgba(255,255,255,0.04)' }
                   }}
                 >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b' }}>
+                  <TableCell sx={{ py: 1.55 }}>
+                    <Typography variant="body2" fontWeight={520} sx={{ color: '#fff' }}>
                       {option.option_name}
                     </Typography>
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ py: 1.55 }}>
                     {option.difficulty && (
                       <Chip
                         label={option.difficulty}
@@ -389,34 +416,34 @@ const MealCategorySection = ({ category, onViewOption }) => {
                         sx={{
                           height: 22,
                           fontSize: '0.7rem',
-                          fontWeight: 600,
-                          bgcolor: option.difficulty === 'Easy' ? alpha('#10b981', 0.1) : 
-                                   option.difficulty === 'Medium' || option.difficulty === 'Moderate' ? alpha('#f59e0b', 0.1) : 
-                                   alpha('#ef4444', 0.1),
+                          fontWeight: 520,
+                          bgcolor: 'transparent',
+                          border: '1px solid rgba(255,255,255,0.08)',
                           color: option.difficulty === 'Easy' ? '#10b981' : 
                                  option.difficulty === 'Medium' || option.difficulty === 'Moderate' ? '#f59e0b' : '#ef4444'
                         }}
                       />
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={600} sx={{ color: '#10b981' }}>
+                  <TableCell sx={{ py: 1.55 }}>
+                    <Typography variant="body2" fontWeight={380} sx={{ color: '#67e8f9', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace', textShadow: '0 0 14px rgba(103,232,249,0.18)' }}>
                       {option.total_calories || Math.round(option.items?.reduce((sum, item) => sum + item.calories, 0) || 0)} kcal
                     </Typography>
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  <TableCell sx={{ py: 1.55 }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
                       {option.items?.length || 0} items
                     </Typography>
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ py: 1.55 }}>
                     <Tooltip title="View Details">
                       <IconButton
                         size="small"
                         onClick={() => onViewOption(option, category.meal_type)}
                         sx={{ 
-                          color: '#64748b',
-                          '&:hover': { color: '#10b981', bgcolor: alpha('#10b981', 0.1) }
+                          color: 'rgba(203,213,225,0.42)',
+                          '& svg': { fontSize: 18 },
+                          '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.04)' }
                         }}
                       >
                         <VisibilityIcon fontSize="small" />
@@ -459,18 +486,14 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa', py: { xs: 2, md: 4 } }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#0f1420', py: { xs: 2, md: 4 }, color: '#f8fafc' }}>
       <Container maxWidth="xl">
         <Stack spacing={3}>
           {/* Header */}
-          <Paper
-            elevation={0}
+          <Box
             sx={{
-              p: 3,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: '#e2e8f0',
-              bgcolor: '#fff'
+              p: 0,
+              bgcolor: 'transparent'
             }}
           >
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} justifyContent="space-between">
@@ -478,49 +501,54 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
                 <IconButton
                   onClick={onBack}
                   sx={{
-                    border: '1px solid',
-                    borderColor: '#e2e8f0',
-                    '&:hover': { bgcolor: '#f8fafc' }
+                    color: 'rgba(226,232,240,0.72)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.04)' }
                   }}
                 >
                   <ArrowBackIcon />
                 </IconButton>
                 <Box>
-                  <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b' }}>
+                  <Typography variant="h5" fontWeight={560} sx={{ color: '#fff', letterSpacing: '-0.045em' }}>
                     {getMonthName(plan.month)} {plan.year}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
                     {getTotalOptions()} meal options across {plan.meal_categories?.length || 0} meal types
                   </Typography>
                 </Box>
               </Stack>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <Chip
-                  label={plan.region}
-                  size="small"
-                  sx={{ bgcolor: alpha('#3b82f6', 0.1), color: '#3b82f6', fontWeight: 600 }}
-                />
-                <Chip
                   label={`${plan.total_daily_calories} kcal/day`}
                   size="small"
-                  sx={{ bgcolor: alpha('#10b981', 0.1), color: '#10b981', fontWeight: 600 }}
-                />
-                <Chip
-                  label={plan.status}
-                  size="small"
                   sx={{
-                    bgcolor: plan.status === 'active' ? alpha('#10b981', 0.1) : '#f1f5f9',
-                    color: plan.status === 'active' ? '#10b981' : '#64748b',
-                    fontWeight: 600,
-                    textTransform: 'capitalize'
+                    bgcolor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#67e8f9',
+                    fontWeight: 520,
+                    fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace'
                   }}
                 />
+                <Stack direction="row" spacing={0.8} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      bgcolor: '#34d399',
+                      boxShadow: '0 0 14px rgba(52,211,153,0.65)'
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: '#34d399', fontWeight: 620, textTransform: 'capitalize', letterSpacing: '0.06em' }}>
+                    {plan.status}
+                  </Typography>
+                </Stack>
                 <Tooltip title="Delete Plan">
                   <IconButton
                     onClick={(e) => onDelete(plan._id, e)}
                     sx={{ 
-                      color: '#64748b',
-                      '&:hover': { color: '#ef4444', bgcolor: alpha('#ef4444', 0.1) }
+                      color: 'rgba(203,213,225,0.45)',
+                      '&:hover': { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.08)' }
                     }}
                   >
                     <DeleteIcon />
@@ -528,7 +556,7 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
                 </Tooltip>
               </Stack>
             </Stack>
-          </Paper>
+          </Box>
 
           {/* Meal Categories */}
           {plan.meal_categories?.map((category, index) => (
@@ -545,13 +573,12 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
               elevation={0}
               sx={{
                 p: 3,
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: '#e2e8f0',
-                bgcolor: '#fff'
+                borderRadius: 1.5,
+                border: '1px solid rgba(255,255,255,0.05)',
+                bgcolor: 'rgba(17,24,39,0.45)'
               }}
             >
-              <Typography variant="subtitle1" fontWeight={600} sx={{ color: '#1e293b', mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight={560} sx={{ color: '#fff', mb: 2 }}>
                 Monthly Tips
               </Typography>
               <Stack spacing={1}>
@@ -567,7 +594,7 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
                         flexShrink: 0
                       }}
                     />
-                    <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.68)', lineHeight: 1.6 }}>
                       {tip}
                     </Typography>
                   </Stack>
@@ -582,13 +609,12 @@ const MonthlyDietPlanView = ({ plan, onBack, onDelete }) => {
               elevation={0}
               sx={{
                 p: 3,
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: '#e2e8f0',
-                bgcolor: '#fff'
+                borderRadius: 1.5,
+                border: '1px solid rgba(255,255,255,0.05)',
+                bgcolor: 'rgba(17,24,39,0.45)'
               }}
             >
-              <Typography variant="subtitle1" fontWeight={600} sx={{ color: '#1e293b', mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight={560} sx={{ color: '#fff', mb: 2 }}>
                 Evidence-Based Guidelines
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>

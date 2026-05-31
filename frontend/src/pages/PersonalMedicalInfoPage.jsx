@@ -27,6 +27,7 @@ import {
     Select,
     Alert,
     Fade,
+    InputAdornment,
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -57,6 +58,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     const [savingData, setSavingData] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [formErrors, setFormErrors] = useState({});
     const [fetchError, setFetchError] = useState('');
     const [userProfile, setUserProfile] = useState(null);
     const [formData, setFormData] = useState({
@@ -183,15 +185,79 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         setEditMode(false);
         setSuccessMessage('');
         setErrorMessage('');
+        setFormErrors({});
         setFetchError('');
         fetchData(); // Refresh data
     };
 
     const handleInputChange = (field, value) => {
+        if (['date_of_birth', 'diagnosis_date'].includes(field) && value && dayjs(value).isAfter(dayjs(), 'day')) {
+            setFormErrors(prev => ({ ...prev, [field]: 'Please select a valid past date.' }));
+            return;
+        }
+        setFormErrors(prev => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    const getLiveFieldError = (field) => {
+        if (formErrors[field]) return formErrors[field];
+        if (field === 'phone_number' && formData.phone_number && !String(formData.phone_number).trim().startsWith('+')) {
+            return 'invalid number';
+        }
+        return '';
+    };
+
+    const validateStep = () => {
+        const requiredByStep = {
+            0: [
+                ['fullName', 'Full name is required'],
+                ['gender', 'Gender is required'],
+                ['date_of_birth', 'Please select a valid past date.'],
+                ['country', 'Country / region is required'],
+                ['phone_number', 'Phone number is required'],
+            ],
+            1: [
+                ['weight', 'Weight is required'],
+                ['heightFeet', 'Height feet is required'],
+                ['heightInches', 'Height inches is required'],
+                ['activity_level', 'Activity level is required'],
+                ['sleep_hours', 'Sleep hours are required'],
+            ],
+            2: [
+                ['diabetes_type', 'Diagnostic type is required'],
+            ],
+        };
+
+        const nextErrors = {};
+        (requiredByStep[activeStep] || []).forEach(([field, message]) => {
+            if (!formData[field] && formData[field] !== 0) nextErrors[field] = message;
+        });
+
+        if (formData.phone_number && !String(formData.phone_number).trim().startsWith('+')) {
+            nextErrors.phone_number = 'invalid number';
+        }
+        if (formData.date_of_birth && dayjs(formData.date_of_birth).isAfter(dayjs(), 'day')) {
+            nextErrors.date_of_birth = 'Please select a valid past date.';
+        }
+        if (formData.diagnosis_date && dayjs(formData.diagnosis_date).isAfter(dayjs(), 'day')) {
+            nextErrors.diagnosis_date = 'Please select a valid past date.';
+        }
+
+        setFormErrors(nextErrors);
+        if (Object.keys(nextErrors).length > 0) {
+            setErrorMessage('Please correct the highlighted fields before continuing.');
+            return false;
+        }
+        setErrorMessage('');
+        return true;
+    };
+
     const handleNext = async () => {
+        if (!validateStep()) return;
         if (activeStep < 3) {
             setActiveStep(prev => prev + 1);
         } else {
@@ -200,6 +266,8 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     };
 
     const handleBackStep = () => {
+        setErrorMessage('');
+        setFormErrors({});
         setActiveStep(prev => prev - 1);
     };
 
@@ -280,12 +348,164 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         { label: 'Review & Save', description: 'Confirm your details' }
     ];
 
+    const formGridProps = {
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+        columnGap: { xs: 0, md: 6 },
+        rowGap: 4,
+        alignItems: 'end',
+    };
+
+    const fieldSx = {
+        minWidth: 0,
+        width: '100%',
+    };
+
+    const selectMenuProps = {
+        PaperProps: {
+            sx: {
+                bgcolor: '#0f1420',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 22px 70px rgba(2,6,23,0.58)',
+                '& .MuiMenuItem-root': {
+                    fontSize: 14,
+                    color: 'rgba(226,232,240,0.84)',
+                    '&:hover': { bgcolor: 'rgba(34,211,238,0.08)', color: '#fff' },
+                    '&.Mui-selected': { bgcolor: 'rgba(34,211,238,0.12)', color: '#fff' },
+                },
+            },
+        },
+    };
+
+    const autocompletePaperProps = {
+        slotProps: {
+            paper: {
+                sx: {
+                    bgcolor: '#0f1420',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 22px 70px rgba(2,6,23,0.58)',
+                    '& .MuiAutocomplete-option': {
+                        color: 'rgba(226,232,240,0.84)',
+                        '&:hover': { bgcolor: 'rgba(34,211,238,0.08)', color: '#fff' },
+                        '&[aria-selected="true"]': { bgcolor: 'rgba(34,211,238,0.12)', color: '#fff' },
+                    },
+                },
+            },
+        },
+    };
+
+    const unitAdornment = (unit) => ({
+        endAdornment: (
+            <InputAdornment position="end">
+                <Typography sx={{ color: 'rgba(148,163,184,0.72)', fontSize: 11, fontFamily: 'JetBrains Mono, Roboto Mono, monospace', letterSpacing: '0.08em' }}>
+                    {unit}
+                </Typography>
+            </InputAdornment>
+        ),
+    });
+
+    const transparentFieldStyles = {
+        '& .MuiInputLabel-root': {
+            color: 'rgba(148,163,184,0.72)',
+            fontSize: 11,
+            fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            transform: 'translate(0, -9px) scale(0.78)',
+            transformOrigin: 'top left',
+            maxWidth: '100%',
+        },
+        '& .MuiInputLabel-root.Mui-focused': {
+            color: '#22d3ee',
+        },
+        '& .MuiInputBase-root': {
+            bgcolor: 'transparent',
+            color: '#fff',
+            borderRadius: 0,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            transition: 'border-color 0.3s ease, background-color 0.3s ease',
+            px: 0,
+            pt: 2,
+            minHeight: 54,
+            alignItems: 'flex-end',
+        },
+        '& .MuiInputBase-root.Mui-focused': {
+            borderBottomColor: '#22d3ee',
+        },
+        '& .MuiOutlinedInput-notchedOutline': {
+            border: '0 !important',
+        },
+        '& .MuiInputBase-input': {
+            color: '#fff',
+            fontWeight: 430,
+            letterSpacing: '-0.01em',
+            px: 0,
+            py: 1.25,
+            minWidth: 0,
+            overflow: 'visible',
+            textOverflow: 'clip',
+        },
+        '& .MuiSelect-select': {
+            pr: '34px !important',
+            minHeight: 'auto !important',
+            overflow: 'visible !important',
+            textOverflow: 'clip !important',
+            whiteSpace: 'nowrap',
+        },
+        '& .MuiAutocomplete-inputRoot': {
+            flexWrap: 'nowrap',
+            pr: '34px !important',
+        },
+        '& .MuiAutocomplete-input': {
+            minWidth: '0 !important',
+            width: '100% !important',
+        },
+        '& textarea.MuiInputBase-input': {
+            lineHeight: 1.6,
+        },
+        '& .MuiSelect-icon, & .MuiAutocomplete-popupIndicator, & .MuiSvgIcon-root': {
+            color: 'rgba(203,213,225,0.72)',
+        },
+        '& .MuiFormHelperText-root': {
+            color: 'rgba(148,163,184,0.58)',
+            mx: 0,
+            fontSize: 11,
+            fontFamily: 'Inter, Plus Jakarta Sans, system-ui, sans-serif',
+        },
+        '& .MuiFormHelperText-root.Mui-error': {
+            color: '#fb7185',
+            fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
+            letterSpacing: '0.04em',
+            textTransform: 'lowercase',
+        },
+        '& .MuiInputLabel-root.Mui-error': {
+            color: '#fb7185',
+        },
+        '& .MuiInputBase-root.Mui-error': {
+            borderBottomColor: '#fb7185',
+        },
+        '& .MuiInputBase-root.Mui-disabled': {
+            opacity: 0.6,
+            cursor: 'not-allowed',
+            borderBottomColor: 'rgba(255,255,255,0.06)',
+        },
+        '& .MuiInputBase-input.Mui-disabled': {
+            WebkitTextFillColor: 'rgba(255,255,255,0.72)',
+            cursor: 'not-allowed',
+        },
+        '& .MuiInputLabel-root.Mui-disabled': {
+            color: 'rgba(148,163,184,0.42)',
+        },
+    };
+
     const renderStepContent = () => {
         switch (activeStep) {
             case 0:
                 return (
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
+                    <Grid {...formGridProps}>
+                        <Grid item xs={12} md={6} sx={{ order: { md: 1 } }}>
                             <TextField
                                 fullWidth
                                 label="Full Name"
@@ -294,40 +514,55 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('fullName', e.target.value)}
                                 variant="outlined"
                                 placeholder="Enter your full name"
-                                disabled={!!userProfile?.fullName}
+                                disabled={Boolean(formData.fullName)}
+                                error={Boolean(getLiveFieldError('fullName'))}
+                                helperText={getLiveFieldError('fullName')}
+                                sx={fieldSx}
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={6} sx={{ order: { md: 2 } }}>
                             <Autocomplete
                                 fullWidth
+                                {...autocompletePaperProps}
+                                disabled
                                 options={["Male", "Female", "Other"]}
                                 value={formData.gender || null}
                                 onChange={(e, newValue) => handleInputChange('gender', newValue || '')}
                                 disableClearable
                                 renderInput={(params) => (
-                                    <TextField {...params} fullWidth label="Gender" placeholder="Select your gender" />
+                                    <TextField
+                                        {...params}
+                                        fullWidth
+                                        label="Gender"
+                                        placeholder="Select your gender"
+                                        error={Boolean(getLiveFieldError('gender'))}
+                                        helperText={getLiveFieldError('gender')}
+                                        sx={fieldSx}
+                                    />
                                 )}
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={6} sx={{ order: { md: 4 } }}>
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                                 <DatePicker
+                                    disabled
                                     label="Date of Birth"
                                     value={formData.date_of_birth}
                                     onChange={(newValue) => handleInputChange('date_of_birth', newValue)}
-                                    slotProps={{ textField: { fullWidth: true, required: true, variant: "outlined" } }}
+                                    slotProps={{ textField: { fullWidth: true, required: true, variant: "outlined", error: Boolean(getLiveFieldError('date_of_birth')), helperText: getLiveFieldError('date_of_birth'), sx: fieldSx }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
                                     maxDate={dayjs()}
                                     sx={{ width: '100%' }}
                                 />
                             </LocalizationProvider>
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={6} sx={{ order: { md: 5 } }}>
                             <TextField
                                 select
                                 fullWidth
                                 required
                                 label="Country / Region"
                                 value={formData.country}
+                                SelectProps={{ MenuProps: selectMenuProps }}
                                 onChange={(e) => {
                                     const selectedCountry = e.target.value;
                                     const countryCodes = {
@@ -339,6 +574,9 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                     handleInputChange('country_code', countryCodes[selectedCountry] || '');
                                 }}
                                 variant="outlined"
+                                error={Boolean(getLiveFieldError('country'))}
+                                helperText={getLiveFieldError('country')}
+                                sx={fieldSx}
                             >
                                 <MenuItem value="Pakistan">🇵🇰 Pakistan</MenuItem>
                                 <MenuItem value="India">🇮🇳 India</MenuItem>
@@ -352,7 +590,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 <MenuItem value="Other">🌍 Other</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={6} sx={{ order: { md: 3 } }}>
                             <TextField
                                 fullWidth
                                 label="Phone Number"
@@ -361,8 +599,10 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 onChange={(e) => handleInputChange('phone_number', e.target.value)}
                                 variant="outlined"
                                 placeholder={formData.country_code ? `${formData.country_code} XXXXXXXXXX` : "Enter phone number"}
-                                disabled={!!userProfile?.phone_number}
-                                helperText={formData.country_code ? `Format: ${formData.country_code} followed by your number` : 'Select country first'}
+                                disabled={Boolean(formData.phone_number)}
+                                error={Boolean(getLiveFieldError('phone_number'))}
+                                helperText={getLiveFieldError('phone_number') || (formData.country_code ? `Format: ${formData.country_code} followed by your number` : 'Select country first')}
+                                sx={fieldSx}
                             />
                         </Grid>
                     </Grid>
@@ -370,7 +610,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
 
             case 1:
                 return (
-                    <Grid container spacing={3}>
+                    <Grid {...formGridProps}>
                         <Grid item xs={12} md={6}>
                             <TextField
                                 fullWidth
@@ -380,16 +620,21 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 value={formData.weight}
                                 onChange={(e) => handleInputChange('weight', e.target.value)}
                                 variant="outlined"
+                                error={Boolean(getLiveFieldError('weight'))}
+                                helperText={getLiveFieldError('weight')}
+                                sx={fieldSx}
                                 placeholder="e.g., 70"
+                                InputProps={unitAdornment('kg')}
                             />
                         </Grid>
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 select
                                 fullWidth
                                 label="Height (ft)"
                                 required
                                 value={formData.heightFeet}
+                                SelectProps={{ MenuProps: selectMenuProps }}
                                 onChange={(e) => {
                                     handleInputChange('heightFeet', e.target.value);
                                     const feet = parseFloat(e.target.value) || 0;
@@ -398,19 +643,23 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                     handleInputChange('height', totalCm);
                                 }}
                                 variant="outlined"
+                                error={Boolean(getLiveFieldError('heightFeet'))}
+                                helperText={getLiveFieldError('heightFeet')}
+                                sx={fieldSx}
                             >
                                 {[3, 4, 5, 6, 7, 8].map(ft => (
                                     <MenuItem key={ft} value={ft}>{ft} ft</MenuItem>
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 select
                                 fullWidth
                                 label="Height (in)"
                                 required
                                 value={formData.heightInches}
+                                SelectProps={{ MenuProps: selectMenuProps }}
                                 onChange={(e) => {
                                     handleInputChange('heightInches', e.target.value);
                                     const feet = parseFloat(formData.heightFeet) || 0;
@@ -419,6 +668,9 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                     handleInputChange('height', totalCm);
                                 }}
                                 variant="outlined"
+                                error={Boolean(getLiveFieldError('heightInches'))}
+                                helperText={getLiveFieldError('heightInches')}
+                                sx={fieldSx}
                             >
                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(inch => (
                                     <MenuItem key={inch} value={inch}>{inch} in</MenuItem>
@@ -428,12 +680,13 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                         <Grid item xs={12} md={6}>
                             <Autocomplete
                                 fullWidth
+                                {...autocompletePaperProps}
                                 options={['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active', 'Extremely Active']}
                                 value={formData.activity_level || null}
                                 onChange={(e, newValue) => handleInputChange('activity_level', newValue || '')}
                                 disableClearable
                                 renderInput={(params) => (
-                                    <TextField {...params} fullWidth label="Activity Level" placeholder="Select activity level" />
+                                    <TextField {...params} fullWidth label="Activity Level" placeholder="Select activity level" error={Boolean(getLiveFieldError('activity_level'))} helperText={getLiveFieldError('activity_level')} sx={fieldSx} />
                                 )}
                             />
                         </Grid>
@@ -448,6 +701,10 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 variant="outlined"
                                 placeholder="e.g., 7"
                                 inputProps={{ min: 0, max: 24, step: 0.5 }}
+                                InputProps={unitAdornment('hrs')}
+                                error={Boolean(getLiveFieldError('sleep_hours'))}
+                                helperText={getLiveFieldError('sleep_hours')}
+                                sx={fieldSx}
                             />
                         </Grid>
                     </Grid>
@@ -455,10 +712,12 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
 
             case 2:
                 return (
-                    <Grid container spacing={3}>
+                    <Grid {...formGridProps}>
                         <Grid item xs={12} md={6}>
                             <Autocomplete
                                 fullWidth
+                                {...autocompletePaperProps}
+                                disabled
                                 options={["Type 1", "Type 2", "Gestational", "Prediabetes", "Other"]}
                                 value={formData.diabetes_type || null}
                                 onChange={(e, newValue) => handleInputChange('diabetes_type', newValue || '')}
@@ -470,10 +729,11 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                         <Grid item xs={12} md={6}>
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                                 <DatePicker
+                                    disabled
                                     label="Diagnosis Date"
                                     value={formData.diagnosis_date}
                                     onChange={(newVal) => handleInputChange('diagnosis_date', newVal)}
-                                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
+                                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' }, openPickerButton: { sx: { color: 'rgba(203,213,225,0.72)', mr: -1 } } }}
                                     maxDate={dayjs()}
                                     sx={{ width: '100%' }}
                                 />
@@ -503,7 +763,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 placeholder="Family health history"
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 fullWidth
                                 label="Allergies"
@@ -519,85 +779,85 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
             case 3:
                 return (
                     <Box>
-                        <Typography variant="h6" gutterBottom fontWeight="bold" color="primary">
+                        <Typography variant="h6" gutterBottom fontWeight={520} sx={{ color: '#fff' }}>
                             Review Your Information
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" paragraph>
+                        <Typography variant="body2" sx={{ color: '#9ca3af' }} paragraph>
                             Please review your information before saving.
                         </Typography>
 
-                        <Card variant="outlined" sx={{ mb: 2, p: 2 }}>
-                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Basic Information</Typography>
+                        <Card variant="outlined" sx={{ mb: 2, p: 2, bgcolor: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#fff' }}>
+                            <Typography variant="subtitle2" fontWeight={520} gutterBottom>Basic Information</Typography>
                             <Grid container spacing={1}>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Full Name:</Typography>
-                                    <Typography variant="body1">{formData.fullName || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Full Name:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.fullName || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Date of Birth:</Typography>
-                                    <Typography variant="body1">
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Date of Birth:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>
                                         {formData.date_of_birth ? formData.date_of_birth.format('MMM DD, YYYY') : 'Not provided'}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Gender:</Typography>
-                                    <Typography variant="body1">{formData.gender || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Gender:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.gender || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Phone:</Typography>
-                                    <Typography variant="body1">
-                                        {formData.country_code && formData.phone_number ? `${formData.country_code} ${formData.phone_number}` : formData.phone_number || 'Not provided'}
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Phone:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>
+                                        {formatPhoneNumber(formData.phone_number, formData.country_code)}
                                     </Typography>
                                 </Grid>
                             </Grid>
                         </Card>
 
-                        <Card variant="outlined" sx={{ mb: 2, p: 2 }}>
-                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Lifestyle Information</Typography>
+                        <Card variant="outlined" sx={{ mb: 2, p: 2, bgcolor: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#fff' }}>
+                            <Typography variant="subtitle2" fontWeight={520} gutterBottom>Lifestyle Information</Typography>
                             <Grid container spacing={1}>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Weight:</Typography>
-                                    <Typography variant="body1">{formData.weight ? `${formData.weight} kg` : 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Weight:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.weight ? `${formData.weight} kg` : 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Height:</Typography>
-                                    <Typography variant="body1">{formData.height ? `${formData.height} cm` : 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Height:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.height ? `${formData.height} cm` : 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Activity Level:</Typography>
-                                    <Typography variant="body1">{formData.activity_level || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Activity Level:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.activity_level || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Sleep Hours:</Typography>
-                                    <Typography variant="body1">{formData.sleep_hours ? `${formData.sleep_hours} hrs` : 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Sleep Hours:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.sleep_hours ? `${formData.sleep_hours} hrs` : 'Not provided'}</Typography>
                                 </Grid>
                             </Grid>
                         </Card>
 
-                        <Card variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Medical History</Typography>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#fff' }}>
+                            <Typography variant="subtitle2" fontWeight={520} gutterBottom>Medical History</Typography>
                             <Grid container spacing={1}>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Diabetes Type:</Typography>
-                                    <Typography variant="body1">{formData.diabetes_type || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Diabetes Type:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.diabetes_type || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography variant="body2" color="text.secondary">Diagnosis Date:</Typography>
-                                    <Typography variant="body1">
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Diagnosis Date:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>
                                         {formData.diagnosis_date ? formData.diagnosis_date.format('MMM DD, YYYY') : 'Not provided'}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <Typography variant="body2" color="text.secondary">Medications:</Typography>
-                                    <Typography variant="body1">{formData.medications || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Medications:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.medications || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <Typography variant="body2" color="text.secondary">Family History:</Typography>
-                                    <Typography variant="body1">{formData.family_history || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Family History:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.family_history || 'Not provided'}</Typography>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <Typography variant="body2" color="text.secondary">Allergies:</Typography>
-                                    <Typography variant="body1">{formData.allergies || 'Not provided'}</Typography>
+                                    <Typography variant="body2" sx={{ color: '#9ca3af' }}>Allergies:</Typography>
+                                    <Typography variant="body1" sx={{ color: '#fff' }}>{formData.allergies || 'Not provided'}</Typography>
                                 </Grid>
                             </Grid>
                         </Card>
@@ -613,18 +873,47 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         navigate('/personalized-suggestions/dashboard', { replace: true });
     };
 
+    const getUnitForLabel = (label) => {
+        if (/weight/i.test(label)) return 'kg';
+        if (/height/i.test(label)) return 'cm';
+        if (/sleep/i.test(label)) return 'hrs';
+        if (/age/i.test(label)) return 'yrs';
+        if (/hba1c/i.test(label)) return '%';
+        return '';
+    };
+
+    const formatPhoneNumber = (phone, countryCode) => {
+        const cleanPhone = String(phone || '').trim().replace(/\s+/g, '');
+        const cleanCode = String(countryCode || '').trim();
+        if (!cleanPhone) return 'Not provided';
+        if (cleanPhone.startsWith('+')) return cleanPhone;
+        return cleanCode ? `${cleanCode}${cleanPhone}` : cleanPhone;
+    };
+
+    const isTechnicalValue = (label) => (
+        /date|weight|height|sleep|phone|diagnosis|type/i.test(label)
+    );
+
+    const summaryGridSx = {
+        display: 'grid',
+        gridTemplateColumns: {
+            xs: '1fr',
+            md: 'repeat(3, minmax(0, 1fr))',
+        },
+        columnGap: { xs: 0, md: 6 },
+        rowGap: 4,
+        alignItems: 'stretch',
+    };
+
     const renderField = (label, value, isEmpty = false) => (
         <Box 
             sx={{ 
-                p: 2.5,
-                borderRadius: 2,
-                bgcolor: isEmpty ? '#f9fafb' : '#ffffff',
-                border: '1px solid',
-                borderColor: isEmpty ? '#e5e7eb' : '#e2e8f0',
-                transition: 'all 0.2s ease',
+                py: 2,
+                minWidth: 0,
+                borderBottom: '1px solid rgba(45,212,191,0.2)',
+                transition: 'all 0.25s ease',
                 '&:hover': {
-                    borderColor: isEmpty ? '#d1d5db' : '#cbd5e1',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                    borderBottomColor: 'rgba(45,212,191,0.45)',
                 }
             }}
         >
@@ -633,32 +922,42 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 sx={{ 
                     fontWeight: 700, 
                     textTransform: 'uppercase',
-                    color: '#64748b',
-                    letterSpacing: 0.5,
-                    fontSize: '0.7rem'
+                    color: 'rgba(148,163,184,0.72)',
+                    letterSpacing: '0.12em',
+                    fontSize: '0.68rem',
+                    fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
                 }}
             >
                 {label}
             </Typography>
-            <Typography
-                variant="body1"
-                sx={{
-                    mt: 1,
-                    color: isEmpty ? '#9ca3af' : '#1e293b',
-                    fontStyle: isEmpty ? 'italic' : 'normal',
-                    fontWeight: isEmpty ? 400 : 600,
-                    fontSize: '0.95rem'
-                }}
-            >
-                {isEmpty ? 'Not provided' : value}
-            </Typography>
+            <Box sx={{ mt: 1, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 2 }}>
+                <Typography
+                    variant="body1"
+                    sx={{
+                        color: isEmpty ? 'rgba(148,163,184,0.62)' : '#fff',
+                        fontStyle: isEmpty ? 'italic' : 'normal',
+                        fontWeight: isEmpty ? 400 : 480,
+                        fontSize: '0.98rem',
+                        letterSpacing: '-0.01em',
+                        overflowWrap: 'anywhere',
+                        fontFamily: isTechnicalValue(label) ? 'JetBrains Mono, Roboto Mono, monospace' : 'Inter, Plus Jakarta Sans, system-ui, sans-serif',
+                    }}
+                >
+                    {isEmpty ? 'Not provided' : value}
+                </Typography>
+                {!isEmpty && getUnitForLabel(label) && (
+                    <Typography sx={{ color: 'rgba(148,163,184,0.72)', fontSize: 11, fontFamily: 'JetBrains Mono, Roboto Mono, monospace', letterSpacing: '0.08em' }}>
+                        {getUnitForLabel(label)}
+                    </Typography>
+                )}
+            </Box>
         </Box>
     );
 
     if (loading) {
         return (
-            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CircularProgress />
+            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#090d16' }}>
+                <CircularProgress size={24} sx={{ color: '#22d3ee' }} />
             </Box>
         );
     }
@@ -666,14 +965,14 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     // Show error message if data fetch failed
     if (fetchError) {
         return (
-            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: inModal ? 'transparent' : '#f5f7fa' }}>
+            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#090d16' }}>
                 <Container maxWidth="md">
-                    <Card elevation={2} sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+                    <Card elevation={0} sx={{ borderRadius: 1.5, p: 4, textAlign: 'center', bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}>
                         <WarningIcon sx={{ fontSize: 64, color: '#dc2626', mb: 2 }} />
                         <Typography variant="h5" fontWeight="bold" gutterBottom>
                             {fetchError}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" paragraph>
+                        <Typography variant="body2" sx={{ color: '#9ca3af' }} paragraph>
                             Please try to refresh the page or go back to the dashboard.
                         </Typography>
                         {!inModal && (
@@ -694,13 +993,13 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     // Show message if no data is available
     if (!personalInfo && !medicalInfo && !inModal) {
         return (
-            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f7fa' }}>
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#090d16' }}>
                 <Container maxWidth="md">
-                    <Card elevation={2} sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+                    <Card elevation={0} sx={{ borderRadius: 1.5, p: 4, textAlign: 'center', bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}>
                         <Typography variant="h5" fontWeight="bold" gutterBottom>
                             No Information Found
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" paragraph>
+                        <Typography variant="body2" sx={{ color: '#9ca3af' }} paragraph>
                             Please fill out your personal and medical information first.
                         </Typography>
                         <Button
@@ -717,23 +1016,23 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     }
 
     return (
-        <Box sx={{ minHeight: inModal ? 'auto' : '100vh', bgcolor: inModal ? 'transparent' : '#f5f7fa', py: inModal ? 2 : 4 }}>
-            <Container maxWidth="md">
+        <Box sx={{ minHeight: inModal ? 'auto' : '100vh', bgcolor: '#090d16', py: inModal ? 3 : 4, color: '#fff' }}>
+            <Container maxWidth="md" sx={{ px: { xs: 2, md: 4 } }}>
                 {/* Header - Only show when not in modal */}
                 {!inModal && (
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
                         <Button
                             startIcon={<ArrowBackIcon />}
                             onClick={handleBack}
-                            sx={{ mr: 2, textTransform: 'none' }}
+                            sx={{ mr: 2, textTransform: 'none', color: '#cbd5e1' }}
                         >
                             Back
                         </Button>
                         <Box>
-                            <Typography variant="h4" fontWeight="bold" sx={{ color: 'primary.main' }}>
+                            <Typography variant="h4" fontWeight={540} sx={{ color: '#fff', letterSpacing: '-0.045em' }}>
                                 Personal & Medical Information
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: '#9ca3af' }}>
                                 View and manage your health profile
                             </Typography>
                         </Box>
@@ -741,74 +1040,70 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 )}
 
                 {/* Personal Information Card */}
-                <Card elevation={0} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <Card elevation={0} sx={{ mb: 4, borderRadius: 0, overflow: 'visible', border: 'none', bgcolor: 'transparent', color: '#fff' }}>
                     <Box
                         sx={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            p: 3,
+                            borderBottom: '1px solid rgba(45,212,191,0.28)',
+                            pb: 2.5,
+                            mb: 2,
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
+                            gap: 2,
                         }}
                     >
                         <Box>
-                            <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff', mb: 0.5 }}>
+                            <Typography variant="h5" fontWeight={520} sx={{ color: '#ffffff', mb: 0.5, letterSpacing: '-0.03em' }}>
                                 Personal Information
                             </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            <Typography variant="body2" sx={{ color: '#9ca3af' }}>
                                 Basic profile details
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexShrink: 0 }}>
                             <Box 
                                 sx={{ 
                                     textAlign: 'right',
-                                    bgcolor: 'rgba(255,255,255,0.15)',
-                                    backdropFilter: 'blur(10px)',
-                                    px: 2.5,
-                                    py: 1,
-                                    borderRadius: 2
+                                    px: 0,
+                                    py: 0,
                                 }}
                             >
-                                <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff' }}>
-                                    {personalCompletion}%
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                                    Complete
+                                <Typography sx={{ color: '#67e8f9', fontFamily: 'JetBrains Mono, Roboto Mono, monospace', fontSize: 15, fontWeight: 500, letterSpacing: '0.08em' }}>
+                                    {personalCompletion}% COMPLETE
                                 </Typography>
                             </Box>
                             {personalCompletion === 100 && (
-                                <CheckCircleIcon sx={{ color: '#10b981', fontSize: 36, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+                                <CheckCircleIcon sx={{ color: '#10b981', fontSize: 24, filter: 'drop-shadow(0 0 10px rgba(16,185,129,0.35))' }} />
                             )}
                         </Box>
                     </Box>
 
                     {/* Progress Bar */}
-                    <Box sx={{ px: 4, pt: 3, pb: 1 }}>
+                    <Box sx={{ pt: 2, pb: 1 }}>
                         <LinearProgress
                             variant="determinate"
                             value={personalCompletion}
                             sx={{
-                                height: 10,
-                                borderRadius: 5,
-                                bgcolor: '#e5e7eb',
+                                height: 2,
+                                borderRadius: 999,
+                                bgcolor: 'rgba(255,255,255,0.07)',
                                 '& .MuiLinearProgress-bar': {
-                                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                                    borderRadius: 5,
+                                    background: 'linear-gradient(90deg, #22d3ee 0%, #34d399 100%)',
+                                    borderRadius: 999,
                                 },
                             }}
                         />
                     </Box>
 
-                    <CardContent sx={{ p: 4 }}>
-                        <Grid container spacing={2.5}>
-                            <Grid item xs={12} sm={6}>
+                    <CardContent sx={{ px: 0, py: 3 }}>
+                        <Grid container spacing={4}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Full Name', personalInfo?.fullName, !personalInfo?.fullName)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Gender', personalInfo?.gender, !personalInfo?.gender)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Date of Birth',
                                     personalInfo?.date_of_birth
@@ -817,19 +1112,19 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                     !personalInfo?.date_of_birth
                                 )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
-                                {renderField('Phone Number', personalInfo?.phone_number, !personalInfo?.phone_number)}
+                            <Grid item xs={12} md={4}>
+                                {renderField('Phone Number', formatPhoneNumber(personalInfo?.phone_number, personalInfo?.country_code), !personalInfo?.phone_number)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Weight (kg)', personalInfo?.weight, !personalInfo?.weight)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Height (cm)', personalInfo?.height, !personalInfo?.height)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Activity Level', personalInfo?.activity_level, !personalInfo?.activity_level)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Sleep Hours', personalInfo?.sleep_hours, !personalInfo?.sleep_hours)}
                             </Grid>
                         </Grid>
@@ -837,71 +1132,67 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 </Card>
 
                 {/* Medical Information Card */}
-                <Card elevation={0} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <Card elevation={0} sx={{ mb: 4, borderRadius: 0, overflow: 'visible', border: 'none', bgcolor: 'transparent', color: '#fff' }}>
                     <Box
                         sx={{
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            p: 3,
+                            borderBottom: '1px solid rgba(45,212,191,0.28)',
+                            pb: 2.5,
+                            mb: 2,
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
+                            gap: 2,
                         }}
                     >
                         <Box>
-                            <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff', mb: 0.5 }}>
+                            <Typography variant="h5" fontWeight={520} sx={{ color: '#ffffff', mb: 0.5, letterSpacing: '-0.03em' }}>
                                 Medical Information
                             </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            <Typography variant="body2" sx={{ color: '#9ca3af' }}>
                                 Health history and current status
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexShrink: 0 }}>
                             <Box 
                                 sx={{ 
                                     textAlign: 'right',
-                                    bgcolor: 'rgba(255,255,255,0.15)',
-                                    backdropFilter: 'blur(10px)',
-                                    px: 2.5,
-                                    py: 1,
-                                    borderRadius: 2
+                                    px: 0,
+                                    py: 0,
                                 }}
                             >
-                                <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff' }}>
-                                    {medicalCompletion}%
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                                    Complete
+                                <Typography sx={{ color: '#34d399', fontFamily: 'JetBrains Mono, Roboto Mono, monospace', fontSize: 15, fontWeight: 500, letterSpacing: '0.08em' }}>
+                                    {medicalCompletion}% COMPLETE
                                 </Typography>
                             </Box>
                             {medicalCompletion === 100 && (
-                                <CheckCircleIcon sx={{ color: '#ffffff', fontSize: 36, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+                                <CheckCircleIcon sx={{ color: '#ffffff', fontSize: 24, filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.24))' }} />
                             )}
                         </Box>
                     </Box>
 
                     {/* Progress Bar */}
-                    <Box sx={{ px: 4, pt: 3, pb: 1 }}>
+                    <Box sx={{ pt: 2, pb: 1 }}>
                         <LinearProgress
                             variant="determinate"
                             value={medicalCompletion}
                             sx={{
-                                height: 10,
-                                borderRadius: 5,
-                                bgcolor: '#e5e7eb',
+                                height: 2,
+                                borderRadius: 999,
+                                bgcolor: 'rgba(255,255,255,0.07)',
                                 '& .MuiLinearProgress-bar': {
-                                    background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                                    borderRadius: 5,
+                                    background: 'linear-gradient(90deg, #22d3ee 0%, #34d399 100%)',
+                                    borderRadius: 999,
                                 },
                             }}
                         />
                     </Box>
 
-                    <CardContent sx={{ p: 4 }}>
-                        <Grid container spacing={2.5}>
-                            <Grid item xs={12} sm={6}>
+                    <CardContent sx={{ px: 0, py: 3 }}>
+                        <Grid container spacing={4}>
+                            <Grid item xs={12} md={4}>
                                 {renderField('Diabetes Type', medicalInfo?.diabetes_type, !medicalInfo?.diabetes_type)}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Diagnosis Date',
                                     medicalInfo?.diagnosis_date
@@ -910,28 +1201,28 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                     !medicalInfo?.diagnosis_date
                                 )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Previous Diagnosis',
                                     medicalInfo?.previous_diagnosis,
                                     !medicalInfo?.previous_diagnosis
                                 )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Current Medications',
                                     medicalInfo?.medications,
                                     !medicalInfo?.medications
                                 )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Allergies',
                                     medicalInfo?.allergies,
                                     !medicalInfo?.allergies
                                 )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} md={4}>
                                 {renderField(
                                     'Family History',
                                     medicalInfo?.family_history,
@@ -943,24 +1234,25 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 </Card>
 
                 {/* Edit Button */}
-                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 6, mb: 2 }}>
                     <Button
-                        variant="contained"
+                        variant="outlined"
                         startIcon={<EditIcon />}
                         onClick={handleEditClick}
                         sx={{
                             textTransform: 'none',
-                            fontSize: '1rem',
+                            fontSize: '0.95rem',
                             px: 5,
                             py: 1.5,
-                            borderRadius: 2,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                            fontWeight: 600,
+                            borderRadius: 1.5,
+                            bgcolor: '#111827',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            color: '#fff',
+                            boxShadow: 'none',
+                            fontWeight: 520,
                             '&:hover': {
-                                background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
-                                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
-                                transform: 'translateY(-2px)',
+                                borderColor: 'rgba(34,211,238,0.45)',
+                                bgcolor: 'rgba(34,211,238,0.08)',
                             },
                             transition: 'all 0.3s ease'
                         }}
@@ -978,39 +1270,76 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 fullWidth
                 PaperProps={{
                     sx: {
-                        borderRadius: 3,
-                        maxHeight: '90vh'
+                        borderRadius: 1.5,
+                        maxHeight: '90vh',
+                        bgcolor: '#0f1420',
+                        color: '#fff',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: '0 28px 90px rgba(2,6,23,0.62)',
                     }
                 }}
             >
-                <DialogTitle sx={{ pb: 1 }}>
+                <DialogTitle sx={{ pb: 1, px: 3.5, pt: 3 }}>
                     <Box>
-                        <Typography variant="h5" fontWeight="bold" color="primary">
+                        <Typography variant="h5" fontWeight={520} sx={{ color: '#fff', letterSpacing: '-0.035em' }}>
                             Edit Personal & Medical Information
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{ color: '#9ca3af' }}>
                             Update your profile information
                         </Typography>
                     </Box>
                 </DialogTitle>
 
-                <DialogContent sx={{ pt: 2 }}>
+                <DialogContent sx={{ pt: 2, px: 3.5, ...transparentFieldStyles }}>
                     {/* Progress Bar */}
                     <LinearProgress 
                         variant="determinate" 
                         value={getProgress()} 
-                        sx={{ height: 6, borderRadius: 3, mb: 3 }}
+                        sx={{ height: 2, borderRadius: 999, mb: 3, bgcolor: 'rgba(255,255,255,0.07)', '& .MuiLinearProgress-bar': { bgcolor: '#22d3ee' } }}
                     />
 
                     {/* Stepper */}
-                    <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+                    <Stepper
+                        activeStep={activeStep}
+                        alternativeLabel
+                        sx={{
+                            mb: 4,
+                            '& .MuiStepConnector-line': {
+                                borderColor: 'rgba(255,255,255,0.08)',
+                                borderTopWidth: 1,
+                            },
+                            '& .MuiStepLabel-label': {
+                                color: 'rgba(148,163,184,0.62) !important',
+                                fontSize: 11,
+                                fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                            },
+                            '& .MuiStepIcon-root': {
+                                color: 'rgba(255,255,255,0.12)',
+                                borderRadius: '50%',
+                            },
+                            '& .MuiStepIcon-root.Mui-active': {
+                                color: '#22d3ee',
+                                filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.55))',
+                            },
+                            '& .MuiStepIcon-root.Mui-completed': {
+                                color: '#2dd4bf',
+                            },
+                            '& .MuiStepIcon-text': {
+                                fill: '#020617',
+                                fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
+                                fontWeight: 600,
+                            },
+                        }}
+                    >
                         {steps.map((step) => (
                             <Step key={step.label}>
                                 <StepLabel>
-                                    <Typography variant="subtitle2" fontWeight="bold">
+                                    <Typography variant="subtitle2" fontWeight={520} sx={{ color: '#fff' }}>
                                         {step.label}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" sx={{ color: '#9ca3af' }}>
                                         {step.description}
                                     </Typography>
                                 </StepLabel>
@@ -1021,14 +1350,14 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                     {/* Success/Error Messages */}
                     {successMessage && (
                         <Fade in={!!successMessage}>
-                            <Alert severity="success" sx={{ mb: 3 }}>
+                            <Alert severity="success" sx={{ mb: 3, bgcolor: 'rgba(6,78,59,0.22)', color: '#bbf7d0', border: '1px solid rgba(52,211,153,0.18)' }}>
                                 {successMessage}
                             </Alert>
                         </Fade>
                     )}
                     {errorMessage && (
                         <Fade in={!!errorMessage}>
-                            <Alert severity="error" sx={{ mb: 3 }}>
+                            <Alert severity="error" sx={{ mb: 3, bgcolor: 'rgba(127,29,29,0.22)', color: '#fecaca', border: '1px solid rgba(248,113,113,0.18)' }}>
                                 {errorMessage}
                             </Alert>
                         </Fade>
@@ -1040,11 +1369,11 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                     </Box>
                 </DialogContent>
 
-                <DialogActions sx={{ p: 3, pt: 2 }}>
+                <DialogActions sx={{ p: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <Button 
                         onClick={handleCloseEdit}
                         disabled={savingData}
-                        sx={{ textTransform: 'none' }}
+                        sx={{ textTransform: 'none', color: '#cbd5e1' }}
                     >
                         Cancel
                     </Button>
@@ -1052,18 +1381,22 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                         <Button 
                             onClick={handleBackStep}
                             disabled={savingData}
-                            sx={{ textTransform: 'none' }}
+                            sx={{ textTransform: 'none', color: '#cbd5e1' }}
                         >
                             Back
                         </Button>
                     )}
                     <Button
-                        variant="contained"
+                        variant="outlined"
                         onClick={handleNext}
                         disabled={savingData}
                         sx={{ 
                             textTransform: 'none',
-                            px: 3
+                            px: 3,
+                            color: '#fff',
+                            bgcolor: '#111827',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            '&:hover': { borderColor: 'rgba(34,211,238,0.45)', bgcolor: 'rgba(34,211,238,0.08)' },
                         }}
                     >
                         {savingData ? (

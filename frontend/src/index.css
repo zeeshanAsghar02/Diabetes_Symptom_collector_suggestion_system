@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Modern UI/UX Responsive Utilities and Global Styles */
 
 /* Root Variables for Consistent Spacing */

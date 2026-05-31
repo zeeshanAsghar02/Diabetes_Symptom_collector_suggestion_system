@@ -1,17 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Box,
-  Button,
-  Chip,
-  Grid,
-  Paper,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-  alpha,
-} from '@mui/material';
-import {
+  AutoAwesome as AutoAwesomeIcon,
+  ArrowForward as ArrowForwardIcon,
+  CheckCircle as CheckCircleIcon,
   FitnessCenter as FitnessCenterIcon,
   LocalDining as LocalDiningIcon,
   MedicalInformation as MedicalInformationIcon,
@@ -19,13 +10,42 @@ import {
 } from '@mui/icons-material';
 import NutritionAnalytics from '../analytics/NutritionAnalytics';
 import ExerciseAnalytics from '../analytics/ExerciseAnalytics';
+import './CarePlanView.css';
 
-const panelSx = {
-  borderRadius: 3,
-  border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.72)}`,
-  background: (theme) => theme.palette.background.paper,
-  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
-};
+const tabs = [
+  {
+    key: 'nutrition',
+    label: 'Nutrition',
+    icon: LocalDiningIcon,
+    tool: 'diet-plan',
+    accent: '#34d399',
+    cta: 'View or generate your diet plan',
+  },
+  {
+    key: 'exercise',
+    label: 'Exercise',
+    icon: FitnessCenterIcon,
+    tool: 'exercise-plan',
+    accent: '#22d3ee',
+    cta: 'View or generate your exercise routine',
+  },
+  {
+    key: 'lifestyle',
+    label: 'Lifestyle',
+    icon: TipsAndUpdatesIcon,
+    tool: 'lifestyle-tips',
+    accent: '#a78bfa',
+    cta: 'View or generate your lifestyle tips',
+  },
+  {
+    key: 'medical',
+    label: 'Medical Profile',
+    icon: MedicalInformationIcon,
+    tool: 'personal-medical',
+    accent: '#60a5fa',
+    cta: 'View and edit your profile data',
+  },
+];
 
 const getChecklist = (personalInfo, medicalInfo) => [
   { label: 'Personal details', complete: Boolean(personalInfo?.gender && personalInfo?.date_of_birth) },
@@ -38,87 +58,18 @@ const getChecklist = (personalInfo, medicalInfo) => [
   { label: 'Blood pressure', complete: Boolean(medicalInfo?.blood_pressure?.systolic && medicalInfo?.blood_pressure?.diastolic) },
 ];
 
-const ToolIntroCard = ({ icon, title, description, actionLabel, onAction, accent, locked, helper }) => (
-  <Paper elevation={0} sx={{ ...panelSx, p: { xs: 2.25, md: 2.75 }, mb: 3 }}>
-    <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
-      <Stack direction="row" spacing={1.5} alignItems="center">
-        <Box
-          sx={{
-            width: 46,
-            height: 46,
-            borderRadius: 2,
-            display: 'grid',
-            placeItems: 'center',
-            color: accent,
-            bgcolor: alpha(accent, 0.1),
-            border: `1px solid ${alpha(accent, 0.2)}`,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </Box>
-        <Box>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.35 }}>
-            <Typography variant="h6" fontWeight={900} sx={{ color: '#0f172a' }}>
-              {title}
-            </Typography>
-            {locked && <Chip label="Needs profile" color="warning" size="small" sx={{ fontWeight: 750 }} />}
-          </Stack>
-          <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.65 }}>
-            {description}
-          </Typography>
-          {helper && (
-            <Typography variant="caption" sx={{ color: locked ? '#b45309' : '#64748b', fontWeight: 700, display: 'block', mt: 0.7 }}>
-              {helper}
-            </Typography>
-          )}
-        </Box>
-      </Stack>
-      <Button
-        variant={locked ? 'outlined' : 'contained'}
-        onClick={onAction}
-        sx={{
-          borderRadius: 2,
-          textTransform: 'none',
-          fontWeight: 850,
-          px: 3,
-          py: 1.1,
-          bgcolor: locked ? 'transparent' : accent,
-          borderColor: alpha(accent, 0.4),
-          color: locked ? accent : '#fff',
-          '&:hover': {
-            bgcolor: locked ? alpha(accent, 0.08) : accent,
-          },
-        }}
-      >
-        {actionLabel}
-      </Button>
-    </Stack>
-  </Paper>
-);
+const metricText = (value, fallback = 'Pending') => (value || value === 0 ? value : fallback);
+const lifestyleGuideText = 'Our system creates your daily lifestyle tips by securely combining your personal and medical information with trusted diabetes management guidelines. By analyzing your profile details, our AI engine instantly matches your needs with established medical practices to deliver simple, actionable habits built specifically to support your daily health journey.';
 
-const EmptyInsight = ({ title, body, actionLabel, onAction }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      p: { xs: 3, md: 4 },
-      textAlign: 'center',
-      borderRadius: 3,
-      border: (theme) => `1px dashed ${alpha(theme.palette.divider, 0.9)}`,
-      bgcolor: alpha('#f8fafc', 0.9),
-    }}
-  >
-    <Typography variant="h6" fontWeight={850} sx={{ color: '#0f172a', mb: 1 }}>
-      {title}
-    </Typography>
-    <Typography variant="body2" sx={{ color: '#64748b', maxWidth: 560, mx: 'auto', mb: 2.5, lineHeight: 1.7 }}>
-      {body}
-    </Typography>
-    <Button variant="contained" onClick={onAction} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800 }}>
-      {actionLabel}
-    </Button>
-  </Paper>
-);
+function EmptyInsight({ title, actionLabel, onAction }) {
+  return (
+    <button type="button" className="care-empty-signal" onClick={onAction}>
+      <span>{title}</span>
+      <strong>{actionLabel}</strong>
+      <ArrowForwardIcon fontSize="small" />
+    </button>
+  );
+}
 
 function CarePlanView({
   planUsageAnalytics,
@@ -134,202 +85,182 @@ function CarePlanView({
   onOpenTool,
 }) {
   const [tab, setTab] = useState('nutrition');
+  const [lifestyleSynthesisQueued, setLifestyleSynthesisQueued] = useState(false);
   const isProfileComplete = personalInfoCompletion >= 100;
   const checklist = useMemo(() => getChecklist(personalInfo, medicalInfo), [personalInfo, medicalInfo]);
+  const activeTab = tabs.find((item) => item.key === tab) || tabs[0];
+  const ActiveIcon = activeTab.icon;
+
+  const queueLifestyleSynthesis = (source) => {
+    setLifestyleSynthesisQueued(true);
+    window.dispatchEvent(new CustomEvent('diavise:lifestyle-synthesis-queued', {
+      detail: {
+        source,
+        queuedAt: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const openActiveTool = () => {
+    onOpenTool?.(isProfileComplete ? activeTab.tool : 'personal-medical');
+  };
+
+  const handleTabChange = (key) => {
+    setTab(key);
+    if (key === 'lifestyle' && lifestyleHistory.length === 0) {
+      queueLifestyleSynthesis('lifestyle-tab');
+    }
+  };
 
   return (
-    <Box sx={{ display: 'grid', gap: 3 }}>
-      <Paper elevation={0} sx={{ ...panelSx, p: { xs: 2.25, md: 3 } }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.5 }}>
-          <Box>
-            <Typography variant="h4" fontWeight={950} sx={{ color: '#0f172a', letterSpacing: 0 }}>
-              My Care Plan
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748b', mt: 0.7, lineHeight: 1.7 }}>
-              Detailed nutrition, exercise, lifestyle, and medical profile insights live here, keeping your Overview clean.
-            </Typography>
-          </Box>
-          <Chip
-            label={isProfileComplete ? 'Profile complete' : `${personalInfoCompletion}% profile complete`}
-            color={isProfileComplete ? 'success' : 'info'}
-            sx={{ fontWeight: 800, alignSelf: { xs: 'flex-start', md: 'center' } }}
-          />
-        </Stack>
-        <Tabs
-          value={tab}
-          onChange={(_, value) => setTab(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            minHeight: 44,
-            '& .MuiTab-root': {
-              minHeight: 44,
-              textTransform: 'none',
-              fontWeight: 800,
-              borderRadius: 2,
-              mr: 1,
-            },
-            '& .Mui-selected': {
-              bgcolor: alpha('#2563eb', 0.08),
-            },
-          }}
-        >
-          <Tab value="nutrition" label="Nutrition" icon={<LocalDiningIcon />} iconPosition="start" />
-          <Tab value="exercise" label="Exercise" icon={<FitnessCenterIcon />} iconPosition="start" />
-          <Tab value="lifestyle" label="Lifestyle" icon={<TipsAndUpdatesIcon />} iconPosition="start" />
-          <Tab value="medical" label="Medical Profile" icon={<MedicalInformationIcon />} iconPosition="start" />
-        </Tabs>
-      </Paper>
+    <main className="care-plan-os">
+      <div className="care-plan-ambient one" />
+      <div className="care-plan-ambient two" />
+      <div className="care-plan-mesh" />
+
+      <header className="care-plan-command">
+        <div>
+          <span className="care-plan-eyebrow">Care Plan OS</span>
+          <h1>{activeTab.label} workspace</h1>
+        </div>
+
+        <button type="button" className="care-plan-inline-action" onClick={openActiveTool}>
+          <span>{isProfileComplete ? activeTab.cta : 'Complete Medical Profile'}</span>
+          <ArrowForwardIcon fontSize="small" />
+        </button>
+      </header>
+
+      <nav className="care-plan-tabs" aria-label="Care plan sections">
+        {tabs.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.key === tab;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={`care-plan-tab${isActive ? ' is-active' : ''}`}
+              onClick={() => handleTabChange(item.key)}
+              style={{ '--tab-accent': item.accent }}
+            >
+              <Icon fontSize="small" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className="care-plan-status-strip">
+        <div>
+          <ActiveIcon fontSize="small" />
+          <span>{activeTab.label}</span>
+        </div>
+        <p>
+          {lifestyleSynthesisQueued
+            ? 'Lifestyle synthesis queued from active care signals'
+            : isProfileComplete ? 'Profile-aware engine synchronized' : `${personalInfoCompletion}% profile calibration`}
+        </p>
+      </section>
 
       {tab === 'nutrition' && (
-        <Box>
-          <ToolIntroCard
-            icon={<LocalDiningIcon />}
-            title="Nutrition Planning"
-            description="Open your diet tools, then use the graphs below to understand calories, macros, and meal distribution."
-            actionLabel={isProfileComplete ? 'Open Diet Plan' : 'Complete Profile'}
-            onAction={() => onOpenTool?.(isProfileComplete ? 'diet-plan' : 'personal-medical')}
-            accent="#059669"
-            locked={!isProfileComplete}
-            helper={dietHistory.length ? `${dietHistory.length} diet record${dietHistory.length === 1 ? '' : 's'} available for analytics.` : 'Generate a plan to unlock richer nutrition trends.'}
+        <section className="care-plan-panel">
+          <NutritionAnalytics
+            planUsageAnalytics={planUsageAnalytics}
+            macronutrientBalance={macronutrientBalance}
+            mealWiseDistribution={mealWiseDistribution}
+            onAnalyticsInteract={() => queueLifestyleSynthesis('nutrition-analytics')}
           />
-          {dietHistory.length > 0 || planUsageAnalytics?.dietStats?.daysWithPlan > 0 ? (
-            <NutritionAnalytics
-              planUsageAnalytics={planUsageAnalytics}
-              macronutrientBalance={macronutrientBalance}
-              mealWiseDistribution={mealWiseDistribution}
-            />
-          ) : (
+          {dietHistory.length === 0 && !planUsageAnalytics?.dietStats?.daysWithPlan && (
             <EmptyInsight
-              title="No nutrition trends yet"
-              body="Generate your first diet plan to unlock macro balance, meal distribution, and calorie trend insights."
+              title="Nutrition data stream is not initialized"
               actionLabel={isProfileComplete ? 'Generate Diet Plan' : 'Complete Profile'}
               onAction={() => onOpenTool?.(isProfileComplete ? 'diet-plan' : 'personal-medical')}
             />
           )}
-        </Box>
+        </section>
       )}
 
       {tab === 'exercise' && (
-        <Box>
-          <ToolIntroCard
-            icon={<FitnessCenterIcon />}
-            title="Exercise Guidance"
-            description="Review safe movement planning and activity analytics for your diabetes care routine."
-            actionLabel={isProfileComplete ? 'Open Exercise Plan' : 'Complete Profile'}
-            onAction={() => onOpenTool?.(isProfileComplete ? 'exercise-plan' : 'personal-medical')}
-            accent="#0ea5e9"
-            locked={!isProfileComplete}
-            helper={exerciseHistory.length ? `${exerciseHistory.length} exercise record${exerciseHistory.length === 1 ? '' : 's'} available.` : 'Create an exercise plan to start tracking activity insights.'}
+        <section className="care-plan-panel care-plan-panel-muted">
+          <button type="button" className="care-plan-service-launch" onClick={() => onOpenTool?.(isProfileComplete ? 'exercise-plan' : 'personal-medical')}>
+            <FitnessCenterIcon />
+            <span>Open Exercise Intelligence</span>
+            <ArrowForwardIcon />
+          </button>
+          <ExerciseAnalytics
+            planUsageAnalytics={planUsageAnalytics}
+            onAnalyticsInteract={() => queueLifestyleSynthesis('exercise-analytics')}
           />
-          {exerciseHistory.length > 0 || planUsageAnalytics?.exerciseStats?.daysWithPlan > 0 ? (
-            <ExerciseAnalytics planUsageAnalytics={planUsageAnalytics} />
-          ) : (
+          {exerciseHistory.length === 0 && !planUsageAnalytics?.exerciseStats?.daysWithPlan && (
             <EmptyInsight
-              title="No exercise trends yet"
-              body="Create your first exercise plan to unlock activity duration and consistency insights."
+              title="Exercise data stream is not initialized"
               actionLabel={isProfileComplete ? 'Create Exercise Plan' : 'Complete Profile'}
               onAction={() => onOpenTool?.(isProfileComplete ? 'exercise-plan' : 'personal-medical')}
             />
           )}
-        </Box>
+        </section>
       )}
 
       {tab === 'lifestyle' && (
-        <Box>
-          <ToolIntroCard
-            icon={<TipsAndUpdatesIcon />}
-            title="Lifestyle And Habits"
-            description="Lifestyle guidance supports meal timing, hydration, sleep, walking, and daily routines."
-            actionLabel={isProfileComplete ? 'View Lifestyle Tips' : 'Complete Profile'}
-            onAction={() => onOpenTool?.(isProfileComplete ? 'lifestyle-tips' : 'personal-medical')}
-            accent="#f59e0b"
-            locked={!isProfileComplete}
-            helper={lifestyleHistory.length ? `${lifestyleHistory.length} lifestyle record${lifestyleHistory.length === 1 ? '' : 's'} available.` : 'Open lifestyle tips to start building healthier routines.'}
-          />
-          <Grid container spacing={2.5}>
-            {['Hydration', 'Meal timing', 'Sleep rhythm', 'Post-meal walking'].map((item) => (
-              <Grid item xs={12} sm={6} md={3} key={item}>
-                <Paper elevation={0} sx={{ ...panelSx, p: 2.25, minHeight: 132 }}>
-                  <Typography variant="subtitle2" fontWeight={850} sx={{ color: '#0f172a', mb: 1 }}>
-                    {item}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.6 }}>
-                    Use lifestyle tips to personalize this area from your profile and daily routine.
-                  </Typography>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+        <section className="lifestyle-workspace">
+          <section className="lifestyle-guide">
+            <h2>How Your Lifestyle Tips are Generated</h2>
+            <div className="lifestyle-guide-copy">
+              <p>{lifestyleGuideText}</p>
+            </div>
+          </section>
+        </section>
       )}
 
       {tab === 'medical' && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={5}>
-            <Paper elevation={0} sx={{ ...panelSx, p: { xs: 2.25, md: 2.75 } }}>
-              <Typography variant="h6" fontWeight={900} sx={{ color: '#0f172a', mb: 2 }}>
-                Profile Checklist
-              </Typography>
-              <Stack spacing={1.2}>
-                {checklist.map((item) => (
-                  <Stack
-                    key={item.label}
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{ p: 1.2, borderRadius: 2, bgcolor: item.complete ? alpha('#10b981', 0.06) : alpha('#f59e0b', 0.07) }}
-                  >
-                    <Typography variant="body2" fontWeight={750} sx={{ color: '#334155' }}>
-                      {item.label}
-                    </Typography>
-                    <Chip label={item.complete ? 'Complete' : 'Missing'} color={item.complete ? 'success' : 'warning'} size="small" sx={{ fontWeight: 750 }} />
-                  </Stack>
-                ))}
-              </Stack>
-              <Button fullWidth variant="contained" onClick={() => onOpenTool?.('personal-medical')} sx={{ mt: 2.5, borderRadius: 2, textTransform: 'none', fontWeight: 850 }}>
-                Update Medical Profile
-              </Button>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} lg={7}>
-            <Paper elevation={0} sx={{ ...panelSx, p: { xs: 2.25, md: 2.75 }, height: '100%' }}>
-              <Typography variant="h6" fontWeight={900} sx={{ color: '#0f172a', mb: 2 }}>
-                Latest Entered Medical Values
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800 }}>BMI</Typography>
-                  <Typography variant="h5" fontWeight={900}>{bmiAnalytics?.value || 'Not entered'}</Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>{bmiAnalytics?.label || 'Add height and weight'}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800 }}>Diabetes Type</Typography>
-                  <Typography variant="h5" fontWeight={900}>{medicalInfo?.diabetes_type || 'Not entered'}</Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Used for plan personalization</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800 }}>HbA1c</Typography>
-                  <Typography variant="h5" fontWeight={900}>
-                    {medicalInfo?.recent_lab_results?.hba1c?.value ? `${medicalInfo.recent_lab_results.hba1c.value}${medicalInfo.recent_lab_results.hba1c.unit || '%'}` : 'Not entered'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Latest entered lab value</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800 }}>Blood Pressure</Typography>
-                  <Typography variant="h5" fontWeight={900}>
-                    {medicalInfo?.blood_pressure?.systolic && medicalInfo?.blood_pressure?.diastolic
-                      ? `${medicalInfo.blood_pressure.systolic}/${medicalInfo.blood_pressure.diastolic}`
-                      : 'Not entered'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Manual medical record</Typography>
-                </Grid>
-              </Grid>
-            </Paper>
-          </Grid>
-        </Grid>
+        <section className="medical-matrix">
+          <div className="medical-checklist">
+            {checklist.map((item) => (
+              <div key={item.label} className={`medical-row${item.complete ? ' is-complete' : ''}`}>
+                <CheckCircleIcon fontSize="small" />
+                <span>{item.label}</span>
+                <b>{item.complete ? 'Ready' : 'Missing'}</b>
+              </div>
+            ))}
+          </div>
+
+          <div className="medical-readouts">
+            <div>
+              <small>BMI</small>
+              <strong>{metricText(bmiAnalytics?.value)}</strong>
+              <span>{bmiAnalytics?.label || 'Height and weight required'}</span>
+            </div>
+            <div>
+              <small>Diabetes Type</small>
+              <strong>{metricText(medicalInfo?.diabetes_type)}</strong>
+              <span>Profile personalization signal</span>
+            </div>
+            <div>
+              <small>HbA1c</small>
+              <strong>
+                {medicalInfo?.recent_lab_results?.hba1c?.value
+                  ? `${medicalInfo.recent_lab_results.hba1c.value}${medicalInfo.recent_lab_results.hba1c.unit || '%'}`
+                  : 'Pending'}
+              </strong>
+              <span>Latest entered lab value</span>
+            </div>
+            <div>
+              <small>Blood Pressure</small>
+              <strong>
+                {medicalInfo?.blood_pressure?.systolic && medicalInfo?.blood_pressure?.diastolic
+                  ? `${medicalInfo.blood_pressure.systolic}/${medicalInfo.blood_pressure.diastolic}`
+                  : 'Pending'}
+              </strong>
+              <span>Manual medical record</span>
+            </div>
+          </div>
+
+          <button type="button" className="medical-update" onClick={() => onOpenTool?.('personal-medical')}>
+            Update Medical Profile
+            <ArrowForwardIcon fontSize="small" />
+          </button>
+        </section>
       )}
-    </Box>
+    </main>
   );
 }
 

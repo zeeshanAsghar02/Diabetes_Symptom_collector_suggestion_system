@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -15,6 +14,7 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../utils/axiosInstance';
 import { useSettings } from '../context/SettingsContext';
@@ -90,54 +90,88 @@ const ChatAssistant = ({ inModal = false }) => {
         height: inModal ? '100%' : '100vh',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: inModal ? 'transparent' : '#f8fbff',
+        bgcolor: '#050816',
         overflow: 'hidden',
+        position: 'relative',
+        isolation: 'isolate',
+        fontFamily: '"Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          zIndex: -2,
+          background: `
+            radial-gradient(circle at 18% 8%, rgba(45, 212, 191, 0.14), transparent 30%),
+            radial-gradient(circle at 78% 16%, rgba(34, 211, 238, 0.13), transparent 32%),
+            radial-gradient(circle at 72% 86%, rgba(167, 139, 250, 0.12), transparent 34%),
+            linear-gradient(135deg, #050816 0%, #07101c 52%, #050b13 100%)
+          `,
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          zIndex: -1,
+          pointerEvents: 'none',
+          backgroundImage: `
+            linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px)
+          `,
+          backgroundSize: '54px 54px',
+          maskImage: 'radial-gradient(circle at 54% 30%, black, transparent 78%)',
+        },
       }}
     >
       <Container
-        maxWidth={inModal ? false : 'lg'}
+        maxWidth={false}
         sx={{
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           py: 0,
-          px: inModal ? 0 : 3,
-          maxWidth: inModal ? '100%' : undefined,
+          px: inModal ? 0 : { xs: 2, md: 3 },
+          maxWidth: '100%',
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            borderRadius: inModal ? 0 : 4,
+            borderRadius: 0,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            bgcolor: '#fff',
-            border: inModal ? 'none' : '1px solid #e2e8f0',
-            boxShadow: inModal ? 'none' : '0 20px 60px rgba(15, 23, 42, 0.08)',
+            bgcolor: 'transparent',
+            border: 'none',
+            boxShadow: 'none',
           }}
         >
           <Box
             sx={{
-              p: { xs: 2, md: 2.75 },
-              borderBottom: '1px solid #e2e8f0',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+              p: { xs: 2, md: 2.35 },
+              borderBottom: 'none',
+              background: 'transparent',
             }}
           >
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Avatar sx={{ width: 48, height: 48, bgcolor: '#0ea5e9', boxShadow: '0 8px 20px rgba(14,165,233,0.22)' }}>
-                <HealthAndSafetyIcon />
-              </Avatar>
+            <Stack direction="row" spacing={1.35} alignItems="center">
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h5" fontWeight={850} sx={{ color: '#0f172a', lineHeight: 1.2 }}>
+                <Typography
+                  variant="h6"
+                  fontWeight={620}
+                  sx={{
+                    color: '#fff',
+                    lineHeight: 1.18,
+                    letterSpacing: '-0.035em',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <HealthAndSafetyIcon sx={{ color: '#2dd4bf', fontSize: 20, filter: 'drop-shadow(0 0 12px rgba(45,212,191,0.26))' }} />
                   Diavise AI Assistant
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#64748b', mt: 0.35 }}>
+                <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.58)', mt: 0.35, display: 'block', fontWeight: 520 }}>
                   Personalized diabetes education and care suggestions from {siteTitle}.
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 0.35 }}>
-                  Educational support only. This assistant does not diagnose or replace a clinician.
                 </Typography>
               </Box>
             </Stack>
@@ -147,13 +181,14 @@ const ChatAssistant = ({ inModal = false }) => {
             sx={{
               flex: 1,
               overflowY: 'auto',
-              p: { xs: 2, md: 3 },
-              bgcolor: '#f8fafc',
+              p: { xs: 2, md: 2.5 },
+              pb: { xs: 13, md: 13 },
+              bgcolor: 'transparent',
               display: 'flex',
               flexDirection: 'column',
               '&::-webkit-scrollbar': { width: 8 },
-              '&::-webkit-scrollbar-track': { background: '#e2e8f0' },
-              '&::-webkit-scrollbar-thumb': { background: '#94a3b8', borderRadius: 10 },
+              '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.03)' },
+              '&::-webkit-scrollbar-thumb': { background: 'rgba(148,163,184,0.32)', borderRadius: 10 },
             }}
           >
             {messages.length === 0 && (
@@ -164,31 +199,64 @@ const ChatAssistant = ({ inModal = false }) => {
                   justifyContent: 'center',
                   alignItems: 'center',
                   flex: 1,
-                  gap: 2.5,
+                  gap: 2,
                   textAlign: 'center',
                 }}
               >
-                <Avatar sx={{ width: 72, height: 72, bgcolor: '#e0f2fe', color: '#0369a1' }}>
-                  <HealthAndSafetyIcon sx={{ fontSize: 36 }} />
-                </Avatar>
+                <HealthAndSafetyIcon sx={{ color: '#2dd4bf', fontSize: 38, filter: 'drop-shadow(0 0 18px rgba(45,212,191,0.3))' }} />
                 <Box>
-                  <Typography variant="h5" fontWeight={850} sx={{ color: '#0f172a', mb: 1 }}>
+                  <Typography variant="h6" fontWeight={560} sx={{ color: '#fff', mb: 0.5, letterSpacing: '-0.04em' }}>
                     Ask Diavise about your diabetes care
                   </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 620, mx: 'auto', lineHeight: 1.7 }}>
-                    Get educational suggestions about diet, exercise, symptoms, medications, and care planning.
-                  </Typography>
                 </Box>
-                <Alert severity="info" sx={{ maxWidth: 680, borderRadius: 2, textAlign: 'left' }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    maxWidth: 680,
+                    textAlign: 'center',
+                    color: 'rgba(203,213,225,0.5)',
+                    fontWeight: 520,
+                    lineHeight: 1.65,
+                  }}
+                >
                   For urgent symptoms or treatment decisions, contact a qualified healthcare professional.
-                </Alert>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.25, width: '100%', maxWidth: 680 }}>
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
+                    gap: 1,
+                    width: '100%',
+                    maxWidth: 980,
+                    mt: 0.5,
+                  }}
+                >
                   {starterPrompts.map((prompt) => (
                     <Button
                       key={prompt}
-                      variant="outlined"
+                      variant="text"
                       onClick={() => sendMessage(prompt)}
-                      sx={{ borderRadius: 2, textTransform: 'none', justifyContent: 'flex-start', fontWeight: 750, py: 1.1 }}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        justifyContent: 'center',
+                        textAlign: 'left',
+                        fontSize: '0.72rem',
+                        lineHeight: 1.35,
+                        fontWeight: 540,
+                        minHeight: 44,
+                        py: 0.85,
+                        px: 1.1,
+                        color: 'rgba(226,232,240,0.62)',
+                        bgcolor: 'rgba(255,255,255,0.025)',
+                        border: 'none',
+                        transition: 'color 220ms ease, background 220ms ease, transform 220ms ease',
+                        '&:hover': {
+                          color: '#fff',
+                          bgcolor: 'rgba(45,212,191,0.075)',
+                          transform: 'translateY(-1px)',
+                        },
+                      }}
                     >
                       {prompt}
                     </Button>
@@ -209,7 +277,7 @@ const ChatAssistant = ({ inModal = false }) => {
                 }}
               >
                 {msg.role === 'assistant' && (
-                  <Avatar sx={{ bgcolor: '#e0f2fe', color: '#0369a1', width: 36, height: 36 }}>
+                  <Avatar sx={{ bgcolor: 'rgba(45,212,191,0.1)', color: '#2dd4bf', width: 36, height: 36 }}>
                     <HealthAndSafetyIcon sx={{ fontSize: 20 }} />
                   </Avatar>
                 )}
@@ -218,16 +286,18 @@ const ChatAssistant = ({ inModal = false }) => {
                   <Paper
                     elevation={0}
                     sx={{
-                      p: 2,
-                      bgcolor: msg.role === 'user' ? '#2563eb' : msg.isError ? '#fff7ed' : '#fff',
-                      color: msg.role === 'user' ? '#fff' : '#1f2937',
+                  p: 2,
+                      bgcolor: msg.role === 'user' ? 'rgba(45,212,191,0.14)' : msg.isError ? 'rgba(251,146,60,0.1)' : 'rgba(255,255,255,0.045)',
+                      color: msg.role === 'user' ? '#fff' : 'rgba(226,232,240,0.86)',
                       borderRadius: 2.5,
-                      border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
-                      boxShadow: msg.role === 'assistant' ? '0 8px 22px rgba(15, 23, 42, 0.05)' : 'none',
+                      border: 'none',
+                      boxShadow: 'none',
                       '& p': { margin: 0, marginBottom: 1 },
                       '& p:last-child': { marginBottom: 0 },
                       '& ul, & ol': { margin: '8px 0', paddingLeft: '20px' },
                       '& strong': { fontWeight: 700 },
+                      fontSize: '0.92rem',
+                      lineHeight: 1.65,
                     }}
                   >
                     {msg.role === 'assistant' ? (
@@ -241,14 +311,24 @@ const ChatAssistant = ({ inModal = false }) => {
 
                   {msg.role === 'assistant' && msg.sources?.length > 0 && (
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                      <Chip icon={<MenuBookIcon />} label="Sources" size="small" sx={{ fontWeight: 750 }} />
+                      <Chip
+                        icon={<MenuBookIcon />}
+                        label="Sources"
+                        size="small"
+                        sx={{
+                          fontWeight: 750,
+                          bgcolor: 'rgba(45,212,191,0.1)',
+                          color: '#a7f3d0',
+                          '& .MuiChip-icon': { color: '#a7f3d0' },
+                        }}
+                      />
                       {msg.sources.slice(0, 3).map((source) => (
                         <Chip
                           key={source.id}
                           label={`[${source.id}] ${String(source.title || 'Source').substring(0, 28)}`}
                           size="small"
                           variant="outlined"
-                          sx={{ fontSize: '0.72rem' }}
+                          sx={{ fontSize: '0.72rem', color: 'rgba(226,232,240,0.7)', borderColor: 'rgba(255,255,255,0.08)' }}
                         />
                       ))}
                     </Stack>
@@ -259,14 +339,14 @@ const ChatAssistant = ({ inModal = false }) => {
                       icon={<MenuBookIcon sx={{ fontSize: 13 }} />}
                       label="Based on available guidance"
                       size="small"
-                      sx={{ mt: 0.75, fontSize: '0.72rem', bgcolor: '#10b981', color: '#fff', '& .MuiChip-icon': { color: '#fff' } }}
+                      sx={{ mt: 0.75, fontSize: '0.72rem', bgcolor: 'rgba(16,185,129,0.14)', color: '#a7f3d0', '& .MuiChip-icon': { color: '#a7f3d0' } }}
                     />
                   )}
                 </Box>
 
                 {msg.role === 'user' && (
-                  <Avatar sx={{ bgcolor: '#2563eb', width: 36, height: 36 }}>
-                    <Typography variant="caption" sx={{ color: '#fff', fontWeight: 800 }}>
+                  <Avatar sx={{ bgcolor: 'rgba(34,211,238,0.13)', width: 36, height: 36 }}>
+                    <Typography variant="caption" sx={{ color: '#e0f2fe', fontWeight: 800 }}>
                       You
                     </Typography>
                   </Avatar>
@@ -276,11 +356,11 @@ const ChatAssistant = ({ inModal = false }) => {
 
             {loading && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <Avatar sx={{ bgcolor: '#e0f2fe', color: '#0369a1', width: 36, height: 36 }}>
+                <Avatar sx={{ bgcolor: 'rgba(45,212,191,0.1)', color: '#2dd4bf', width: 36, height: 36 }}>
                   <HealthAndSafetyIcon sx={{ fontSize: 20 }} />
                 </Avatar>
-                <Paper elevation={0} sx={{ p: 2, bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
-                  <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 700 }}>
+                <Paper elevation={0} sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.045)', borderRadius: 2.5, border: 'none' }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.72)', fontWeight: 700 }}>
                     Analyzing your question...
                   </Typography>
                 </Paper>
@@ -290,39 +370,77 @@ const ChatAssistant = ({ inModal = false }) => {
             <div ref={messagesEndRef} />
           </Box>
 
-          <Box sx={{ p: { xs: 1.75, md: 2.25 }, bgcolor: '#fff', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
-            <Stack direction="row" spacing={1.5} alignItems="flex-end">
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              px: { xs: 2, md: 3 },
+              pb: { xs: 2, md: 3 },
+              pt: 2,
+              pointerEvents: 'none',
+              background: 'linear-gradient(180deg, transparent 0%, rgba(5,8,22,0.72) 44%, rgba(5,8,22,0.94) 100%)',
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="flex-end"
+              sx={{
+                maxWidth: 760,
+                mx: 'auto',
+                minHeight: 58,
+                px: 1.35,
+                py: 0.85,
+                borderRadius: 999,
+                bgcolor: '#0b0f19',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 24px 80px rgba(2,6,23,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',
+                pointerEvents: 'auto',
+              }}
+            >
+              <Box sx={{ display: 'grid', placeItems: 'center', width: 34, minHeight: 40, color: 'rgba(45,212,191,0.78)' }}>
+                <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+              </Box>
               <TextField
                 fullWidth
                 minRows={1}
                 maxRows={4}
                 multiline
-                placeholder="Type your question here... (Press Enter to send)"
+                placeholder="Type your question here..."
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={loading}
+                variant="standard"
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 3,
-                    bgcolor: '#fff',
-                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
-                    '&:hover fieldset': { borderColor: '#0ea5e9' },
-                    '&.Mui-focused fieldset': { borderColor: '#0ea5e9' },
+                  alignSelf: 'center',
+                  '& .MuiInputBase-root': {
+                    color: '#fff',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.45,
+                    py: 0.5,
+                    '&:before': { borderBottom: 'none' },
+                    '&:after': { borderBottom: 'none' },
+                    '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
                   },
+                  '& textarea': { color: '#fff' },
+                  '& textarea::placeholder': { color: 'rgba(203,213,225,0.48)', opacity: 1 },
                 }}
               />
               <IconButton
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
                 sx={{
-                  bgcolor: '#2563eb',
-                  color: '#fff',
-                  width: 52,
-                  height: 52,
-                  boxShadow: '0 8px 20px rgba(37,99,235,0.22)',
-                  '&:hover': { bgcolor: '#1d4ed8' },
-                  '&:disabled': { bgcolor: '#e2e8f0', color: '#94a3b8' },
+                  bgcolor: 'transparent',
+                  color: '#2dd4bf',
+                  width: 42,
+                  height: 42,
+                  flexShrink: 0,
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', color: '#fff' },
+                  '&:disabled': { bgcolor: 'transparent', color: 'rgba(148,163,184,0.32)' },
                 }}
               >
                 <SendIcon />

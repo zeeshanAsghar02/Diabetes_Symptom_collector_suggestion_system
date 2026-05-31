@@ -82,6 +82,162 @@ const LOADING_STAGES = [
   { id: 7, label: "Finalizing your personalized plan", duration: 18 }
 ];
 
+const getRollingGenerationMonths = () => {
+  const now = new Date();
+  return Array.from({ length: 3 }, (_, offset) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    return {
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+      label: date.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+    };
+  });
+};
+
+const isCurrentCalendarMonth = (plan) => {
+  const now = new Date();
+  return Number(plan?.month) === now.getMonth() + 1 && Number(plan?.year) === now.getFullYear();
+};
+
+const AiSynthesisLoading = ({ elapsedSeconds = 0 }) => {
+  const totalStageSeconds = LOADING_STAGES.reduce((sum, stage) => sum + stage.duration, 0);
+  const progress = Math.min(95, Math.max(8, Math.round((elapsedSeconds / totalStageSeconds) * 100)));
+  let accumulatedSeconds = 0;
+  const activeStageIndex = LOADING_STAGES.findIndex((stage) => {
+    accumulatedSeconds += stage.duration;
+    return elapsedSeconds < accumulatedSeconds;
+  });
+  const currentStageIndex = activeStageIndex === -1 ? LOADING_STAGES.length - 1 : activeStageIndex;
+
+  return (
+    <Box
+      sx={{
+        minHeight: 300,
+        px: { xs: 0, md: 1 },
+        py: 1,
+      }}
+    >
+      <Typography
+        sx={{
+          color: 'rgba(203,213,225,0.72)',
+          fontSize: 12,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          mb: 0.7,
+        }}
+      >
+        Progress:{' '}
+        <Box component="span" sx={{ color: '#67e8f9', fontFamily: 'JetBrains Mono, Roboto Mono, monospace', fontWeight: 500 }}>
+          {progress}%
+        </Box>
+      </Typography>
+
+      <Box
+        sx={{
+          height: 2,
+          width: '100%',
+          maxWidth: 620,
+          borderRadius: 999,
+          overflow: 'hidden',
+          bgcolor: 'rgba(255,255,255,0.07)',
+          position: 'relative',
+          mb: 4,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #22d3ee, #34d399)',
+            boxShadow: '0 0 22px rgba(34,211,238,0.32)',
+            transition: 'width 0.5s cubic-bezier(0.1, 0.76, 0.55, 0.94)',
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.75), rgba(52,211,153,0.75), transparent)',
+            backgroundSize: '220% 100%',
+            animation: 'aiSynthesisWave 1.7s ease-in-out infinite',
+          },
+          '@keyframes aiSynthesisWave': {
+            '0%': { transform: 'translateX(-100%)' },
+            '100%': { transform: 'translateX(100%)' },
+          },
+        }}
+      />
+
+      <Stack spacing={1.55}>
+        {LOADING_STAGES.map((stage, index) => {
+          const completed = index < currentStageIndex;
+          const active = index === currentStageIndex;
+
+          return (
+            <Box
+              key={stage.id}
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '26px 1fr',
+                alignItems: 'center',
+                columnGap: 1.4,
+                color: completed || active ? '#fff' : 'rgba(148,163,184,0.38)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 22,
+                  height: 22,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontFamily: 'JetBrains Mono, Roboto Mono, monospace',
+                  fontSize: active ? 16 : 12,
+                  color: completed ? '#2dd4bf' : active ? '#67e8f9' : 'rgba(148,163,184,0.38)',
+                }}
+              >
+                {completed ? (
+                  '✓'
+                ) : active ? (
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      bgcolor: '#67e8f9',
+                      boxShadow: '0 0 18px rgba(103,232,249,0.62)',
+                      animation: 'pipelinePulse 1s ease-in-out infinite',
+                      '@keyframes pipelinePulse': {
+                        '0%, 100%': { opacity: 0.45, transform: 'scale(0.75)' },
+                        '50%': { opacity: 1, transform: 'scale(1.18)' },
+                      },
+                    }}
+                  />
+                ) : (
+                  String(stage.id).padStart(2, '0')
+                )}
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: { xs: 13, md: 14 },
+                  fontWeight: active ? 520 : 430,
+                  letterSpacing: active ? '0.01em' : 0,
+                  color: completed ? 'rgba(226,232,240,0.9)' : active ? '#fff' : 'rgba(148,163,184,0.4)',
+                }}
+              >
+                {stage.label}
+                {active && (
+                  <Box component="span" sx={{ color: '#67e8f9', ml: 0.8, letterSpacing: '0.14em' }}>
+                    ...
+                  </Box>
+                )}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Stack>
+    </Box>
+  );
+};
+
 // Engaging Loading Component
 const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
@@ -336,20 +492,9 @@ const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
 
 // Premium Month Selector Dialog
 const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const generationMonths = useMemo(() => getRollingGenerationMonths(), []);
+  const [selectedWindow, setSelectedWindow] = useState(generationMonths[0]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const years = [];
-  const currentYear = new Date().getFullYear();
-  for (let i = 0; i < 3; i++) {
-    years.push(currentYear + i);
-  }
 
   // Track elapsed time during loading
   useEffect(() => {
@@ -363,6 +508,10 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
     return () => clearInterval(interval);
   }, [loading]);
 
+  useEffect(() => {
+    if (open && !loading) setSelectedWindow(generationMonths[0]);
+  }, [open, loading, generationMonths]);
+
   return (
     <Dialog
       open={open}
@@ -371,124 +520,118 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.18)',
-          border: '1px solid',
-          borderColor: 'divider',
+          borderRadius: 1.5,
+          bgcolor: '#0f1420',
+          color: '#fff',
+          boxShadow: '0 28px 90px rgba(2,6,23,0.55)',
+          border: '1px solid rgba(255,255,255,0.1)',
           transition: 'max-width 0.3s ease'
         }
       }}
     >
-      <DialogTitle sx={{ pb: 0 }}>
-        <Typography variant="h5" component="span" fontWeight={700} sx={{ color: '#1e293b', display: 'block' }}>
-          {loading ? '🍽️ Crafting Your Meal Plan' : 'Generate Monthly Plan'}
+      <DialogTitle sx={{ pb: 0, px: { xs: 2.5, md: 3.5 }, pt: 3 }}>
+        <Typography variant="h5" component="span" fontWeight={520} sx={{ color: '#fff', display: 'block', letterSpacing: '-0.045em' }}>
+          {loading ? 'AI Nutrition Synthesis' : 'Initialize Diet Matrix'}
         </Typography>
-        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-          {loading 
-            ? 'Our AI is designing personalized meals based on your health profile'
-            : 'Create a personalized diet plan with multiple meal options'}
-        </Typography>
+        {!loading && (
+          <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.6)', mt: 0.7 }}>
+            Select a data window for your personalized monthly targets.
+          </Typography>
+        )}
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3, pb: 2 }}>
-        <Stack spacing={2.5}>
-          {!loading && (
-            <Stack direction="row" spacing={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Month</InputLabel>
-                <Select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  label="Month"
-                  disabled={loading}
-                  sx={{ borderRadius: 1.5 }}
+      <DialogContent sx={{ pt: 3, pb: 2, px: { xs: 2.5, md: 3.5 } }}>
+        {loading ? (
+          <AiSynthesisLoading elapsedSeconds={elapsedSeconds} />
+        ) : (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: { xs: 2.2, sm: 4.2 },
+              py: 2,
+            }}
+          >
+            {generationMonths.map((option) => {
+              const selected = option.month === selectedWindow.month && option.year === selectedWindow.year;
+              return (
+                <Button
+                  key={`${option.month}-${option.year}`}
+                  type="button"
+                  onClick={() => setSelectedWindow(option)}
+                  sx={{
+                    minHeight: 0,
+                    borderRadius: 0,
+                    textTransform: 'none',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    textAlign: 'left',
+                    px: 0,
+                    py: 0.8,
+                    pb: 1.05,
+                    color: selected ? '#fff' : 'rgba(203,213,225,0.62)',
+                    bgcolor: 'transparent',
+                    border: 0,
+                    borderBottom: selected ? '1px solid rgba(34,211,238,0.68)' : '1px solid transparent',
+                    transition: 'all 0.28s ease',
+                    minWidth: 'auto',
+                    '&:hover': {
+                      color: '#fff',
+                      bgcolor: 'transparent',
+                      borderBottomColor: 'rgba(34,211,238,0.45)',
+                      textShadow: '0 0 18px rgba(34,211,238,0.25)',
+                    },
+                  }}
                 >
-                  {months.map((month, index) => (
-                    <MenuItem key={index + 1} value={index + 1}>{month}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Year</InputLabel>
-                <Select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  label="Year"
-                  disabled={loading}
-                  sx={{ borderRadius: 1.5 }}
-                >
-                  {years.map((year) => (
-                    <MenuItem key={year} value={year}>{year}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Stack>
-          )}
-
-          {loading ? (
-            <EngagingLoadingOverlay isLoading={loading} elapsedSeconds={elapsedSeconds} />
-          ) : (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                bgcolor: '#f8fafc',
-                border: '1px solid',
-                borderColor: '#e2e8f0',
-                borderRadius: 2
-              }}
-            >
-              <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b', mb: 1.5 }}>
-                Plan includes:
-              </Typography>
-              <Stack spacing={1}>
-                {[
-                  'Personalized meal options for 5 meal types',
-                  'Breakfast, lunch, dinner & 2 snacks',
-                  'Complete nutritional breakdown',
-                  'Based on your health profile & region'
-                ].map((item, i) => (
-                  <Stack key={i} direction="row" spacing={1} alignItems="center">
-                    <CheckCircleIcon sx={{ fontSize: 16, color: '#10b981' }} />
-                    <Typography variant="body2" sx={{ color: '#475569' }}>{item}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Paper>
-          )}
-        </Stack>
+                  <Typography
+                    variant="body2"
+                    fontWeight={selected ? 560 : 430}
+                    sx={{
+                      color: 'inherit',
+                      letterSpacing: '0.01em',
+                      fontSize: { xs: 13.5, sm: 14.5 },
+                    }}
+                  >
+                    {option.label}
+                  </Typography>
+                </Button>
+              );
+            })}
+          </Box>
+        )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+      <DialogActions sx={{ px: { xs: 2.5, md: 3.5 }, pb: 3, pt: 1 }}>
         <Button
           onClick={onClose}
           disabled={loading}
           sx={{
-            color: '#64748b',
+            color: 'rgba(203,213,225,0.7)',
             textTransform: 'none',
             fontWeight: 600,
-            '&:hover': { bgcolor: '#f1f5f9' }
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' }
           }}
         >
           Cancel
         </Button>
         <Button
-          onClick={() => onGenerate(selectedMonth, selectedYear)}
+          onClick={() => onGenerate(selectedWindow.month, selectedWindow.year)}
           disabled={loading}
-          variant="contained"
+          variant="outlined"
           sx={{
-            bgcolor: '#10b981',
+            borderColor: 'rgba(34,211,238,0.35)',
+            color: '#fff',
             textTransform: 'none',
             fontWeight: 600,
             px: 3,
             borderRadius: 1.5,
             boxShadow: 'none',
-            '&:hover': { bgcolor: '#059669', boxShadow: 'none' },
-            '&:disabled': { bgcolor: alpha('#10b981', 0.5) }
+            '&:hover': { bgcolor: 'rgba(34,211,238,0.08)', borderColor: 'rgba(34,211,238,0.7)', boxShadow: 'none' },
+            '&:disabled': { color: 'rgba(148,163,184,0.4)', borderColor: 'rgba(255,255,255,0.08)' }
           }}
         >
-          {loading ? 'Generating...' : 'Generate Plan'}
+          {loading ? 'Generating...' : 'Confirm & Generate'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -497,42 +640,33 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
 
 // Stat Card Component
 const StatCard = ({ icon: Icon, label, value, color = '#10b981' }) => (
-  <Paper
-    elevation={0}
+  <Box
     sx={{
-      p: 2,
-      borderRadius: 2,
-      border: '1px solid',
-      borderColor: '#e2e8f0',
-      bgcolor: '#fff',
-      transition: 'all 0.2s',
-      '&:hover': { borderColor: color, boxShadow: `0 4px 12px ${alpha(color, 0.1)}` }
+      py: 1.5,
+      minWidth: 0,
     }}
   >
-    <Stack direction="row" spacing={1.5} alignItems="center">
-      <Box
-        sx={{
-          width: 40,
-          height: 40,
-          borderRadius: 1.5,
-          bgcolor: alpha(color, 0.1),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        {React.createElement(Icon, { sx: { color, fontSize: 20 } })}
-      </Box>
+    <Stack direction="row" spacing={1.25} alignItems="center">
+      {React.createElement(Icon, { sx: { color, fontSize: 18, opacity: 0.86 } })}
       <Box>
-        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+        <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.72)', fontWeight: 650, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           {label}
         </Typography>
-        <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }}>
+        <Typography
+          variant="h6"
+          fontWeight={340}
+          sx={{
+            color: '#fff',
+            lineHeight: 1.2,
+            fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
+            textShadow: `0 0 16px ${alpha(color, 0.2)}`,
+          }}
+        >
           {value}
         </Typography>
       </Box>
     </Stack>
-  </Paper>
+  </Box>
 );
 
 const MonthlyDietPlanDashboard = ({ inModal = false }) => {
@@ -604,6 +738,12 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
   };
 
   const handleGeneratePlan = async (month, year) => {
+    const allowed = getRollingGenerationMonths().some((option) => option.month === Number(month) && option.year === Number(year));
+    if (!allowed) {
+      setError('Monthly plans can only be generated for the current month and the next two months.');
+      return;
+    }
+
     setGenerating(true);
     setError(null);
     setSuccess(null);
@@ -719,7 +859,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: inModal ? 2 : 4, mt: inModal ? 0 : 6 }}>
+    <Container maxWidth="xl" sx={{ py: inModal ? 2 : 4, mt: inModal ? 0 : 6, color: '#f8fafc' }}>
       <Stack spacing={3}>
         {/* Header Section */}
         <Box>
@@ -730,10 +870,10 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
             spacing={2}
           >
             <Box>
-              <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
+              <Typography variant="h4" fontWeight={560} sx={{ color: '#fff', mb: 0.5, letterSpacing: '-0.055em' }}>
                 Monthly Diet Plans
               </Typography>
-              <Typography variant="body1" sx={{ color: '#64748b' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)' }}>
                 Personalized meal options for flexibility throughout the month
               </Typography>
             </Box>
@@ -746,26 +886,27 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
-                  color: '#64748b',
-                  borderColor: '#e2e8f0',
+                  color: 'rgba(226,232,240,0.76)',
+                  borderColor: 'rgba(255,255,255,0.1)',
                   borderRadius: 1.5,
-                  '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' }
+                  '&:hover': { borderColor: 'rgba(255,255,255,0.2)', bgcolor: 'rgba(255,255,255,0.04)' }
                 }}
               >
                 Refresh
               </Button>
               <Button
-                variant="contained"
+                variant="outlined"
                 size="small"
                 onClick={() => setShowGenerator(true)}
                 startIcon={<AddIcon />}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
-                  bgcolor: '#10b981',
+                  color: '#fff',
+                  borderColor: 'rgba(45,212,191,0.35)',
                   borderRadius: 1.5,
                   boxShadow: 'none',
-                  '&:hover': { bgcolor: '#059669', boxShadow: 'none' }
+                  '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.7)', boxShadow: 'none' }
                 }}
               >
                 New Plan
@@ -775,7 +916,11 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         </Box>
 
         {/* Stats Row */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={0}
+          divider={<Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: { xs: 0, sm: 3 } }} />}
+        >
           <StatCard 
             icon={CalendarIcon} 
             label="Total Plans" 
@@ -817,15 +962,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         )}
 
         {/* Plans Table */}
-        <Card 
-          elevation={0} 
-          sx={{ 
-            border: '1px solid', 
-            borderColor: '#e2e8f0', 
-            borderRadius: 2,
-            overflow: 'hidden'
-          }}
-        >
+        <Box>
           {monthlyPlans.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
               <Box
@@ -833,7 +970,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                   width: 64,
                   height: 64,
                   borderRadius: 2,
-                  bgcolor: '#f1f5f9',
+                  bgcolor: 'rgba(255,255,255,0.04)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -841,41 +978,42 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                   mb: 2
                 }}
               >
-                <RestaurantIcon sx={{ fontSize: 32, color: '#94a3b8' }} />
+                <RestaurantIcon sx={{ fontSize: 32, color: 'rgba(45,212,191,0.45)' }} />
               </Box>
-              <Typography variant="h6" fontWeight={600} sx={{ color: '#1e293b', mb: 0.5 }}>
+              <Typography variant="h6" fontWeight={560} sx={{ color: '#fff', mb: 0.5 }}>
                 No monthly plans yet
               </Typography>
-              <Typography variant="body2" sx={{ color: '#64748b', mb: 3, maxWidth: 400, mx: 'auto' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.62)', mb: 3, maxWidth: 400, mx: 'auto' }}>
                 Generate your first monthly plan to get personalized meal options for the entire month
               </Typography>
               <Button
-                variant="contained"
+                variant="outlined"
                 onClick={() => setShowGenerator(true)}
                 startIcon={<AddIcon />}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
-                  bgcolor: '#10b981',
+                  color: '#fff',
+                  borderColor: 'rgba(45,212,191,0.35)',
                   borderRadius: 1.5,
                   boxShadow: 'none',
-                  '&:hover': { bgcolor: '#059669' }
+                  '&:hover': { bgcolor: 'rgba(45,212,191,0.08)', borderColor: 'rgba(45,212,191,0.7)' }
                 }}
               >
                 Create Monthly Plan
               </Button>
             </Box>
           ) : (
-            <TableContainer>
-              <Table>
+            <TableContainer sx={{ background: 'transparent' }}>
+              <Table sx={{ background: 'transparent' }}>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Period</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Region</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Daily Target</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Options</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>Actions</TableCell>
+                  <TableRow>
+                    {['Period', 'Region', 'Daily Target', 'Options'].map((heading) => (
+                      <TableCell key={heading} sx={{ fontWeight: 650, color: 'rgba(148,163,184,0.72)', py: 1.7, borderBottom: '1px solid rgba(255,255,255,0.06)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.72rem' }}>
+                        {heading}
+                      </TableCell>
+                    ))}
+                    <TableCell align="right" sx={{ fontWeight: 650, color: 'rgba(148,163,184,0.72)', py: 1.7, borderBottom: '1px solid rgba(255,255,255,0.06)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.72rem' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -883,97 +1021,65 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                     <TableRow
                       key={plan._id}
                       sx={{
+                        position: 'relative',
                         cursor: 'pointer',
-                        transition: 'background-color 0.15s',
-                        '&:hover': { bgcolor: '#f8fafc' },
-                        '&:last-child td': { borderBottom: 0 }
+                        transition: 'background-color 0.3s ease-out',
+                        bgcolor: 'transparent',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+                        '& td': { borderBottom: '1px solid rgba(255,255,255,0.04)' },
+                        '&:last-child td': { borderBottom: '1px solid rgba(255,255,255,0.04)' },
+                        ...(isCurrentCalendarMonth(plan) ? {
+                          '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            height: 1,
+                            background: 'linear-gradient(90deg, transparent, #22d3ee, transparent)',
+                            backgroundSize: '220% 100%',
+                            animation: 'monthlyPulseLine 1.8s ease-in-out infinite',
+                          },
+                          '@keyframes monthlyPulseLine': {
+                            '0%': { backgroundPosition: '220% 0', opacity: 0.2 },
+                            '50%': { opacity: 1 },
+                            '100%': { backgroundPosition: '-220% 0', opacity: 0.2 },
+                          }
+                        } : {})
                       }}
                       onClick={() => handleOpenPlan(plan)}
                     >
-                      <TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.04)', py: 2.2 }}>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Box
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 1,
-                              bgcolor: alpha('#10b981', 0.1),
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <CalendarIcon sx={{ fontSize: 18, color: '#10b981' }} />
-                          </Box>
                           <Box>
-                            <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b' }}>
+                            <Typography variant="body2" fontWeight={560} sx={{ color: '#fff' }}>
                               {getMonthName(plan.month)} {plan.year}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                              {new Date(plan.created_at).toLocaleDateString()}
                             </Typography>
                           </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={plan.region}
-                          size="small"
-                          sx={{
-                            bgcolor: alpha('#3b82f6', 0.1),
-                            color: '#3b82f6',
-                            fontWeight: 600,
-                            fontSize: '0.75rem'
-                          }}
-                        />
+                      <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.04)', py: 2.2 }}>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.68)' }}>
+                          {plan.region}
+                        </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b' }}>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.04)', py: 2.2 }}>
+                        <Typography variant="body2" fontWeight={360} sx={{ color: '#67e8f9', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace', textShadow: '0 0 14px rgba(103,232,249,0.18)' }}>
                           {plan.total_daily_calories} kcal
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.04)', py: 2.2 }}>
+                        <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.68)' }}>
                           {getTotalOptions(plan)} options
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={plan.generation_status === 'complete' && plan.status === 'active' ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : undefined}
-                          label={plan.generation_status === 'pending'
-                            ? 'Generating'
-                            : plan.generation_status === 'failed'
-                              ? 'Failed'
-                              : plan.status}
-                          size="small"
-                          sx={{
-                            bgcolor: plan.generation_status === 'pending'
-                              ? alpha('#3b82f6', 0.1)
-                              : plan.generation_status === 'failed'
-                                ? alpha('#ef4444', 0.1)
-                                : plan.status === 'active'
-                                  ? alpha('#10b981', 0.1)
-                                  : '#f1f5f9',
-                            color: plan.generation_status === 'pending'
-                              ? '#3b82f6'
-                              : plan.generation_status === 'failed'
-                                ? '#ef4444'
-                                : plan.status === 'active'
-                                  ? '#10b981'
-                                  : '#64748b',
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                            fontSize: '0.75rem'
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="right" sx={{ borderBottom: '1px solid rgba(255,255,255,0.04)', py: 2.2 }}>
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                           <Tooltip title="View Details">
                             <IconButton
                               size="small"
                               onClick={(e) => handleOpenPlan(plan, e)}
-                              sx={{ color: '#64748b', '&:hover': { color: '#10b981', bgcolor: alpha('#10b981', 0.1) } }}
+                              sx={{ color: 'rgba(203,213,225,0.45)', '& svg': { fontSize: 18 }, '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' } }}
                             >
                               <VisibilityIcon fontSize="small" />
                             </IconButton>
@@ -982,7 +1088,7 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                             <IconButton
                               size="small"
                               onClick={(e) => handleDeletePlan(plan._id, e)}
-                              sx={{ color: '#64748b', '&:hover': { color: '#ef4444', bgcolor: alpha('#ef4444', 0.1) } }}
+                              sx={{ color: 'rgba(203,213,225,0.45)', '& svg': { fontSize: 18 }, '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' } }}
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -995,26 +1101,17 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
               </Table>
             </TableContainer>
           )}
-        </Card>
+        </Box>
 
         {/* Info Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: '#e2e8f0',
-            bgcolor: '#fff'
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight={600} sx={{ color: '#1e293b', mb: 2 }}>
+        <Box sx={{ pt: 1 }}>
+          <Typography variant="subtitle1" fontWeight={560} sx={{ color: '#fff', mb: 2, letterSpacing: '-0.025em' }}>
             How Monthly Plans Work
           </Typography>
           <Stack 
             direction={{ xs: 'column', md: 'row' }} 
             spacing={3}
-            divider={<Divider orientation="vertical" flexItem />}
+            divider={<Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}
           >
             {[
               { step: '1', title: 'Generate', desc: 'Create a plan with 5 options per meal type' },
@@ -1027,12 +1124,13 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                     width: 28,
                     height: 28,
                     borderRadius: '50%',
-                    bgcolor: '#10b981',
-                    color: '#fff',
+                    bgcolor: 'transparent',
+                    color: '#2dd4bf',
+                    border: '1px solid rgba(45,212,191,0.45)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontWeight: 700,
+                    fontWeight: 520,
                     fontSize: '0.875rem',
                     flexShrink: 0
                   }}
@@ -1040,17 +1138,17 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
                   {item.step}
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b' }}>
+                  <Typography variant="subtitle2" fontWeight={560} sx={{ color: '#fff' }}>
                     {item.title}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.6)' }}>
                     {item.desc}
                   </Typography>
                 </Box>
               </Stack>
             ))}
           </Stack>
-        </Paper>
+        </Box>
       </Stack>
 
       {/* Generation Dialog */}
