@@ -40,9 +40,11 @@ export const getPersonalInfo = async (req, res) => {
         console.log('📥 getPersonalInfo called for user:', userId);
         
         const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
-        const user = await User.findById(userId).select('fullName country country_code phone_number');
+        const user = await User.findById(userId).select('fullName gender date_of_birth country country_code phone_number');
         
         console.log('👤 User data:', {
+            gender: user?.gender,
+            date_of_birth: user?.date_of_birth,
             country: user?.country,
             country_code: user?.country_code,
             phone_number: user?.phone_number ? String(user.phone_number).substring(0, 50) + '...' : 'none'
@@ -63,6 +65,8 @@ export const getPersonalInfo = async (req, res) => {
                 success: true,
                 data: {
                     fullName: user?.fullName || '',
+                    date_of_birth: user?.date_of_birth || null,
+                    gender: user?.gender || '',
                     country: user?.country || '',
                     country_code: user?.country_code || '',
                     phone_number: user?.phone_number || '',
@@ -89,8 +93,8 @@ export const getPersonalInfo = async (req, res) => {
         };
         
         // Manually decrypt all fields as fallback (in case middleware didn't run)
-        const date_of_birth = decryptIfNeeded(personalInfo.date_of_birth);
-        const gender = decryptIfNeeded(personalInfo.gender);
+        const date_of_birth = decryptIfNeeded(personalInfo.date_of_birth) || user?.date_of_birth;
+        const gender = decryptIfNeeded(personalInfo.gender) || user?.gender || '';
         const height = decryptIfNeeded(personalInfo.height);
         const weight = decryptIfNeeded(personalInfo.weight);
         const activity_level = decryptIfNeeded(personalInfo.activity_level);

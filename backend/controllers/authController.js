@@ -1,4 +1,5 @@
 import { User } from '../models/User.js';
+import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
@@ -146,6 +147,16 @@ export const register = async (req, res) => {
         });
         
         await user.save();
+        try {
+            const personalSnapshot = new UserPersonalInfo({
+                user_id: user._id,
+                date_of_birth: date_of_birth || null,
+                gender: gender || null,
+            });
+            await personalSnapshot.save();
+        } catch (profileErr) {
+            console.warn('Could not create signup personal profile snapshot:', profileErr?.message || profileErr);
+        }
         
         // Audit log — fire-and-forget (it already skips when user context is missing,
         // so awaiting it only adds latency without benefit).
