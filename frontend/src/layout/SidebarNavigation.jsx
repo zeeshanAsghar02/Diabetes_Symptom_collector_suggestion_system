@@ -40,9 +40,10 @@ export default function SidebarNavigation({
   const navigate = useNavigate();
   const labelMap = {
     Dashboard: 'Dashboard',
+    'My Account': 'My Assessments',
     'Check My Risk': 'Check My Risk',
     'My Disease Data': 'My Data',
-    Feedback: 'Feedback',
+    'My Feedback': 'Messages',
   };
 
   const displaySections = sections.map((sec) => ({
@@ -171,7 +172,7 @@ export default function SidebarNavigation({
                       justifyContent: 'center',
                     }}
                   >
-                    {sec.label === 'Feedback' ? (
+                    {sec.label === 'Messages' ? (
                       <Badge
                         color="primary"
                         badgeContent={3}
