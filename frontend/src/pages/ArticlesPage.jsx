@@ -155,16 +155,53 @@ const ArticlesPage = () => {
     setPage(1);
   };
 
+  const featuredArticle = content[0] || null;
+  const totalArticles = pagination.total || content.length;
+  const readingStats = [
+    { label: 'Latest insights', value: 'Fresh weekly', icon: TrendingUpIcon },
+    { label: 'Browse depth', value: `${categories.length || 0} topics`, icon: CategoryIcon },
+    { label: 'Curated reads', value: `${totalArticles} stories`, icon: ArticleIcon },
+  ];
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
         background: (t) => t.palette.mode === 'dark' 
-          ? 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%)'
-          : 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)',
-        py: 8,
+          ? 'radial-gradient(circle at top left, rgba(41, 171, 226, 0.16), transparent 30%), radial-gradient(circle at top right, rgba(122, 201, 67, 0.12), transparent 28%), linear-gradient(180deg, #091120 0%, #101a33 42%, #0c1322 100%)'
+          : 'radial-gradient(circle at top left, rgba(41, 171, 226, 0.14), transparent 26%), radial-gradient(circle at top right, rgba(122, 201, 67, 0.10), transparent 28%), linear-gradient(180deg, #f6f9ff 0%, #eef3fb 46%, #e8edf7 100%)',
+        py: { xs: 3, md: 5 },
       }}
     >
+      <Box sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -120,
+            right: -140,
+            width: 360,
+            height: 360,
+            borderRadius: '50%',
+            background: (t) => `radial-gradient(circle, ${alpha(t.palette.secondary.main, 0.2)} 0%, transparent 68%)`,
+            filter: 'blur(10px)',
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 120,
+            left: -120,
+            width: 320,
+            height: 320,
+            borderRadius: '50%',
+            background: (t) => `radial-gradient(circle, ${alpha(t.palette.primary.main, 0.16)} 0%, transparent 68%)`,
+            filter: 'blur(12px)',
+          }}
+        />
+      </Box>
+
       <Container maxWidth="xl">
         {/* Header Section */}
         <motion.div
@@ -172,72 +209,231 @@ const ArticlesPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Box sx={{ mb: 6 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 3.5,
+              p: { xs: 2.5, md: 3.5 },
+              borderRadius: 6,
+              background: (t) => t.palette.mode === 'dark'
+                ? `linear-gradient(135deg, ${alpha(t.palette.background.paper, 0.88)} 0%, ${alpha(t.palette.background.paper, 0.65)} 100%)`
+                : `linear-gradient(135deg, ${alpha('#ffffff', 0.98)} 0%, ${alpha('#f7fbff', 0.94)} 100%)`,
+              border: (t) => `1px solid ${alpha(t.palette.divider, t.palette.mode === 'dark' ? 0.12 : 0.08)}`,
+              backdropFilter: 'blur(24px)',
+              boxShadow: (t) => `0 24px 60px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.24 : 0.08)}`,
+            }}
+          >
             <Button
               variant="outlined"
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate('/')}
               sx={{
-                mb: 4,
-                borderRadius: 3,
+                mb: { xs: 3, md: 4 },
+                borderRadius: 999,
                 textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1.2,
-                borderWidth: 2,
-                borderColor: (t) => alpha(t.palette.primary.main, 0.3),
+                fontWeight: 700,
+                px: 2.5,
+                py: 1.1,
+                borderWidth: 1.5,
+                borderColor: (t) => alpha(t.palette.primary.main, 0.28),
                 color: 'text.primary',
-                background: (t) => alpha(t.palette.background.paper, 0.6),
+                background: (t) => alpha(t.palette.background.paper, 0.72),
                 backdropFilter: 'blur(10px)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.25s ease',
                 '&:hover': {
-                  borderWidth: 2,
+                  borderWidth: 1.5,
                   borderColor: (t) => t.palette.primary.main,
-                  background: (t) => alpha(t.palette.primary.main, 0.1),
+                  background: (t) => alpha(t.palette.primary.main, 0.08),
                   transform: 'translateX(-4px)',
-                  boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  boxShadow: `0 10px 24px ${alpha(theme.palette.primary.main, 0.12)}`,
                 }
               }}
             >
               Back to Home
             </Button>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
-              <ArticleIcon 
-                sx={{ 
-                  fontSize: 48, 
-                  color: theme.palette.primary.main,
-                  filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.4)})`
-                }} 
-              />
-              <Typography
-                variant="h3"
-                fontWeight={800}
-                sx={{
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                Health & Wellness Articles
-              </Typography>
-            </Box>
-            
-            <Typography 
-              variant="h6" 
-              color="text.secondary"
-              sx={{ 
-                maxWidth: 700,
-                fontWeight: 400,
-                lineHeight: 1.6,
-                textAlign: 'center',
-                mx: 'auto'
-              }}
-            >
-              Explore expert insights on diabetes management, nutrition, fitness, and healthy living
-            </Typography>
-          </Box>
+
+            <Grid container spacing={3} alignItems="stretch">
+              <Grid item xs={12} md={7} sx={{ order: { xs: 2, md: 1 } }}>
+                <Box sx={{ pr: { md: 2 } }}>
+                  <Chip
+                    icon={<TrendingUpIcon />}
+                    label="Curated health reading"
+                    sx={{
+                      mb: 2,
+                      px: 0.5,
+                      borderRadius: 999,
+                      fontWeight: 700,
+                      background: (t) => `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.14)} 0%, ${alpha(t.palette.secondary.main, 0.14)} 100%)`,
+                      color: 'text.primary',
+                      border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
+                    }}
+                  />
+
+                  <Typography
+                    variant="h2"
+                    sx={{
+                      fontWeight: 900,
+                      lineHeight: 1.05,
+                      maxWidth: 760,
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      fontSize: { xs: '2.4rem', md: '4rem' },
+                    }}
+                  >
+                    Health articles that feel like a premium magazine.
+                  </Typography>
+
+                  <Typography
+                    variant="h6"
+                    color="text.secondary"
+                    sx={{
+                      mt: 2,
+                      maxWidth: 760,
+                      fontWeight: 400,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    Explore expert insights on diabetes management, nutrition, fitness, and healthy living through a richer editorial experience.
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 3.5 }}>
+                    {readingStats.map((stat) => {
+                      const Icon = stat.icon;
+                      return (
+                        <Paper
+                          key={stat.label}
+                          elevation={0}
+                          sx={{
+                            px: 2,
+                            py: 1.4,
+                            borderRadius: 999,
+                            minWidth: 150,
+                            background: (t) => alpha(t.palette.background.paper, 0.72),
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.2,
+                          }}
+                        >
+                          <Box sx={{ width: 42, height: 42, borderRadius: '50%', display: 'grid', placeItems: 'center', background: (t) => `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.16)} 0%, ${alpha(t.palette.secondary.main, 0.16)} 100%)` }}>
+                            <Icon sx={{ fontSize: 20, color: 'primary.main' }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.1 }}>
+                              {stat.label}
+                            </Typography>
+                            <Typography variant="subtitle2" fontWeight={800}>
+                              {stat.value}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={5} sx={{ order: { xs: 1, md: 2 } }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    borderRadius: 5,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    background: (t) => t.palette.mode === 'dark'
+                      ? `linear-gradient(160deg, ${alpha(t.palette.background.paper, 0.92)} 0%, ${alpha(t.palette.background.paper, 0.68)} 100%)`
+                      : `linear-gradient(160deg, ${alpha('#ffffff', 0.98)} 0%, ${alpha('#f4f8ff', 0.94)} 100%)`,
+                    border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`,
+                    boxShadow: (t) => `0 18px 40px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.22 : 0.08)}`,
+                    p: 2.2,
+                  }}
+                >
+                  <Chip
+                    label="Featured story"
+                    size="small"
+                    sx={{
+                      mb: 2,
+                      borderRadius: 999,
+                      fontWeight: 700,
+                      background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                      color: 'common.white',
+                    }}
+                  />
+
+                  {featuredArticle ? (
+                    <>
+                      <Box
+                        sx={{
+                          borderRadius: 4,
+                          overflow: 'hidden',
+                          mb: 2,
+                          minHeight: { xs: 180, md: 240 },
+                          position: 'relative',
+                          background: (t) => `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.88)} 0%, ${alpha(t.palette.secondary.main, 0.84)} 100%)`,
+                        }}
+                      >
+                        {featuredArticle.featuredImage?.url ? (
+                          <Box
+                            component="img"
+                            src={featuredArticle.featuredImage.url}
+                            alt={featuredArticle.featuredImage.alt || featuredArticle.title}
+                            sx={{ width: '100%', height: { xs: 180, md: 240 }, objectFit: 'cover' }}
+                          />
+                        ) : null}
+                        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.55) 100%)' }} />
+                        <Box sx={{ position: 'absolute', left: 16, right: 16, bottom: 16, display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                          {featuredArticle.category && (
+                            <Chip
+                              label={featuredArticle.category.name}
+                              size="small"
+                              sx={{ background: alpha('#fff', 0.16), color: 'common.white', backdropFilter: 'blur(10px)', fontWeight: 700 }}
+                            />
+                          )}
+                          <Chip
+                            label={`${featuredArticle.viewCount || 0} reads`}
+                            size="small"
+                            sx={{ background: alpha('#fff', 0.16), color: 'common.white', backdropFilter: 'blur(10px)', fontWeight: 700 }}
+                          />
+                        </Box>
+                      </Box>
+
+                      <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.15, mb: 1.25 }}>
+                        {featuredArticle.title}
+                      </Typography>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, mb: 2.5 }}>
+                        {featuredArticle.excerpt || 'A highlighted read from our newest health and wellness collection.'}
+                      </Typography>
+
+                      <Button
+                        variant="contained"
+                        endIcon={<ArrowForwardIcon />}
+                        onClick={() => handleArticleClick(featuredArticle)}
+                        sx={{
+                          borderRadius: 999,
+                          textTransform: 'none',
+                          fontWeight: 800,
+                          px: 2.5,
+                          py: 1.1,
+                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                          boxShadow: (t) => `0 14px 28px ${alpha(t.palette.primary.main, 0.28)}`,
+                        }}
+                      >
+                        Read featured article
+                      </Button>
+                    </>
+                  ) : (
+                    <Box sx={{ minHeight: 240, borderRadius: 4, display: 'grid', placeItems: 'center', background: (t) => alpha(t.palette.background.default, 0.52) }}>
+                      <Typography color="text.secondary">Featured article will appear here.</Typography>
+                    </Box>
+                  )}
+                </Paper>
+              </Grid>
+            </Grid>
+          </Paper>
         </motion.div>
 
         {/* Filters Section */}
@@ -249,18 +445,19 @@ const ArticlesPage = () => {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: { xs: 2, md: 2.5 },
               mb: 5,
-              borderRadius: 4,
+              borderRadius: 999,
               background: (t) => t.palette.mode === 'dark'
-                ? alpha(t.palette.background.paper, 0.6)
-                : alpha('#ffffff', 0.9),
-              backdropFilter: 'blur(20px)',
-              border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                ? `linear-gradient(135deg, ${alpha(t.palette.background.paper, 0.82)} 0%, ${alpha(t.palette.background.paper, 0.56)} 100%)`
+                : `linear-gradient(135deg, ${alpha('#ffffff', 0.96)} 0%, ${alpha('#f8fbff', 0.9)} 100%)`,
+              backdropFilter: 'blur(24px)',
+              border: (t) => `1px solid ${alpha(t.palette.divider, t.palette.mode === 'dark' ? 0.14 : 0.08)}`,
+              boxShadow: (t) => `0 18px 50px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.25 : 0.08)}`,
             }}
           >
-            <Grid container spacing={3} alignItems="center">
-              <Grid item xs={12} md={5}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={5.4}>
                 <TextField
                   fullWidth
                   placeholder="Search articles..."
@@ -268,33 +465,109 @@ const ArticlesPage = () => {
                   onChange={handleSearchChange}
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action" />
+                      <InputAdornment position="start" sx={{ mr: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: (t) => `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.16)} 0%, ${alpha(t.palette.secondary.main, 0.16)} 100%)`,
+                            color: 'primary.main',
+                            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
+                          }}
+                        >
+                          <SearchIcon sx={{ fontSize: 20 }} />
+                        </Box>
                       </InputAdornment>
                     ),
+                    sx: { pl: 0.25 },
                   }}
                   sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: 58,
+                      borderRadius: 999,
+                      pr: 1.2,
+                    },
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      background: (t) => alpha(t.palette.background.paper, 0.5),
+                      background: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.45 : 0.88),
+                      boxShadow: (t) => `inset 0 1px 0 ${alpha(t.palette.common.white, 0.7)}`,
+                      transition: 'all 0.25s ease',
+                      '& fieldset': {
+                        borderColor: (t) => alpha(t.palette.divider, 0.12),
+                      },
+                      '&:hover': {
+                        background: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.54 : 0.98),
+                        '& fieldset': {
+                          borderColor: (t) => alpha(t.palette.primary.main, 0.3),
+                        },
+                      },
+                      '&.Mui-focused': {
+                        background: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.58 : 1),
+                        boxShadow: (t) => `0 0 0 4px ${alpha(t.palette.primary.main, 0.08)}`,
+                        '& fieldset': {
+                          borderColor: 'primary.main',
+                          borderWidth: 1.5,
+                        },
+                      },
+                    },
+                    '& input::placeholder': {
+                      opacity: 0.78,
                     }
                   }}
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
+              <Grid item xs={12} md={4.2}>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel shrink>Category</InputLabel>
                   <Select
                     value={selectedCategory}
                     onChange={handleCategoryChange}
                     label="Category"
                     startAdornment={
-                      <CategoryIcon sx={{ ml: 1, mr: -0.5, color: 'action.active' }} />
+                      <InputAdornment position="start" sx={{ mr: 1 }}>
+                        <Box
+                          sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: (t) => `linear-gradient(135deg, ${alpha(t.palette.success.main, 0.16)} 0%, ${alpha(t.palette.info.main, 0.16)} 100%)`,
+                            color: 'text.secondary',
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.12)}`,
+                          }}
+                        >
+                          <CategoryIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </InputAdornment>
                     }
+                    renderValue={(value) => value ? categories.find((category) => category._id === value)?.name || 'Category' : 'All Categories'}
                     sx={{
-                      borderRadius: 3,
-                      background: (t) => alpha(t.palette.background.paper, 0.5),
+                      minHeight: 58,
+                      borderRadius: 999,
+                      background: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.45 : 0.88),
+                      boxShadow: (t) => `inset 0 1px 0 ${alpha(t.palette.common.white, 0.7)}`,
+                      transition: 'all 0.25s ease',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: (t) => alpha(t.palette.divider, 0.12),
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: (t) => alpha(t.palette.primary.main, 0.3),
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main',
+                        borderWidth: 1.5,
+                      },
+                      '& .MuiSelect-select': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontWeight: 600,
+                      },
                     }}
                   >
                     <MenuItem value="">All Categories</MenuItem>
@@ -307,22 +580,42 @@ const ArticlesPage = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={3}>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Grid item xs={12} md={2.4}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
                   {(searchTerm || selectedCategory) && (
                     <Chip
                       label="Clear Filters"
                       onDelete={handleClearFilters}
                       color="primary"
                       variant="outlined"
-                      sx={{ fontWeight: 600 }}
+                      sx={{
+                        fontWeight: 700,
+                        borderRadius: 999,
+                        px: 0.5,
+                        background: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.45 : 0.9),
+                        borderColor: (t) => alpha(t.palette.primary.main, 0.18),
+                        boxShadow: (t) => `0 8px 20px ${alpha(t.palette.primary.main, 0.08)}`,
+                        '& .MuiChip-deleteIcon': {
+                          color: 'primary.main',
+                        },
+                      }}
                     />
                   )}
                   <Chip
                     icon={<ArticleIcon />}
                     label={`${pagination.total} Articles`}
                     color="primary"
-                    sx={{ fontWeight: 600 }}
+                    sx={{
+                      fontWeight: 700,
+                      borderRadius: 999,
+                      px: 0.75,
+                      background: (t) => `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
+                      color: 'common.white',
+                      boxShadow: (t) => `0 10px 24px ${alpha(t.palette.primary.main, 0.28)}`,
+                      '& .MuiChip-icon': {
+                        color: 'inherit',
+                      },
+                    }}
                   />
                 </Box>
               </Grid>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconButton, Tooltip, Box } from '@mui/material';
+import { IconButton, Tooltip } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { useTheme } from '../../contexts/useThemeContext';
 
@@ -24,27 +24,7 @@ const ThemeToggle = ({ size = 'medium', showTooltip = true, sx = {} }) => {
       }}
       size={size}
     >
-      {isDarkMode ? (
-        <Brightness7 
-          sx={{ 
-            transition: 'transform 0.3s ease',
-            transform: 'rotate(0deg)',
-            '&:hover': {
-              transform: 'rotate(180deg)',
-            }
-          }} 
-        />
-      ) : (
-        <Brightness4 
-          sx={{ 
-            transition: 'transform 0.3s ease',
-            transform: 'rotate(0deg)',
-            '&:hover': {
-              transform: 'rotate(-180deg)',
-            }
-          }} 
-        />
-      )}
+      {isDarkMode ? <Brightness7 fontSize="small" /> : <Brightness4 fontSize="small" />}
     </IconButton>
   );
 

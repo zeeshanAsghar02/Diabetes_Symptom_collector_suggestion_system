@@ -30,7 +30,6 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
-import SearchIcon from '@mui/icons-material/Search';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import MenuIcon from '@mui/icons-material/Menu';
 import FacebookIcon from '@mui/icons-material/Facebook';
@@ -78,7 +77,7 @@ const NAV_LINKS = [
 const LANDING_NAV = [
   { label: 'Home', hash: '#home' },
   { label: 'About', hash: '#about' },
-  { label: 'Blogs & Articles', hash: '#blogs-articles' },
+  { label: 'Blogs', hash: '#blogs-articles' },
   { label: 'Forum', path: '/feedback' },
   { label: 'Contact', hash: '#contact' },
 ];
@@ -143,7 +142,6 @@ export default function UniversalHeader() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [searchAnchor, setSearchAnchor] = useState(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [dropdownAnchor, setDropdownAnchor] = useState(null);
   const [dropdownLink, setDropdownLink] = useState(null);
@@ -165,7 +163,7 @@ export default function UniversalHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
-  const isLanding = pathname === '/';
+  const isLanding = pathname === '/' || pathname.startsWith('/articles');
   const navIdleColor = theme.palette.mode === 'dark' ? theme.palette.text.primary : brand.navText;
 
   const normalizedTitle = (siteTitle || 'Diavise').trim();
@@ -692,14 +690,6 @@ export default function UniversalHeader() {
                 sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: HEADER_LAYOUT.actionsGap, flexWrap: 'wrap' }}
               >
                 <ThemeToggle size="medium" showTooltip />
-                <IconButton
-                  size="medium"
-                  onClick={(e) => setSearchAnchor(e.currentTarget)}
-                  aria-label="Search"
-                  sx={{ color: theme.palette.mode === 'dark' ? theme.palette.text.secondary : brand.navMuted }}
-                >
-                  <SearchIcon sx={{ fontSize: 24 }} />
-                </IconButton>
                 {!loading && user ? (
                   <IconButton onClick={handleAvatarClick} size="large" aria-label="Account menu">
                     <Avatar
@@ -774,31 +764,6 @@ export default function UniversalHeader() {
             </MenuItem>
           ))}
         </Menu>
-
-        <Popover
-          open={Boolean(searchAnchor)}
-          anchorEl={searchAnchor}
-          onClose={() => setSearchAnchor(null)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Box sx={{ p: 2, width: 280 }}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-              Search
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Search articles, services…"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  navigate('/articles');
-                  setSearchAnchor(null);
-                }
-              }}
-            />
-          </Box>
-        </Popover>
 
         <Drawer anchor="left" open={mobileDrawerOpen} onClose={() => setMobileDrawerOpen(false)}>
           <Box sx={{ width: 280, pt: 2 }} role="presentation">

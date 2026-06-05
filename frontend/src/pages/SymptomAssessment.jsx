@@ -9,6 +9,7 @@ import {
   Chip,
   LinearProgress,
   Fade,
+  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -17,6 +18,8 @@ import {
   Stack,
   Divider,
   Popover,
+  ToggleButton,
+  ToggleButtonGroup,
   alpha,
 } from '@mui/material';
 import {
@@ -49,6 +52,9 @@ const SymptomAssessment = () => {
   const [userGender, setUserGender] = useState(null);
   const [canProceed, setCanProceed] = useState(false);
   const [helpInfoOpen, setHelpInfoOpen] = useState(false);
+  const [whyLanguage, setWhyLanguage] = useState('ur');
+  const [questionProgress, setQuestionProgress] = useState(0);
+  const [questionProgressMeta, setQuestionProgressMeta] = useState({ answered: 0, total: 0 });
   const questionListRef = useRef();
 
   useEffect(() => {
@@ -270,9 +276,24 @@ const SymptomAssessment = () => {
       }
     }
 
-    if (activeStep === 0 && currentSymptomIndex < symptoms.length - 1) {
+    const shouldFinishCheckIn = activeStep === 0 && (
+      isAssessmentComplete ||
+      questionProgress >= 100 ||
+      (completedSymptoms.size >= symptoms.length && symptoms.length > 0)
+    );
+
+    if (shouldFinishCheckIn) {
+      if (!isLoggedIn) {
+        sessionStorage.setItem('returnToSymptomAssessment', 'true');
+        setShowLoginDialog(true);
+      } else {
+        setActiveStep(1);
+      }
+    } else if (activeStep === 0 && currentSymptomIndex < symptoms.length - 1) {
       setCurrentSymptomIndex((prev) => prev + 1);
       setCanProceed(false); // Reset for next symptom
+      setQuestionProgress(0);
+      setQuestionProgressMeta({ answered: 0, total: 0 });
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
       // Completed all questions — save and move to summary review
       if (!isLoggedIn) {
@@ -290,6 +311,46 @@ const SymptomAssessment = () => {
   };
 
   const handleAnswersChange = (answers, questions) => {
+    const answeredCount = questions.filter((q) => {
+      const answer = answers[q._id];
+      if (Array.isArray(answer)) return answer.length > 0;
+      if (typeof answer === 'number') return true;
+      return answer !== undefined && answer !== null && answer.toString().trim() !== '';
+    }).length;
+
+    const totalQuestions = questions.length;
+    const currentCategoryProgress = totalQuestions > 0 ? answeredCount / totalQuestions : 0;
+    const completedCategoryIds = new Set(completedSymptoms);
+    const currentSymptomId = symptoms[currentSymptomIndex]?._id;
+
+    if (currentSymptomId && currentCategoryProgress >= 1) {
+      completedCategoryIds.add(currentSymptomId);
+    } else if (currentSymptomId && !completedSymptoms.has(currentSymptomId)) {
+      completedCategoryIds.delete(currentSymptomId);
+    }
+
+    const categoryProgressTotal = symptoms.reduce((sum, symptom) => {
+      if (completedCategoryIds.has(symptom._id)) return sum + 1;
+      if (symptom._id === currentSymptomId) return sum + currentCategoryProgress;
+      return sum;
+    }, 0);
+    const totalCategories = symptoms.length || 1;
+    const progressValue = Math.min(100, Math.round((categoryProgressTotal / totalCategories) * 100));
+
+    setQuestionProgress(progressValue);
+    setQuestionProgressMeta({
+      answered: Math.min(totalCategories, Math.floor(categoryProgressTotal)),
+      total: totalCategories,
+    });
+
+    if (currentSymptomId && currentCategoryProgress >= 1 && !completedSymptoms.has(currentSymptomId)) {
+      setCompletedSymptoms((prev) => {
+        const next = new Set(prev);
+        next.add(currentSymptomId);
+        return next;
+      });
+    }
+
     // Check if all questions have been answered
     // Questions are considered answered if they have a value in answers object
     const allAnswered = questions.every((q) => {
@@ -343,6 +404,8 @@ const SymptomAssessment = () => {
   const handleBack = () => {
     if (activeStep === 0 && currentSymptomIndex > 0) {
       setCurrentSymptomIndex((prev) => prev - 1);
+      setQuestionProgress(0);
+      setQuestionProgressMeta({ answered: 0, total: 0 });
     }
   };
 
@@ -367,14 +430,164 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
+  const getUrduWhyItMatters = (symptomName = '') => {
+    const normalized = symptomName.toLowerCase();
+
+    if (normalized.includes('weight')) {
+      return [
+        'اچانک وزن کم ہونا جسم میں انسولین کے مسئلے یا شوگر بڑھنے کی علامت ہو سکتا ہے۔',
+        'وزن بڑھنا یا پیٹ کے گرد چربی ذیابیطس کے خطرے کو بڑھا سکتی ہے۔',
+        'یہ معلومات خوراک، ورزش اور روزمرہ عادات کی بہتر رہنمائی کے لیے استعمال ہوتی ہے۔',
+      ];
+    }
+    if (normalized.includes('urination') || normalized.includes('urine')) {
+      return [
+        'بار بار پیشاب آنا اکثر خون میں شوگر زیادہ ہونے کی اہم علامت ہو سکتی ہے۔',
+        'رات کو بار بار اٹھ کر پیشاب جانا جسم میں پانی کی کمی کا خطرہ بڑھا سکتا ہے۔',
+        'اس سے ہمیں سمجھ آتا ہے کہ آپ کے شوگر لیول پر مزید توجہ کی ضرورت ہے یا نہیں۔',
+      ];
+    }
+    if (normalized.includes('thirst') || normalized.includes('hydration')) {
+      return [
+        'بہت زیادہ پیاس لگنا شوگر بڑھنے اور جسم سے پانی کم ہونے کی علامت ہو سکتی ہے۔',
+        'منہ خشک رہنا یا پانی پینے کے بعد بھی پیاس رہنا ذیابیطس screening میں اہم ہے۔',
+        'یہ جواب hydration، خوراک اور شوگر کنٹرول کے خطرے کو سمجھنے میں مدد دیتا ہے۔',
+      ];
+    }
+    if (normalized.includes('energy') || normalized.includes('fatigue') || normalized.includes('tired')) {
+      return [
+        'مسلسل تھکن اس بات کی علامت ہو سکتی ہے کہ جسم شوگر کو توانائی میں صحیح استعمال نہیں کر رہا۔',
+        'کھانے کے بعد نیند یا کمزوری glucose spikes سے متعلق ہو سکتی ہے۔',
+        'اس سے Diavise آپ کے لیے خوراک، نیند اور activity کے بہتر مشورے دے سکتا ہے۔',
+      ];
+    }
+    if (normalized.includes('appetite') || normalized.includes('hunger')) {
+      return [
+        'بہت زیادہ بھوک لگنا اس بات سے جڑا ہو سکتا ہے کہ جسم کو cells تک توانائی نہیں مل رہی۔',
+        'بھوک میں اچانک کمی یا cravings شوگر کے اتار چڑھاؤ سے متعلق ہو سکتی ہیں۔',
+        'یہ معلومات meal timing اور بہتر diet plan بنانے میں مدد کرتی ہے۔',
+      ];
+    }
+    if (normalized.includes('infection') || normalized.includes('yeast') || normalized.includes('skin')) {
+      return [
+        'بار بار infection ہونا بعض اوقات خون میں شوگر زیادہ رہنے کی وجہ سے ہوتا ہے۔',
+        'جلد، urinary یا yeast infection ذیابیطس کے risk کو سمجھنے میں اہم اشارہ دے سکتے ہیں۔',
+        'یہ معلومات بروقت احتیاط اور ڈاکٹر سے رابطے کا فیصلہ کرنے میں مدد دیتی ہے۔',
+      ];
+    }
+    if (normalized.includes('vision') || normalized.includes('eye')) {
+      return [
+        'نظر دھندلی ہونا کبھی کبھار شوگر لیول کے بدلنے سے ہو سکتا ہے۔',
+        'آنکھوں میں دباؤ، دھندلا پن یا بار بار نمبر بدلنا diabetes screening میں اہم ہے۔',
+        'یہ جواب آنکھوں کی حفاظت اور follow-up کی ضرورت کو سمجھنے میں مدد دیتا ہے۔',
+      ];
+    }
+    if (normalized.includes('wound') || normalized.includes('healing')) {
+      return [
+        'زخم دیر سے بھرنا ذیابیطس میں healing اور blood circulation کے مسئلے کی علامت ہو سکتا ہے۔',
+        'پاؤں یا جلد کے چھوٹے زخم بھی diabetes care میں سنجیدگی سے دیکھے جاتے ہیں۔',
+        'یہ معلومات احتیاط، foot care اور ڈاکٹر سے follow-up کے لیے مددگار ہے۔',
+      ];
+    }
+    if (normalized.includes('bio')) {
+      return [
+        'عمر، جنس، قد اور وزن ذیابیطس کے risk score کو بہتر سمجھنے کے لیے بنیادی معلومات ہیں۔',
+        'Family history یا جسمانی حالت risk assessment کو زیادہ accurate بناتی ہے۔',
+        'یہ معلومات Diavise کو آپ کے حساب سے personalized guidance دینے میں مدد دیتی ہے۔',
+      ];
+    }
+
+    return [
+      'یہ سوال آپ کی روزمرہ علامات کو بہتر سمجھنے کے لیے ہے۔',
+      'اس سے Diavise ذیابیطس کے ممکنہ خطرے اور عادات کے pattern کو identify کرتا ہے۔',
+      'آپ کے جواب کی بنیاد پر اگلا قدم زیادہ واضح اور personalized بنایا جاتا ہے۔',
+    ];
+  };
+
+  const getEnglishWhyItMatters = (symptomName = '') => {
+    const normalized = symptomName.toLowerCase();
+
+    if (normalized.includes('weight')) {
+      return [
+        'Sudden weight loss can signal insulin or high blood sugar concerns.',
+        'Weight gain, especially around the waist, can increase diabetes risk.',
+        'This helps Diavise personalize nutrition, activity, and lifestyle guidance.',
+      ];
+    }
+    if (normalized.includes('urination') || normalized.includes('urine')) {
+      return [
+        'Frequent urination can be an early sign of high blood sugar.',
+        'Waking up at night to urinate may increase dehydration risk.',
+        'Your answer helps identify whether your glucose control needs more attention.',
+      ];
+    }
+    if (normalized.includes('thirst') || normalized.includes('hydration')) {
+      return [
+        'Excessive thirst may happen when blood sugar is high and the body loses fluids.',
+        'Dry mouth or constant thirst is important in diabetes screening.',
+        'This helps assess hydration, diet, and glucose-control risk.',
+      ];
+    }
+    if (normalized.includes('energy') || normalized.includes('fatigue') || normalized.includes('tired')) {
+      return [
+        'Ongoing fatigue may mean your body is not using glucose effectively for energy.',
+        'Sleepiness after meals can be linked with glucose spikes.',
+        'This helps Diavise suggest better food, sleep, and activity habits.',
+      ];
+    }
+    if (normalized.includes('appetite') || normalized.includes('hunger')) {
+      return [
+        'Increased hunger may happen when cells are not getting enough usable energy.',
+        'Sudden appetite changes or cravings can relate to blood sugar swings.',
+        'This supports better meal timing and diet-plan recommendations.',
+      ];
+    }
+    if (normalized.includes('infection') || normalized.includes('yeast') || normalized.includes('skin')) {
+      return [
+        'Repeated infections can sometimes happen when blood sugar remains high.',
+        'Skin, urinary, or yeast infections are useful clues in diabetes risk screening.',
+        'This helps decide when prevention steps or medical follow-up may be needed.',
+      ];
+    }
+    if (normalized.includes('vision') || normalized.includes('eye')) {
+      return [
+        'Blurry vision can sometimes happen when blood sugar levels change.',
+        'Eye pressure, vision changes, or frequent prescription changes matter in screening.',
+        'This helps identify when eye-care follow-up may be important.',
+      ];
+    }
+    if (normalized.includes('wound') || normalized.includes('healing')) {
+      return [
+        'Slow wound healing may point to diabetes-related circulation or healing concerns.',
+        'Foot or skin wounds need careful attention in diabetes care.',
+        'This helps guide prevention, foot care, and doctor follow-up.',
+      ];
+    }
+    if (normalized.includes('bio')) {
+      return [
+        'Age, gender, height, and weight help estimate diabetes risk more accurately.',
+        'Family history and body profile make risk assessment more personalized.',
+        'This helps Diavise tailor guidance to your health background.',
+      ];
+    }
+
+    return [
+      'This question helps us understand your daily symptoms more clearly.',
+      'Diavise uses it to identify diabetes risk patterns and lifestyle factors.',
+      'Your answer helps make the next step more personal and easier to follow.',
+    ];
+  };
+
   const steps = ['Questions', 'Summary', 'Results'];
 
   const currentSymptom = symptoms[currentSymptomIndex];
-
-  const getProgressPercentage = () => {
-    if (!symptoms.length) return 0;
-    return ((currentSymptomIndex + 1) / symptoms.length) * 100;
-  };
+  const completedCategoryCount = completedSymptoms.size;
+  const isAssessmentComplete = symptoms.length > 0 && completedSymptoms.size >= symptoms.length;
+  const whyItMattersPoints = currentSymptom
+    ? whyLanguage === 'ur'
+      ? getUrduWhyItMatters(currentSymptom.name)
+      : getEnglishWhyItMatters(currentSymptom.name)
+    : [];
 
   const pageBg = isDarkMode
     ? 'linear-gradient(160deg, #0b1220 0%, #12182a 42%, #0a0f18 100%)'
@@ -391,19 +604,19 @@ const SymptomAssessment = () => {
       }}
     >
       <AuthBackground />
-      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Fade in timeout={500}>
-          <Box textAlign="center" mb={{ xs: 3, md: 4 }}>
+          <Box textAlign="center" mb={{ xs: 2.5, md: 3 }}>
             <Box
               sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: { xs: 72, md: 80 },
-                height: { xs: 72, md: 80 },
-                borderRadius: 3,
-                mb: 2,
+                width: { xs: 60, md: 66 },
+                height: { xs: 60, md: 66 },
+                borderRadius: 4,
+                mb: 1.6,
                 color: '#22D3EE',
                 border: '1px solid rgba(34,211,238,0.35)',
                 background: 'linear-gradient(145deg, rgba(34,211,238,0.12), rgba(163,230,53,0.1))',
@@ -415,8 +628,8 @@ const SymptomAssessment = () => {
               variant="h3"
               fontWeight={800}
               sx={{
-                mb: 1.5,
-                fontSize: { xs: '1.65rem', md: '2rem' },
+                mb: 1,
+                fontSize: { xs: '1.55rem', md: '2.1rem' },
                 letterSpacing: '-0.03em',
                 color: 'text.primary',
               }}
@@ -427,10 +640,10 @@ const SymptomAssessment = () => {
               variant="body1"
               color="text.secondary"
               sx={{
-                maxWidth: 560,
+                maxWidth: 620,
                 mx: 'auto',
-                lineHeight: 1.75,
-                fontSize: { xs: '0.95rem', md: '1.02rem' },
+                lineHeight: 1.65,
+                fontSize: { xs: '0.92rem', md: '1rem' },
                 fontWeight: 400,
               }}
             >
@@ -444,14 +657,14 @@ const SymptomAssessment = () => {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2.5, md: 4 },
+              p: { xs: 2, md: 3 },
               position: 'relative',
-              borderRadius: 2.25,
+              borderRadius: { xs: 3, md: 4 },
               background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.82),
               backdropFilter: 'blur(20px) saturate(160%)',
-              border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.14 : 0.12)}`,
-              boxShadow: isDarkMode ? `0 24px 48px ${alpha('#000', 0.35)}` : `0 20px 40px ${alpha('#0f172a', 0.06)}`,
-              minHeight: { xs: 'auto', md: 560 },
+              border: `1px solid ${alpha('#0EA5E9', isDarkMode ? 0.18 : 0.13)}`,
+              boxShadow: isDarkMode ? `0 26px 58px ${alpha('#000', 0.36)}` : `0 24px 60px ${alpha('#0f172a', 0.08)}`,
+              minHeight: 'auto',
             }}
           >
             {/* Progress */}
@@ -459,11 +672,11 @@ const SymptomAssessment = () => {
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.25} flexWrap="wrap" gap={1}>
                 <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ letterSpacing: '0.02em' }}>
                    {activeStep === 0
-                     ? `Question ${currentSymptomIndex + 1} of ${symptoms.length}`
+                     ? `Completed ${questionProgressMeta.answered} of ${questionProgressMeta.total} topics`
                      : 'Finished'}
                 </Typography>
                 <Chip
-                  label={`${Math.round(getProgressPercentage())}%`}
+                  label={`${questionProgress}%`}
                   size="small"
                   sx={{
                     fontWeight: 700,
@@ -476,7 +689,7 @@ const SymptomAssessment = () => {
               </Box>
               <LinearProgress
                 variant="determinate"
-                value={getProgressPercentage()}
+                value={questionProgress}
                 sx={{
                   height: 6,
                   borderRadius: 99,
@@ -536,125 +749,413 @@ const SymptomAssessment = () => {
             </Alert>
 
             {/* Step Content */}
-            <Box sx={{ minHeight: 400 }}>
-              {/* Step 0: Answer Questions (all symptoms, one by one) */}
+            <Box sx={{ minHeight: 0 }}>
               {activeStep === 0 && currentSymptom && (
-                <Fade in timeout={500} key={currentSymptomIndex}>
-                  <Box>
-                   <Box mb={3}>
-                     <Box display="flex" alignItems="center" justifyContent="center" gap={1.25} flexWrap="wrap" mb={1}>
-                       <Chip
-                         label={`Question ${currentSymptomIndex + 1} of ${symptoms.length}`}
-                         sx={{
-                           fontWeight: 600,
-                           fontSize: '0.8125rem',
-                           px: 1,
-                           borderRadius: 2,
-                           bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
-                           color: isDarkMode ? '#67E8F9' : '#0e7490',
-                           border: `1px solid ${alpha('#22D3EE', 0.22)}`,
-                         }}
-                       />
-                       <Typography
-                         variant="overline"
-                         sx={{
-                           letterSpacing: '0.12em',
-                           color: 'text.secondary',
-                           fontWeight: 700,
-                         }}
-                       >
-                         {currentSymptom._diseaseName || 'Diabetes care'}
-                       </Typography>
-                     </Box>
-                     <Divider sx={{ mb: 2, opacity: 0.4 }} />
-                     <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} flexWrap="wrap">
-                       <Typography
-                         variant="h5"
-                         fontWeight={800}
-                         sx={{
-                           fontSize: { xs: '1.25rem', md: '1.5rem' },
-                           letterSpacing: '-0.02em',
-                           color: 'text.primary',
-                         }}
-                       >
-                         {currentSymptom.name}
-                       </Typography>
-                       {currentSymptom.description && (
-                        <>
-                          <Button
-                            onClick={handleHelpInfoOpen}
-                            startIcon={<HelpOutline />}
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                              borderRadius: 1.75,
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              fontSize: '0.8rem',
-                              borderColor: alpha('#22D3EE', 0.35),
-                              color: isDarkMode ? '#67E8F9' : '#0e7490',
-                            }}
-                          >
-                            What is this about?
-                          </Button>
-                          <Popover
-                            open={helpInfoOpen}
-                            anchorEl={null}
-                            onClose={handleHelpInfoClose}
-                            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                            transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-                            PaperProps={{
-                              sx: {
-                                p: 3,
-                                maxWidth: 500,
-                                maxHeight: '70vh',
-                                overflow: 'auto',
-                                borderRadius: 3,
-                                boxShadow: (theme) => theme.shadows[12],
-                              },
-                            }}
-                          >
-                            <Box display="flex" alignItems="center" mb={2}>
-                              <HelpOutline color="primary" sx={{ mr: 1, fontSize: 28 }} />
-                              <Typography variant="h6" fontWeight={700} color="primary">
-                                {currentSymptom.name}
-                              </Typography>
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ lineHeight: 1.9, whiteSpace: 'pre-line' }}
+                <Grid container spacing={3} alignItems="flex-start">
+                  <Grid item xs={12} md={3.5}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        height: { xs: 'auto', md: 'fit-content' },
+                        p: { xs: 1.75, md: 2 },
+                        borderRadius: 3.5,
+                        background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.5 : 0.86),
+                        border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.42)}`,
+                        boxShadow: isDarkMode ? `0 18px 40px ${alpha('#000', 0.2)}` : `0 16px 38px ${alpha('#0f172a', 0.055)}`,
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <Box sx={{ mb: 2 }}>
+                        <Chip
+                          label="Question categories"
+                          size="small"
+                          sx={{
+                            mb: 1.5,
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
+                            color: isDarkMode ? '#67E8F9' : '#0e7490',
+                            border: `1px solid ${alpha('#22D3EE', 0.22)}`,
+                          }}
+                        />
+                        <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+                          Categories
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.6 }}>
+                          Pick a category to load its related questions in the main panel.
+                        </Typography>
+                      </Box>
+
+                      <Stack spacing={1.1}>
+                        {symptoms.map((symptom, index) => {
+                          const isActive = index === currentSymptomIndex;
+                          const isDone = completedSymptoms.has(symptom._id);
+                          return (
+                            <Paper
+                              key={symptom._id}
+                              component="button"
+                              type="button"
+                              onClick={() => {
+                                setCurrentSymptomIndex(index);
+                                setCanProceed(false);
+                                setHelpInfoOpen(false);
+                                setQuestionProgress(0);
+                                setQuestionProgressMeta({ answered: 0, total: 0 });
+                              }}
+                              elevation={0}
+                              sx={{
+                                width: '100%',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                p: 1.45,
+                                borderRadius: 2.4,
+                                border: (theme) => `1px solid ${isActive ? alpha('#22D3EE', 0.45) : alpha(theme.palette.divider, 0.55)}`,
+                                background: (theme) => isActive
+                                  ? `linear-gradient(135deg, ${alpha('#22D3EE', isDarkMode ? 0.16 : 0.14)} 0%, ${alpha('#65A30D', isDarkMode ? 0.12 : 0.1)} 100%)`
+                                  : alpha(theme.palette.background.paper, isDarkMode ? 0.42 : 0.8),
+                                boxShadow: isActive
+                                  ? `0 14px 30px ${alpha('#0EA5E9', 0.16)}`
+                                  : 'none',
+                                transition: 'all 0.22s ease',
+                                color: 'inherit',
+                                '&:hover': {
+                                  transform: 'translateY(-1px)',
+                                  borderColor: alpha('#22D3EE', 0.35),
+                                  boxShadow: `0 10px 24px ${alpha('#0f172a', 0.08)}`,
+                                },
+                                '&:focus-visible': {
+                                  outline: `3px solid ${alpha('#22D3EE', 0.28)}`,
+                                  outlineOffset: 2,
+                                },
+                              }}
                             >
-                              {currentSymptom.description}
+                              <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}>
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+                                    {symptom.name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                    {symptom._diseaseName || 'Diabetes care'}
+                                  </Typography>
+                                </Box>
+                                <Chip
+                                  label={isDone ? 'Done' : isActive ? 'Open' : 'Pending'}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: 700,
+                                    borderRadius: 2,
+                                    bgcolor: isDone ? alpha('#84CC16', 0.12) : isActive ? alpha('#22D3EE', 0.12) : alpha('#94a3b8', 0.1),
+                                    color: isDone ? '#4D7C0F' : isActive ? '#0e7490' : 'text.secondary',
+                                  }}
+                                />
+                              </Box>
+                            </Paper>
+                          );
+                        })}
+                      </Stack>
+
+                      <Box sx={{ mt: 2.5, p: 1.75, borderRadius: 2.5, background: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06), border: `1px solid ${alpha('#22D3EE', 0.12)}` }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: '0.08em' }}>
+                          PROGRESS
+                        </Typography>
+                        <Typography variant="h6" fontWeight={900} sx={{ mt: 0.4 }}>
+                          {completedCategoryCount} of {symptoms.length} completed
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+
+                  <Grid item xs={12} md={8.5} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                    <Fade in timeout={500} key={currentSymptomIndex}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          width: '100%',
+                          maxWidth: 780,
+                          height: 'fit-content',
+                          p: { xs: 2, md: 3 },
+                          borderRadius: 3.5,
+                          background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.88),
+                          backdropFilter: 'blur(20px) saturate(160%)',
+                          border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.42)}`,
+                          boxShadow: isDarkMode ? `0 18px 40px ${alpha('#000', 0.2)}` : `0 16px 38px ${alpha('#0f172a', 0.055)}`,
+                        }}
+                      >
+                        <Box mb={3}>
+                          <Box display="flex" alignItems="center" justifyContent="center" gap={1.25} flexWrap="wrap" mb={1}>
+                            <Chip
+                              label={`Category ${currentSymptomIndex + 1} of ${symptoms.length}`}
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: '0.8125rem',
+                                px: 1,
+                                borderRadius: 2,
+                                bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
+                                color: isDarkMode ? '#67E8F9' : '#0e7490',
+                                border: `1px solid ${alpha('#22D3EE', 0.22)}`,
+                              }}
+                            />
+                            <Typography
+                              variant="overline"
+                              sx={{
+                                letterSpacing: '0.12em',
+                                color: 'text.secondary',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {currentSymptom._diseaseName || 'Diabetes care'}
                             </Typography>
-                            <Box mt={3} display="flex" justifyContent="flex-end">
-                              <Button
-                                onClick={handleHelpInfoClose}
-                                variant="contained"
+                          </Box>
+                          <Divider sx={{ mb: 2, opacity: 0.4 }} />
+                          <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} flexWrap="wrap">
+                            <Typography
+                              variant="h5"
+                              fontWeight={800}
+                              sx={{
+                                fontSize: { xs: '1.2rem', md: '1.5rem' },
+                                letterSpacing: '-0.02em',
+                                color: 'text.primary',
+                              }}
+                            >
+                              {currentSymptom.name}
+                            </Typography>
+                            {currentSymptom.description && (
+                              <>
+                                <Button
+                                  onClick={handleHelpInfoOpen}
+                                  startIcon={<HelpOutline />}
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{
+                                    borderRadius: 1.75,
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    fontSize: '0.8rem',
+                                    borderColor: alpha('#22D3EE', 0.35),
+                                    color: isDarkMode ? '#67E8F9' : '#0e7490',
+                                  }}
+                                >
+                                  What is this about?
+                                </Button>
+                                <Popover
+                                  open={helpInfoOpen}
+                                  anchorEl={null}
+                                  onClose={handleHelpInfoClose}
+                                  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                                  transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                                  PaperProps={{
+                                    sx: {
+                                      p: 3,
+                                      maxWidth: 500,
+                                      maxHeight: '70vh',
+                                      overflow: 'auto',
+                                      borderRadius: 3,
+                                      boxShadow: (theme) => theme.shadows[12],
+                                    },
+                                  }}
+                                >
+                                  <Box display="flex" alignItems="center" mb={2}>
+                                    <HelpOutline color="primary" sx={{ mr: 1, fontSize: 28 }} />
+                                    <Typography variant="h6" fontWeight={700} color="primary">
+                                      {currentSymptom.name}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ lineHeight: 1.9, whiteSpace: 'pre-line' }}
+                                  >
+                                    {currentSymptom.description}
+                                  </Typography>
+                                  <Box mt={3} display="flex" justifyContent="flex-end">
+                                    <Button
+                                      onClick={handleHelpInfoClose}
+                                      variant="contained"
+                                      size="small"
+                                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3 }}
+                                    >
+                                      Got it!
+                                    </Button>
+                                  </Box>
+                                </Popover>
+                              </>
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            mb: 2.5,
+                            p: { xs: 1.6, md: 1.9 },
+                            borderRadius: 3,
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 1.5,
+                            bgcolor: alpha('#0EA5E9', isDarkMode ? 0.1 : 0.055),
+                            border: `1px solid ${alpha('#0EA5E9', 0.14)}`,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 2,
+                              display: 'grid',
+                              placeItems: 'center',
+                              flexShrink: 0,
+                              color: isDarkMode ? '#67E8F9' : '#0e7490',
+                              bgcolor: alpha('#22D3EE', 0.12),
+                            }}
+                          >
+                            <HelpOutline sx={{ fontSize: 19 }} />
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" gap={1.2} sx={{ mb: 0.8 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                Why this matters
+                              </Typography>
+                              <ToggleButtonGroup
+                                exclusive
                                 size="small"
-                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3 }}
+                                value={whyLanguage}
+                                onChange={(_, nextLanguage) => {
+                                  if (nextLanguage) setWhyLanguage(nextLanguage);
+                                }}
+                                aria-label="Why this matters language"
+                                sx={{
+                                  p: 0.25,
+                                  borderRadius: 999,
+                                  bgcolor: alpha('#0EA5E9', 0.08),
+                                  '& .MuiToggleButton-root': {
+                                    border: 0,
+                                    px: 1.25,
+                                    py: 0.35,
+                                    borderRadius: 999,
+                                    textTransform: 'none',
+                                    fontWeight: 800,
+                                    fontSize: '0.72rem',
+                                    color: 'text.secondary',
+                                    '&.Mui-selected': {
+                                      bgcolor: '#0EA5E9',
+                                      color: '#fff',
+                                      '&:hover': { bgcolor: '#0284C7' },
+                                    },
+                                  },
+                                }}
                               >
-                                Got it!
-                              </Button>
+                                <ToggleButton value="ur" aria-label="Show Urdu explanation">اردو</ToggleButton>
+                                <ToggleButton value="en" aria-label="Show English explanation">English</ToggleButton>
+                              </ToggleButtonGroup>
+                            </Stack>
+                            <Box
+                              component="ul"
+                              dir={whyLanguage === 'ur' ? 'rtl' : 'ltr'}
+                              lang={whyLanguage === 'ur' ? 'ur' : 'en'}
+                              sx={{
+                                m: 0,
+                                pr: whyLanguage === 'ur' ? 2.2 : 0,
+                                pl: whyLanguage === 'ur' ? 0 : 2.2,
+                                color: 'text.secondary',
+                                textAlign: whyLanguage === 'ur' ? 'right' : 'left',
+                                fontFamily: whyLanguage === 'ur'
+                                  ? '"Noto Nastaliq Urdu", "Noto Naskh Arabic", "Segoe UI", Arial, sans-serif'
+                                  : 'inherit',
+                              }}
+                            >
+                              {whyItMattersPoints.map((point) => (
+                                <Typography
+                                  key={point}
+                                  component="li"
+                                  variant="body2"
+                                  sx={{
+                                    mb: 0.65,
+                                    lineHeight: 1.9,
+                                    fontSize: '0.92rem',
+                                    '&::marker': {
+                                      color: '#0EA5E9',
+                                    },
+                                  }}
+                                >
+                                  {point}
+                                </Typography>
+                              ))}
                             </Box>
-                          </Popover>
-                        </>
-                      )}
-                    </Box>
-                  </Box>
-                     <Divider sx={{ mb: 2, opacity: 0.4 }} />
-                     <QuestionList 
-                       ref={questionListRef}
-                       symptomId={currentSymptom._id} 
-                       symptomName={currentSymptom.name}
-                       isLoggedIn={isLoggedIn}
-                       onDataUpdated={fetchUserAnsweredQuestions}
-                       onAnswersChange={handleAnswersChange}
-                       userAge={userAge}
-                       userGender={userGender}
-                     />
-                  </Box>
-                </Fade>
+                          </Box>
+                        </Box>
+
+                        <Divider sx={{ mb: 2, opacity: 0.35 }} />
+                        <QuestionList 
+                          ref={questionListRef}
+                          symptomId={currentSymptom._id} 
+                          symptomName={currentSymptom.name}
+                          isLoggedIn={isLoggedIn}
+                          onDataUpdated={fetchUserAnsweredQuestions}
+                          onAnswersChange={handleAnswersChange}
+                          userAge={userAge}
+                          userGender={userGender}
+                        />
+
+                        {activeStep === 0 && (
+                          <Box
+                            display="flex"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            flexWrap="wrap"
+                            gap={2}
+                            mt={3}
+                            pt={3}
+                            sx={{
+                              borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                            }}
+                          >
+                            <Button
+                              variant="outlined"
+                              startIcon={<ArrowBack />}
+                              onClick={handleBack}
+                              disabled={currentSymptomIndex === 0}
+                              sx={{
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 600,
+                                borderRadius: 2.25,
+                                textTransform: 'none',
+                              }}
+                            >
+                              Back
+                            </Button>
+                            <Button
+                              variant="contained"
+                              endIcon={<ArrowForward />}
+                              onClick={handleNext}
+                              disabled={!symptoms.length || (!canProceed && !isAssessmentComplete && questionProgress < 100)}
+                              sx={{
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 700,
+                                borderRadius: 2.25,
+                                textTransform: 'none',
+                                background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
+                                color: '#fff',
+                                boxShadow: `0 8px 22px ${alpha('#22D3EE', 0.32)}`,
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                                  boxShadow: `0 12px 30px ${alpha('#22D3EE', 0.4)}`,
+                                },
+                                '&.Mui-disabled': {
+                                  background: alpha('#94a3b8', 0.35),
+                                  color: alpha('#fff', 0.8),
+                                },
+                              }}
+                            >
+                              {isAssessmentComplete || questionProgress >= 100 || currentSymptomIndex === symptoms.length - 1 ? 'Finish check-in' : 'Next question'}
+                            </Button>
+                          </Box>
+                        )}
+                      </Paper>
+                    </Fade>
+                  </Grid>
+                </Grid>
               )}
 
               {/* Step 1: Summary review — show user what they filled before proceeding */}
@@ -680,50 +1181,60 @@ const SymptomAssessment = () => {
                       </Typography>
                     </Box>
 
-                    <Box sx={{ mb: 4 }}>
-
-                      {(() => {
-                        let items = [];
-                        const seenKeys = new Set();
-                        symptoms.forEach((symptom) => {
-                          // Recover answers from the component state (logged-in answers were just saved to DB)
-                          const qList = questionListRef.current?.getQuestions?.() || [];
-                          qList.forEach((q) => {
-                            const aid = String(q._id);
-                            if (seenKeys.has(aid)) return;
-                            seenKeys.add(aid);
-                            items.push({ symptomName: symptom.name, question: q.question_text });
-                          });
-                        });
-                        if (!items.length) {
-                          return <Alert severity="info">Your answers have been saved. No individual question text available to display, but they are on record.</Alert>;
-                        }
-                        return items.map((item, i) => (
+                    <Box
+                      sx={{
+                        mb: 4,
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
+                        gap: 1.5,
+                      }}
+                    >
+                      {symptoms.map((symptom) => {
+                        const status = symptomCompletionStatus[symptom._id] || {};
+                        const isDone = completedSymptoms.has(symptom._id);
+                        return (
                           <Paper
-                            key={i}
+                            key={symptom._id}
                             elevation={0}
                             sx={{
-                              p: { xs: 1.75, sm: 2.25 },
-                              borderRadius: 2,
-                              mb: 1.5,
+                              p: { xs: 1.75, sm: 2 },
+                              borderRadius: 2.5,
                               bgcolor: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.85),
                               border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                              boxShadow: isDone ? `0 10px 24px ${alpha('#22D3EE', 0.1)}` : 'none',
                             }}
                           >
-                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: '0.07em', display: 'block', mb: 0.5 }}>
-                              {item.symptomName}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                              {item.question}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                              ✓ Saved
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, mb: 1.5 }}>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: '0.07em', display: 'block', mb: 0.5 }}>
+                                  {symptom._diseaseName || 'Diabetes care'}
+                                </Typography>
+                                <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+                                  {symptom.name}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={isDone ? 'Completed' : 'Pending'}
+                                size="small"
+                                sx={{
+                                  fontWeight: 700,
+                                  borderRadius: 2,
+                                  bgcolor: isDone ? alpha('#84CC16', 0.12) : alpha('#94a3b8', 0.12),
+                                  color: isDone ? '#4D7C0F' : 'text.secondary',
+                                }}
+                              />
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.65 }}>
+                              {isDone && status.answered
+                                ? `${status.answered} answered question${status.answered === 1 ? '' : 's'} saved.`
+                                : 'This category is ready for review or is still in progress.'}
                             </Typography>
                           </Paper>
-                        ));
-                      })()}
-
+                        );
+                      })}
                     </Box>
+
+                    {!symptoms.length && <Alert severity="info">Your category summary will appear here once questions are loaded.</Alert>}
 
                     <Box display="flex" justifyContent="flex-end" mt={3}>
                       <Button
@@ -753,68 +1264,6 @@ const SymptomAssessment = () => {
               {/* Step 2: Results — replaced by Assessment page via navigation */}
             </Box>
 
-            {/* Navigation Buttons */}
-            {activeStep === 0 && (
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                flexWrap="wrap"
-                gap={2}
-                mt={4}
-                pt={3}
-                sx={{
-                  borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: { xs: 16, sm: 28 },
-                  px: { xs: 3, md: 6 },
-                }}
-              >
-                <Button
-                  variant="outlined"
-                  startIcon={<ArrowBack />}
-                  onClick={handleBack}
-                  disabled={currentSymptomIndex === 0}
-                  sx={{
-                    px: 3,
-                    py: 1.25,
-                    fontWeight: 600,
-                    borderRadius: 2.25,
-                    textTransform: 'none',
-                  }}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="contained"
-                  endIcon={<ArrowForward />}
-                  onClick={handleNext}
-                  disabled={!symptoms.length || !canProceed}
-                  sx={{
-                    px: 3,
-                    py: 1.25,
-                    fontWeight: 700,
-                    borderRadius: 2.25,
-                    textTransform: 'none',
-                    background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
-                    color: '#fff',
-                    boxShadow: `0 8px 22px ${alpha('#22D3EE', 0.32)}`,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
-                      boxShadow: `0 12px 30px ${alpha('#22D3EE', 0.4)}`,
-                    },
-                    '&.Mui-disabled': {
-                      background: alpha('#94a3b8', 0.35),
-                      color: alpha('#fff', 0.8),
-                    },
-                  }}
-                >
-                  {currentSymptomIndex === symptoms.length - 1 ? 'Finish check-in' : 'Next question'}
-                </Button>
-              </Box>
-            )}
           </Paper>
         </Fade>
       </Container>

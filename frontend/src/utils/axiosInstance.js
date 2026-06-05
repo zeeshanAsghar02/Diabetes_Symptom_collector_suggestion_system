@@ -8,11 +8,24 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
+const publicPaths = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh-token',
+  '/auth/logout',
+  '/public',
+  '/diseases/public',
+  '/symptoms/public',
+  '/questions/public',
+];
+
+const isPublicRequest = (url = '') => publicPaths.some((path) => url.includes(path));
+
 // Request interceptor: Attach access token
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    if (token && !isPublicRequest(config.url)) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
@@ -42,8 +55,7 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
 
     // Skip redirect and token refresh for public paths or when no token exists
-    const publicPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/auth/logout', '/public', '/diseases/public', '/symptoms/public'];
-    const isPublicPath = publicPaths.some(path => originalRequest?.url?.includes(path));
+    const isPublicPath = isPublicRequest(originalRequest?.url);
     const hasToken = localStorage.getItem('accessToken');
 
     // Only attempt refresh if: 401 error, not already retried, not public path, has token

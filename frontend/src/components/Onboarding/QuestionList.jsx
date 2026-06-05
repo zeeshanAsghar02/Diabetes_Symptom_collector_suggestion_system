@@ -7,10 +7,7 @@ import {
   FormControl,
   FormLabel,
   RadioGroup,
-  FormControlLabel,
-  Radio,
   TextField,
-  Checkbox,
   Select,
   MenuItem,
   Slider,
@@ -19,9 +16,8 @@ import {
   Button,
   Chip,
   alpha,
-  IconButton,
 } from '@mui/material';
-import { HelpOutline } from '@mui/icons-material';
+import { CheckCircle, RadioButtonUnchecked } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 import { useTheme } from '../../contexts/useThemeContext';
@@ -39,6 +35,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
   const [globalSuccess, setGlobalSuccess] = useState(false);
   const [answeredIds, setAnsweredIds] = useState([]);
   const [heightValues, setHeightValues] = useState({}); // Store feet/inches for each height question
+  const questionCacheRef = useRef({});
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
 
@@ -52,8 +49,38 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
   }));
 
   useEffect(() => {
+    let isMounted = true;
+
+    const syncQuestionState = (questionList, loadedAnswers, answeredList) => {
+      if (!isMounted) return;
+
+      setQuestions(questionList);
+      setAnsweredIds(answeredList);
+      setLoading(false);
+      setError(null);
+
+      if (Object.keys(loadedAnswers).length > 0) {
+        setAnswers((prev) => {
+          const nextAnswers = { ...prev, ...loadedAnswers };
+          if (onAnswersChange) {
+            setTimeout(() => onAnswersChange(nextAnswers, questionList), 0);
+          }
+          return nextAnswers;
+        });
+      } else if (onAnswersChange) {
+        setTimeout(() => onAnswersChange(answers, questionList), 0);
+      }
+    };
+
     const fetchQuestions = async () => {
       if (!symptomId) return;
+
+      const cached = questionCacheRef.current[symptomId];
+      if (cached) {
+        syncQuestionState(cached.questions, cached.answers, cached.answeredIds);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await axiosInstance.get(`/questions/public/symptom/${symptomId}`);
@@ -112,6 +139,8 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
             return newAnswers;
           });
         }
+
+        const cachedAnswers = { ...updatedAnswers };
         
         // Only fetch user's answered questions if logged in
         if (isLoggedIn && questionsList.length > 0) {
@@ -137,6 +166,15 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
               }
             }
             setAnsweredIds(answered);
+
+            answered.forEach((questionId) => {
+              if (loadedAnswers[questionId] === undefined && cachedAnswers[questionId] === undefined) {
+                const matchedQuestion = questionsList.find((question) => question._id === questionId);
+                if (matchedQuestion) {
+                  cachedAnswers[questionId] = 'answered';
+                }
+              }
+            });
             
             // Set the loaded answers in state
             if (Object.keys(loadedAnswers).length > 0) {
@@ -162,20 +200,42 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
                 onAnswersChange(mockAnswers, questionsList);
               }, 100);
             }
+
+            questionCacheRef.current[symptomId] = {
+              questions: questionsList,
+              answers: { ...cachedAnswers, ...loadedAnswers },
+              answeredIds: answered,
+            };
           } catch (err) {
             // If user data fetch fails, just continue without answered questions
             setAnsweredIds([]);
+            questionCacheRef.current[symptomId] = {
+              questions: questionsList,
+              answers: cachedAnswers,
+              answeredIds: preFilledQuestionIds,
+            };
           }
         } else {
           setAnsweredIds(preFilledQuestionIds);
+          questionCacheRef.current[symptomId] = {
+            questions: questionsList,
+            answers: cachedAnswers,
+            answeredIds: preFilledQuestionIds,
+          };
         }
       } catch (err) {
         setError('Error fetching questions.');
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     fetchQuestions();
+
+    return () => {
+      isMounted = false;
+    };
   }, [symptomId, symptomName, isLoggedIn, userAge, userGender, onAnswersChange]);
 
   const handleInputChange = useCallback((questionId, value) => {
@@ -393,57 +453,149 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'stretch',
-              gap: 0.75,
-              mt: 0.5,
+              gap: 1,
+              mt: 1,
             }}
           >
-            {(question.options || []).map((option) => (
-              <FormControlLabel
+            {(question.options || []).map((option) => {
+              const selected = value === option;
+              return (
+              <Paper
                 key={option}
-                value={option}
-                control={<Radio disabled={isAnswered} size="small" />}
-                label={option}
+                component="button"
+                type="button"
+                role="radio"
+                aria-checked={selected}
                 disabled={isAnswered}
+                onClick={() => !isAnswered && handleInputChange(question._id, option)}
                 sx={{
-                  m: 0,
-                  py: 1,
-                  px: 1.5,
-                  borderRadius: 2,
-                  border: (theme) => `1px solid ${alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.5)}`,
-                  bgcolor: value === option ? alpha('#22D3EE', isDarkMode ? 0.1 : 0.06) : 'transparent',
-                  transition: 'background 0.2s ease, border-color 0.2s ease',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                  py: 1.35,
+                  px: 1.6,
+                  borderRadius: 2.5,
+                  cursor: isAnswered ? 'not-allowed' : 'pointer',
+                  textAlign: 'left',
+                  color: 'text.primary',
+                  border: (theme) => `1px solid ${selected ? alpha('#0EA5E9', 0.55) : alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.55)}`,
+                  bgcolor: selected ? alpha('#22D3EE', isDarkMode ? 0.16 : 0.08) : alpha('#fff', isDarkMode ? 0.02 : 0.78),
+                  boxShadow: selected ? `0 10px 26px ${alpha('#0EA5E9', 0.12)}` : 'none',
+                  opacity: isAnswered && !selected ? 0.62 : 1,
+                  transition: 'transform 0.18s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
                   '&:hover': {
-                    borderColor: alpha('#22D3EE', 0.45),
-                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.04),
+                    transform: isAnswered ? 'none' : 'translateY(-1px)',
+                    borderColor: alpha('#0EA5E9', 0.45),
+                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.06),
+                    boxShadow: isAnswered ? 'none' : `0 10px 24px ${alpha('#0f172a', isDarkMode ? 0.24 : 0.07)}`,
+                  },
+                  '&:focus-visible': {
+                    outline: `3px solid ${alpha('#22D3EE', 0.28)}`,
+                    outlineOffset: 2,
                   },
                 }}
-              />
-            ))}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.15, minWidth: 0 }}>
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                      color: selected ? '#0EA5E9' : 'text.disabled',
+                      bgcolor: selected ? alpha('#0EA5E9', 0.12) : alpha('#94a3b8', 0.08),
+                    }}
+                  >
+                    {selected ? <CheckCircle sx={{ fontSize: 18 }} /> : <RadioButtonUnchecked sx={{ fontSize: 18 }} />}
+                  </Box>
+                  <Typography sx={{ fontWeight: selected ? 750 : 600, fontSize: '0.94rem', lineHeight: 1.35 }}>
+                    {option}
+                  </Typography>
+                </Box>
+                {selected && (
+                  <Chip
+                    label="Selected"
+                    size="small"
+                    sx={{ height: 22, fontSize: '0.68rem', fontWeight: 800, color: '#0e7490', bgcolor: alpha('#22D3EE', 0.14) }}
+                  />
+                )}
+              </Paper>
+              );
+            })}
           </RadioGroup>
         );
         
       case 'checkbox':
         return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <Box>
-              {(question.options || []).map((option) => (
-                <FormControlLabel
+          <Stack spacing={1} sx={{ mt: 1 }}>
+              {(question.options || []).map((option) => {
+                const checked = Array.isArray(value) ? value.includes(option) : false;
+                return (
+                <Paper
                   key={option}
-                  control={<Checkbox
-                    checked={Array.isArray(value) ? value.includes(option) : false}
-                    onChange={(e) => {
+                  component="button"
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  disabled={isAnswered}
+                  onClick={() => {
+                      if (isAnswered) return;
                       let newValue = Array.isArray(value) ? [...value] : [];
-                      if (e.target.checked) newValue.push(option);
+                      if (!checked) newValue.push(option);
                       else newValue = newValue.filter((v) => v !== option);
                       handleInputChange(question._id, newValue);
                     }}
-                    disabled={isAnswered}
-                  />}
-                  label={option}
-                />
-              ))}
-            </Box>
-          </Box>
+                  sx={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.15,
+                    py: 1.35,
+                    px: 1.6,
+                    borderRadius: 2.5,
+                    cursor: isAnswered ? 'not-allowed' : 'pointer',
+                    textAlign: 'left',
+                    color: 'text.primary',
+                    border: (theme) => `1px solid ${checked ? alpha('#0EA5E9', 0.55) : alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.55)}`,
+                    bgcolor: checked ? alpha('#22D3EE', isDarkMode ? 0.16 : 0.08) : alpha('#fff', isDarkMode ? 0.02 : 0.78),
+                    opacity: isAnswered && !checked ? 0.62 : 1,
+                    transition: 'transform 0.18s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                      transform: isAnswered ? 'none' : 'translateY(-1px)',
+                      borderColor: alpha('#0EA5E9', 0.45),
+                      bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.06),
+                    },
+                    '&:focus-visible': {
+                      outline: `3px solid ${alpha('#22D3EE', 0.28)}`,
+                      outlineOffset: 2,
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 1.2,
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                      color: checked ? '#0EA5E9' : 'text.disabled',
+                      bgcolor: checked ? alpha('#0EA5E9', 0.12) : alpha('#94a3b8', 0.08),
+                    }}
+                  >
+                    {checked ? <CheckCircle sx={{ fontSize: 18 }} /> : <RadioButtonUnchecked sx={{ fontSize: 18 }} />}
+                  </Box>
+                  <Typography sx={{ fontWeight: checked ? 750 : 600, fontSize: '0.94rem', lineHeight: 1.35 }}>
+                    {option}
+                  </Typography>
+                </Paper>
+                );
+              })}
+          </Stack>
         );
         
       case 'dropdown':
@@ -526,9 +678,32 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
     }
    };
 
-  if (loading) return <CircularProgress size={24} sx={{ my: 2 }} />;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!questions.length) return <Typography color="success.main" sx={{ my: 2 }}>All questions completed for this symptom!</Typography>;
+  if (loading) {
+    return (
+      <Box sx={{ py: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+        <CircularProgress size={22} thickness={4} />
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+          Loading this care topic...
+        </Typography>
+      </Box>
+    );
+  }
+  if (error) return <Alert severity="error" sx={{ borderRadius: 2.5 }}>{error}</Alert>;
+  if (!questions.length) {
+    return (
+      <Alert
+        severity="success"
+        sx={{
+          my: 2,
+          borderRadius: 3,
+          border: `1px solid ${alpha('#22C55E', 0.2)}`,
+          bgcolor: alpha('#22C55E', isDarkMode ? 0.1 : 0.06),
+        }}
+      >
+        All questions completed for this symptom.
+      </Alert>
+    );
+  }
 
   return (
     <Stack spacing={2.5} mt={1}>
@@ -537,30 +712,41 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
           key={question._id}
           elevation={0}
           sx={{
-            p: { xs: 2.25, sm: 2.75 },
-            borderRadius: 2.25,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: 3,
             position: 'relative',
-            background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.4 : 0.72),
+            background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.48 : 0.86),
             backdropFilter: 'blur(12px)',
-            border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.12 : 0.14)}`,
+            border: `1px solid ${alpha('#0EA5E9', isDarkMode ? 0.16 : 0.12)}`,
             transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
             '&:hover': {
-              borderColor: alpha('#22D3EE', 0.28),
-              boxShadow: `0 8px 24px ${alpha('#0f172a', isDarkMode ? 0.25 : 0.06)}`,
+              borderColor: alpha('#0EA5E9', 0.28),
+              boxShadow: `0 12px 30px ${alpha('#0f172a', isDarkMode ? 0.25 : 0.06)}`,
             },
           }}
         >
           <Box position="relative" zIndex={1}>
-            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ letterSpacing: '0.06em', display: 'block', mb: 1 }}>
-              Question {qIndex + 1} of {questions.length}
-            </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5} sx={{ mb: 1.4 }}>
+              <Chip
+                label={`Question ${qIndex + 1} of ${questions.length}`}
+                size="small"
+                sx={{ height: 24, fontSize: '0.7rem', fontWeight: 800, color: '#0e7490', bgcolor: alpha('#22D3EE', 0.12) }}
+              />
+              {answeredIds.includes(question._id) && (
+                <Chip
+                  label="Completed"
+                  size="small"
+                  sx={{ height: 24, fontSize: '0.7rem', fontWeight: 800, color: '#4D7C0F', bgcolor: alpha('#84CC16', 0.14) }}
+                />
+              )}
+            </Stack>
             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5} gap={1}>
               <FormControl fullWidth>
                 <FormLabel
                   sx={{
-                    fontWeight: 700,
-                    fontSize: '1.05rem',
-                    mb: 1.5,
+                    fontWeight: 850,
+                    fontSize: { xs: '1rem', md: '1.08rem' },
+                    mb: 1.2,
                     lineHeight: 1.45,
                     color: 'text.primary',
                   }}
