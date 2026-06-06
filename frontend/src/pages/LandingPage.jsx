@@ -31,7 +31,6 @@ import {
   Speed,
   Support,
   ArrowForward,
-  CheckCircle,
   Star,
   PlayArrow,
   GitHub,
@@ -222,6 +221,45 @@ const LandingPage = () => {
     setFooterExpanded(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const heroFeatureCards = [
+    {
+      label: 'AI-Powered Assessment',
+      title: 'Know your risk faster',
+      confidence: 'Guided checks turn uncertainty into a clearer next step.',
+      detail: 'A guided symptom flow turns answers into a clear risk picture.',
+      icon: <Assessment sx={{ fontSize: 30 }} />,
+      accent: tc.cyan || theme.palette.info.main,
+      gradient: `linear-gradient(135deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
+    },
+    {
+      label: 'Personalized Recommendations',
+      title: 'Advice that fits daily life',
+      confidence: 'Recommendations stay practical, personal, and easy to follow.',
+      detail: 'Guidance adapts to symptoms, goals, and the routines you keep.',
+      icon: <Psychology sx={{ fontSize: 30 }} />,
+      accent: theme.palette.primary.main,
+      gradient: 'linear-gradient(135deg, #1D4ED8 0%, #0EA5E9 52%, #22C55E 100%)',
+    },
+    {
+      label: 'Symptom Tracking',
+      title: 'Spot changes early',
+      confidence: 'Track patterns early so you can stay ahead of setbacks.',
+      detail: 'Capture symptoms over time so trends stay visible early.',
+      icon: <LocalHospital sx={{ fontSize: 30 }} />,
+      accent: theme.palette.warning.main,
+      gradient: 'linear-gradient(135deg, #F97316 0%, #FB7185 55%, #EC4899 100%)',
+    },
+    {
+      label: 'Secure & Private',
+      title: 'Protected by design',
+      confidence: 'Your health data stays private, encrypted, and controlled.',
+      detail: 'Encrypted handling and controlled access keep health data safe.',
+      icon: <Security sx={{ fontSize: 30 }} />,
+      accent: theme.palette.secondary.main,
+      gradient: 'linear-gradient(135deg, #0F172A 0%, #1E3A8A 52%, #0EA5E9 100%)',
+    },
+  ];
+
   return (
     <Box
       sx={{
@@ -389,7 +427,7 @@ const LandingPage = () => {
               </MotionDiv>
             </Box>
 
-            {/* Visual column — heart + Diabetes Care wordmark (no photo) */}
+            {/* Visual column - single panel with floating cards */}
             <Box
               sx={{
                 flex: { xs: '1 1 auto', md: '1 1 50%' },
@@ -398,72 +436,105 @@ const LandingPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                px: { xs: 3, md: 4 },
+                px: { xs: 3, md: 5 },
                 py: { xs: 4, md: 6 },
+                position: 'relative',
+                overflow: 'hidden',
                 background:
                   theme.palette.mode === 'light'
                     ? `linear-gradient(160deg, ${alpha(tc.cyan || theme.palette.info.main, 0.08)} 0%, ${alpha(tc.lime || theme.palette.success.main, 0.12)} 55%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
                     : `linear-gradient(160deg, ${alpha(tc.cyan || theme.palette.info.main, 0.12)} 0%, ${alpha(tc.lime || theme.palette.success.main, 0.08)} 50%, ${theme.palette.background.paper} 100%)`,
               }}
             >
-              <Stack alignItems="center" spacing={{ xs: 3, md: 3.5 }} sx={{ textAlign: 'center', maxWidth: 440 }}>
-                <Box
-                  sx={{
-                    width: { xs: 140, sm: 152, md: 176 },
-                    height: { xs: 140, sm: 152, md: 176 },
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: `linear-gradient(135deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
-                    boxShadow: `0 20px 48px ${alpha(tc.cyan || theme.palette.primary.main, 0.3)}`,
-                  }}
-                >
-                  <Favorite
+              <Box
+                sx={{
+                  width: '100%',
+                  maxWidth: 780,
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                  gap: { xs: 2.25, sm: 2.5, md: 2.85 },
+                  position: 'relative',
+                  zIndex: 1,
+                  alignItems: 'stretch',
+                }}
+              >
+                {heroFeatureCards.map((card, index) => (
+                  <Paper
+                    key={card.label}
+                    elevation={0}
+                    component={MotionDiv}
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + index * 0.08, duration: 0.45 }}
                     sx={{
-                      fontSize: { xs: 72, sm: 80, md: 96 },
-                      color: tc.onGradient || '#FFFFFF',
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      bgcolor: 'transparent',
+                      boxShadow: 'none',
+                      minHeight: { xs: 206, sm: 238, md: 264 },
+                      transform: { xs: 'none', sm: index % 2 === 0 ? 'translateY(-10px)' : 'translateY(10px)' },
+                      '&:hover': {
+                        transform: { xs: 'translateY(-5px)', sm: index % 2 === 0 ? 'translateY(-14px)' : 'translateY(6px)' },
+                      },
                     }}
-                  />
-                </Box>
-                <Typography
-                  component="p"
-                  sx={{
-                    fontFamily: displayFont,
-                    fontWeight: 800,
-                    fontSize: { xs: '2.125rem', sm: '2.5rem', md: '2.875rem' },
-                    lineHeight: 1.12,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {heroBrandWords.length >= 2 ? (
-                    <>
-                      <Box component="span" sx={{ color: tc.cyan || theme.palette.info.main }}>
-                        {heroBrandWords.slice(0, -1).join(' ')}{' '}
+                  >
+                    <Box
+                      sx={{
+                        borderRadius: 4,
+                        border: `1px solid ${alpha(card.accent, 0.12)}`,
+                        background: alpha(theme.palette.background.paper, 0.86),
+                        boxShadow: `0 14px 34px ${alpha(card.accent, 0.1)}`,
+                        p: 0.95,
+                        minHeight: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                            minHeight: { xs: 128, sm: 142, md: 154 },
+                          flex: 1,
+                          borderRadius: 3,
+                          background: card.gradient,
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <Box sx={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 18% 22%, ${alpha('#fff', 0.22)} 0, transparent 24%), radial-gradient(circle at 84% 20%, ${alpha('#fff', 0.16)} 0, transparent 22%)` }} />
+                          <Box sx={{ position: 'relative', zIndex: 1, width: { xs: 42, md: 48 }, height: { xs: 42, md: 48 }, m: 0.9, borderRadius: 3, display: 'grid', placeItems: 'center', bgcolor: alpha('#fff', 0.18), color: '#0f172a', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+                          {card.icon}
+                        </Box>
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            px: 1.25,
+                            textAlign: 'center',
+                          }}
+                        >
+                          <Typography sx={{ color: '#FFFFFF', fontWeight: 900, fontSize: { xs: '0.84rem', md: '0.9rem' }, lineHeight: 1.04, textShadow: '0 2px 10px rgba(0,0,0,0.18)', mb: 0.22, textAlign: 'center' }}>
+                            {card.title}
+                          </Typography>
+                          <Typography sx={{ color: alpha('#FFFFFF', 0.92), fontWeight: 600, fontSize: { xs: '0.64rem', md: '0.68rem' }, lineHeight: 1.22, maxWidth: 200, mx: 'auto', textShadow: '0 1px 8px rgba(0,0,0,0.14)', textAlign: 'center' }}>
+                            {card.confidence}
+                          </Typography>
+                        </Box>
                       </Box>
-                      <Box component="span" sx={{ color: tc.lime || theme.palette.success.main }}>
-                        {heroBrandWords[heroBrandWords.length - 1]}
+
+                      <Box sx={{ pt: 0.7, px: 0.55, pb: 0.18, textAlign: 'center' }}>
+                        <Typography sx={{ color: card.accent, fontSize: '0.62rem', fontWeight: 900, letterSpacing: 1.2, textTransform: 'uppercase', mb: 0.1, textAlign: 'center' }}>
+                          {card.label}
+                        </Typography>
                       </Box>
-                    </>
-                  ) : (
-                    <Box component="span" sx={{ color: tc.cyan || theme.palette.info.main }}>
-                      {heroBrandWords[0] || 'Diabetes Care'}
                     </Box>
-                  )}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    fontFamily: theme.typography.fontFamily,
-                    fontSize: { xs: '1.0625rem', sm: '1.125rem', md: '1.1875rem' },
-                    lineHeight: 1.55,
-                    maxWidth: 340,
-                  }}
-                >
-                  Your one-stop hub for assessment, plans, and support.
-                </Typography>
-              </Stack>
+                  </Paper>
+                ))}
+              </Box>
             </Box>
           </Box>
         </MotionDiv>
