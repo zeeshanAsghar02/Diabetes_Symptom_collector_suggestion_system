@@ -44,6 +44,7 @@ import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../utils/auth';
 import ThemeToggle from './ThemeToggle';
 import { useSettings } from '../../context/SettingsContext';
+import diaviseLogo from '../../assets/diavise-logo-cropped.png';
 
 /** App shell navigation (no duplicate routes; labels are sentence case). */
 const NAV_LINKS = [
@@ -598,33 +599,17 @@ export default function UniversalHeader() {
                   }}
                 >
                   <Box
+                    component="img"
+                    src={diaviseLogo}
+                    alt={normalizedTitle}
                     sx={{
-                      width: { xs: HEADER_LAYOUT.logoMark.xs, sm: HEADER_LAYOUT.logoMark.sm },
-                      height: { xs: HEADER_LAYOUT.logoMark.xs, sm: HEADER_LAYOUT.logoMark.sm },
-                      borderRadius: 2,
-                      background: `linear-gradient(135deg, ${brand.cyan} 0%, ${brand.lime} 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: brand.onGradient,
-                      fontWeight: 800,
-                      fontSize: { xs: '1.2rem', sm: '1.35rem' },
-                      fontFamily: 'inherit',
-                      boxShadow: `0 4px 14px ${alpha(brand.cyan, 0.35)}`,
+                      width: { xs: 132, sm: 158, md: 178 },
+                      height: { xs: 74, sm: 88, md: 98 },
+                      objectFit: 'contain',
+                      objectPosition: 'left center',
+                      display: 'block',
                     }}
-                  >
-                    {brandMark}
-                  </Box>
-                  <Box sx={{ lineHeight: 1.1, display: { xs: 'none', sm: 'block' } }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: { sm: '1.125rem', md: '1.1875rem' }, color: brand.cyan, letterSpacing: '-0.02em' }}>
-                      {brandLine1}
-                    </Typography>
-                    {brandLine2 ? (
-                      <Typography sx={{ fontWeight: 800, fontSize: { sm: '0.9375rem', md: '1rem' }, color: brand.lime, letterSpacing: '-0.02em' }}>
-                        {brandLine2}
-                      </Typography>
-                    ) : null}
-                  </Box>
+                  />
                 </Box>
               </Grid>
 

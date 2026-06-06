@@ -640,6 +640,7 @@ const SymptomAssessment = () => {
               variant="body1"
               color="text.secondary"
               sx={{
+                display: 'none',
                 maxWidth: 620,
                 mx: 'auto',
                 lineHeight: 1.65,
@@ -734,6 +735,7 @@ const SymptomAssessment = () => {
               severity="info"
               icon={false}
               sx={{
+                display: 'none',
                 mb: 3,
                 borderRadius: 2,
                 py: 1.25,
@@ -752,7 +754,7 @@ const SymptomAssessment = () => {
             <Box sx={{ minHeight: 0 }}>
               {activeStep === 0 && currentSymptom && (
                 <Grid container spacing={3} alignItems="flex-start">
-                  <Grid item xs={12} md={3.5}>
+                  <Grid size={{ xs: 12, md: 3.5 }}>
                     <Paper
                       elevation={0}
                       sx={{
@@ -782,7 +784,7 @@ const SymptomAssessment = () => {
                         <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
                           Categories
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.6 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ display: 'none', mt: 0.75, lineHeight: 1.6 }}>
                           Pick a category to load its related questions in the main panel.
                         </Typography>
                       </Box>
@@ -866,13 +868,13 @@ const SymptomAssessment = () => {
                     </Paper>
                   </Grid>
 
-                  <Grid item xs={12} md={8.5} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                  <Grid size={{ xs: 12, md: 8.5 }} sx={{ display: 'flex', justifyContent: 'stretch', alignItems: 'flex-start', minWidth: 0 }}>
                     <Fade in timeout={500} key={currentSymptomIndex}>
                       <Paper
                         elevation={0}
                         sx={{
                           width: '100%',
-                          maxWidth: 780,
+                          maxWidth: 'none',
                           height: 'fit-content',
                           p: { xs: 2, md: 3 },
                           borderRadius: 3.5,
@@ -1176,7 +1178,7 @@ const SymptomAssessment = () => {
                       <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 1.5 }}>
                         Here&apos;s a snapshot of your responses
                       </Typography>
-                      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
+                      <Typography variant="body1" color="text.secondary" sx={{ display: 'none', maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
                         Take a quick look at what you shared before we run your assessment. Nothing here is a diagnosis—just what you told us. You can always go back and change anything.
                       </Typography>
                     </Box>

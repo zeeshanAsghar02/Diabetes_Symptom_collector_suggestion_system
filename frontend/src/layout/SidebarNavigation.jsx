@@ -19,9 +19,9 @@ import {
 import { alpha } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import FavoriteIcon from '@mui/icons-material/Favorite';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import diaviseLogo from '../assets/diavise-logo-cropped.png';
 
 const drawerWidth = 220;
 const miniDrawerWidth = 64;
@@ -49,6 +49,10 @@ export default function SidebarNavigation({
     ...sec,
     label: labelMap[sec.label] || sec.label,
   }));
+  const profileIndex = sections.findIndex((section) => section.label === 'My Profile');
+  const openProfile = () => {
+    if (profileIndex >= 0) onSectionChange(profileIndex);
+  };
 
   return (
     <Drawer
@@ -88,10 +92,9 @@ export default function SidebarNavigation({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: sidebarOpen ? 'flex-start' : 'center',
-            gap: 1,
+            justifyContent: 'center',
             px: sidebarOpen ? 1 : 0,
-            py: 1.25,
+            py: sidebarOpen ? 0.95 : 1.1,
             mb: 1.1,
             borderRadius: 1.5,
             cursor: 'pointer',
@@ -100,29 +103,18 @@ export default function SidebarNavigation({
             },
           }}
         >
-          <Avatar
+          <Box
+            component="img"
+            src={diaviseLogo}
+            alt="Diavise"
             sx={{
-              width: 28,
-              height: 28,
-              background: 'rgba(34, 211, 238, 0.1)',
-              color: '#67E8F9',
-              border: '1px solid rgba(103, 232, 249, 0.28)',
-              fontWeight: 700,
-              fontSize: '0.92rem',
+              width: sidebarOpen ? 138 : 42,
+              height: sidebarOpen ? 82 : 42,
+              objectFit: 'contain',
+              objectPosition: 'center',
+              display: 'block',
             }}
-          >
-            <FavoriteIcon sx={{ fontSize: 16 }} />
-          </Avatar>
-          {sidebarOpen && (
-            <Box>
-              <Typography sx={{ fontWeight: 800, color: '#F8FAFC', fontSize: '0.95rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-                Diavise
-              </Typography>
-              <Typography sx={{ color: '#67E8F9', fontWeight: 700, fontSize: '0.68rem', lineHeight: 1.1, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Care
-              </Typography>
-            </Box>
-          )}
+          />
         </Box>
 
         {/* Navigation */}
@@ -241,7 +233,35 @@ export default function SidebarNavigation({
         <Divider sx={{ mb: 0.9, borderColor: 'rgba(255, 255, 255, 0.06)' }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.9 }}>
+          <Tooltip title={!sidebarOpen ? 'My Profile' : ''} placement="right">
+            <Box
+              component="button"
+              type="button"
+              onClick={openProfile}
+              sx={{
+                appearance: 'none',
+                border: 0,
+                p: 0.45,
+                m: 0,
+                width: sidebarOpen ? 'auto' : 36,
+                maxWidth: sidebarOpen ? 154 : 36,
+                borderRadius: 1.4,
+                bgcolor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                gap: 0.9,
+                cursor: profileIndex >= 0 ? 'pointer' : 'default',
+                textAlign: 'left',
+                '&:hover': {
+                  bgcolor: profileIndex >= 0 ? 'rgba(255, 255, 255, 0.045)' : 'transparent',
+                },
+                '&:focus-visible': {
+                  outline: '2px solid rgba(34, 211, 238, 0.55)',
+                  outlineOffset: 2,
+                },
+              }}
+            >
             <Avatar sx={{ width: 24, height: 24, bgcolor: 'rgba(34, 211, 238, 0.12)', color: '#BAE6FD', border: '1px solid rgba(125, 211, 252, 0.32)', fontSize: '0.66rem', fontWeight: 800 }}>
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </Avatar>
@@ -255,7 +275,8 @@ export default function SidebarNavigation({
                 </Typography>
               </Box>
             )}
-          </Box>
+            </Box>
+          </Tooltip>
           {sidebarOpen && (
             <IconButton size="small" onClick={onSidebarToggle}>
               <KeyboardArrowDownIcon sx={{ fontSize: 18, color: 'rgba(203, 213, 225, 0.55)' }} />

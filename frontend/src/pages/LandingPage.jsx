@@ -55,6 +55,7 @@ import ArticleModal from '../components/Common/ArticleModal';
 import TestimonialsSection from '../components/Common/TestimonialsSection';
 import { useSettings } from '../context/SettingsContext';
 import { getCurrentUser } from '../utils/auth';
+import diaviseLogo from '../assets/diavise-logo-cropped.png';
 
 const MotionDiv = motion.div;
 
@@ -862,68 +863,19 @@ const LandingPage = () => {
           <Container maxWidth="lg">
             <Grid container spacing={{ xs: 4, md: 5 }} columns={{ xs: 12, md: 12 }}>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2.5 }}>
+                <Box sx={{ mb: 2.5 }}>
                   <Box
+                    component="img"
+                    src={diaviseLogo}
+                    alt={siteTitle || 'Diavise'}
                     sx={{
-                      width: { xs: 48, sm: 52 },
-                      height: { xs: 48, sm: 52 },
-                      borderRadius: 2,
-                      background: `linear-gradient(135deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: tc.onGradient || '#FFFFFF',
-                      fontWeight: 800,
-                      fontSize: { xs: '1.15rem', sm: '1.2rem' },
-                      boxShadow: `0 4px 16px ${alpha(tc.cyan || theme.palette.primary.main, 0.28)}`,
-                      flexShrink: 0,
+                      width: { xs: 196, sm: 224, md: 252 },
+                      height: { xs: 176, sm: 198, md: 222 },
+                      objectFit: 'contain',
+                      objectPosition: 'left center',
+                      display: 'block',
                     }}
-                  >
-                    D
-                  </Box>
-                  <Box sx={{ lineHeight: 1.12, pt: 0.25 }}>
-                    {heroBrandWords.length >= 2 ? (
-                      <>
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontFamily: displayFont,
-                            fontWeight: 800,
-                            fontSize: { xs: '1.2rem', sm: '1.3rem' },
-                            color: tc.cyan || theme.palette.info.main,
-                            letterSpacing: '-0.02em',
-                            display: 'block',
-                          }}
-                        >
-                          {heroBrandWords.slice(0, -1).join(' ')}
-                        </Typography>
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontFamily: displayFont,
-                            fontWeight: 800,
-                            fontSize: { xs: '1.05rem', sm: '1.15rem' },
-                            color: tc.lime || theme.palette.success.main,
-                            letterSpacing: '-0.02em',
-                            display: 'block',
-                          }}
-                        >
-                          {heroBrandWords[heroBrandWords.length - 1]}
-                        </Typography>
-                      </>
-                    ) : (
-                      <Typography
-                        sx={{
-                          fontFamily: displayFont,
-                          fontWeight: 800,
-                          fontSize: '1.25rem',
-                          color: tc.cyan || theme.palette.info.main,
-                        }}
-                      >
-                        {heroBrandWords[0] || 'Diabetes Care'}
-                      </Typography>
-                    )}
-                  </Box>
+                  />
                 </Box>
                 <Typography
                   variant="body2"

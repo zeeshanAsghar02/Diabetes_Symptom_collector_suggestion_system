@@ -107,9 +107,6 @@ const AssessmentSummaryStep = ({ onComplete, answers, isLoggedIn }) => {
         <Typography variant="h5" fontWeight={600} color="text.primary" gutterBottom>
           Assessment Completed
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 4 }}>
-          Thank you for completing the assessment. Click the button below to finish.
-        </Typography>
         <Button 
           variant="contained" 
           onClick={handleComplete}
@@ -160,14 +157,6 @@ const AssessmentSummaryStep = ({ onComplete, answers, isLoggedIn }) => {
           Assessment Complete!
         </Typography>
         
-        <Typography 
-          variant="h6" 
-          color="text.secondary" 
-          align="center"
-          sx={{ mb: 6 }}
-        >
-          Thank you for providing your health information. Here's a summary of what you've shared.
-        </Typography>
         
         {/* Summary Card */}
         <Paper

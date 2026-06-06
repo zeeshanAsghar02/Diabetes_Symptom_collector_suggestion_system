@@ -12,6 +12,7 @@ import {
   Button,
 } from '@mui/material';
 import ThemeToggle from '../components/Common/ThemeToggle';
+import diaviseLogo from '../assets/diavise-logo-cropped.png';
 
 const drawerWidth = 220;
 
@@ -27,6 +28,10 @@ export default function MobileDrawer({
   const handleSectionClick = (index) => {
     onSectionChange(index);
     onClose();
+  };
+  const profileIndex = sections.findIndex((section) => section.label === 'My Profile');
+  const handleProfileClick = () => {
+    if (profileIndex >= 0) handleSectionClick(profileIndex);
   };
 
   return (
@@ -53,8 +58,44 @@ export default function MobileDrawer({
       }}
     >
       <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Box
+            component="img"
+            src={diaviseLogo}
+            alt="Diavise"
+            sx={{
+              width: 150,
+              height: 88,
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
+        </Box>
+
         {/* User Profile Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 2, mb: 3 }}>
+        <Box
+          component="button"
+          type="button"
+          onClick={handleProfileClick}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            width: '100%',
+            px: 1.5,
+            py: 2,
+            mb: 3,
+            border: 0,
+            borderRadius: 2,
+            bgcolor: 'transparent',
+            color: 'inherit',
+            textAlign: 'left',
+            cursor: profileIndex >= 0 ? 'pointer' : 'default',
+            '&:hover': {
+              bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        >
           <Avatar sx={{ width: 40, height: 40, background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`, fontWeight: 700 }}>
             {user?.fullName?.[0]?.toUpperCase() || 'U'}
           </Avatar>
