@@ -39,12 +39,52 @@ const getRiskColor = (risk) => {
   return '#22c55e';
 };
 
-const getRiskGradient = (risk) => {
-  const level = (risk || '').toLowerCase();
-  if (level === 'high') return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-  if (level === 'medium') return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-  return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+const TOTAL_SYMPTOMS = 14;
+const monoFont = '"JetBrains Mono", "Roboto Mono", Consolas, monospace';
+
+const formatDecimal = (value, digits = 2) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : Number(0).toFixed(digits);
 };
+
+const formatPercent = (value, digits = 0) => `${formatDecimal(Number(value) * 100, digits)}%`;
+
+const formatClinicalLabel = (value = '') => value
+  .replace(/_/g, ' ')
+  .replace(/([a-z])([A-Z])/g, '$1 $2')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const StackPanel = ({ title, subtitle, children }) => (
+  <Card sx={{ height: '100%', minHeight: { xs: 'auto', lg: 640 }, bgcolor: 'rgba(17,24,39,0.88)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 1.5, boxShadow: '0 22px 64px rgba(0,0,0,0.3)', backdropFilter: 'blur(18px)' }}>
+    <CardContent sx={{ p: { xs: 2, md: 2.5 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ mb: 1.6 }}>
+        <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '1rem' }}>{title}</Typography>
+        <Typography sx={{ color: 'rgba(203,213,225,0.58)', fontSize: '0.75rem', fontFamily: monoFont }}>{subtitle}</Typography>
+      </Box>
+      {children}
+    </CardContent>
+  </Card>
+);
+
+const TelemetryTile = ({ label, value, tone }) => (
+  <Box sx={{ p: 1.45, bgcolor: 'rgba(15,23,42,0.72)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1 }}>
+    <Typography sx={{ color: 'rgba(148,163,184,0.82)', fontFamily: monoFont, fontSize: '0.66rem', fontWeight: 700 }}>{label.toUpperCase()}</Typography>
+    <Typography sx={{ color: tone, fontFamily: monoFont, fontWeight: 850, fontSize: '1.15rem' }}>{value}</Typography>
+  </Box>
+);
+
+const ClinicalLogRow = ({ title, detail, status, active = false }) => (
+  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '10px 1fr', sm: '10px 1fr auto' }, alignItems: 'center', gap: 1.2, p: 1.35, mb: 1, bgcolor: active ? 'rgba(45,212,191,0.07)' : 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.055)', borderRadius: 1 }}>
+    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: active ? '#2dd4bf' : '#64748b', boxShadow: active ? '0 0 14px rgba(45,212,191,0.62)' : 'none' }} />
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ color: '#f8fafc', fontWeight: 720, fontSize: '0.9rem' }}>{title}</Typography>
+      <Typography sx={{ color: 'rgba(203,213,225,0.7)', fontSize: '0.78rem', lineHeight: 1.45 }}>{detail}</Typography>
+    </Box>
+    <Typography sx={{ color: active ? '#99f6e4' : '#dbeafe', fontFamily: monoFont, fontWeight: 700, fontSize: '0.68rem', gridColumn: { xs: '2', sm: 'auto' } }}>{status}</Typography>
+  </Box>
+);
 
 const Assessment = () => {
   const navigate = useNavigate();
@@ -157,6 +197,8 @@ const Assessment = () => {
       const symptoms_present = Object.entries(features)
         .filter(([k, v]) => !['Age', 'Gender', 'Obesity'].includes(k) && Number(v) === 1)
         .map(([k]) => k);
+      const symptoms_evaluated = Object.keys(features)
+        .filter((k) => !['Age', 'Gender', 'Obesity'].includes(k));
 
       const feature_importance = {};
       if (result.feature_importance && typeof result.feature_importance === 'object') {
@@ -175,6 +217,7 @@ const Assessment = () => {
         next_steps: result?.recommendations?.next_steps || [],
         feature_importance,
         symptoms_present,
+        symptoms_evaluated,
         medical_reasoning: result?.llm_insights?.medical_reasoning || '',
         clinical_notes: result?.llm_insights?.clinical_notes || '',
         priority_symptoms: result?.llm_insights?.priority_symptoms || [],
@@ -232,75 +275,97 @@ const Assessment = () => {
     recommendations,
     next_steps,
     feature_importance,
-    symptoms_present
+    symptoms_present,
+    symptoms_evaluated
   } = assessmentData;
+
+  const featureEntries = Object.entries(feature_importance)
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .slice(0, 8);
+  const featureLabels = featureEntries.length ? featureEntries.map(([label]) => formatClinicalLabel(label)) : ['Age', 'Gender', 'BMI', 'Glucose', 'Family History', 'Activity', 'Sleep', 'Hydration'];
+  const featureValues = featureEntries.length ? featureEntries.map(([, value]) => Number(value) || 0) : Array(8).fill(0);
+  const presentCount = symptoms_present.length;
+  const evaluatedSymptoms = symptoms_evaluated?.length ? symptoms_evaluated : Array.from({ length: TOTAL_SYMPTOMS }, (_, index) => `Assessment item ${index + 1}`);
+  const evaluatedCount = Math.max(evaluatedSymptoms.length, TOTAL_SYMPTOMS);
+  const absentCount = Math.max(evaluatedCount - presentCount, 0);
+  const riskColor = getRiskColor(risk_level);
+  const careGuidance = [...recommendations, ...next_steps].filter(Boolean);
+  const recommendationDetails = [
+    'This supports your current low-risk profile and helps keep future changes visible.',
+    'Regular check-ups help confirm that your current readings and symptoms remain stable.',
+    'Report changes early so a clinician can review symptoms before they become more serious.',
+  ];
 
   // COMPREHENSIVE CHART CONFIGURATIONS
   const gaugeOptions = {
-    chart: { type: 'radialBar', sparkline: { enabled: false } },
+    chart: { type: 'radialBar', sparkline: { enabled: true }, background: 'transparent' },
     plotOptions: {
       radialBar: {
-        startAngle: -135,
-        endAngle: 135,
-        hollow: { size: '65%' },
-        track: { background: 'rgba(255,255,255,0.1)', strokeWidth: '100%' },
+        startAngle: -150,
+        endAngle: 150,
+        hollow: { size: '74%', background: 'transparent' },
+        track: { background: 'rgba(255,255,255,0.055)', strokeWidth: '72%', margin: 0 },
         dataLabels: {
-          name: { fontSize: '20px', color: '#ffffff', fontWeight: 800, offsetY: -10 },
-          value: { fontSize: '42px', color: '#ffffff', fontWeight: 900, offsetY: 10, formatter: (val) => `${val}%` }
+          name: { fontSize: '11px', color: 'rgba(226,232,240,0.62)', fontWeight: 700, offsetY: 20, fontFamily: monoFont },
+          value: { fontSize: '34px', color: '#f8fafc', fontWeight: 800, offsetY: -10, fontFamily: monoFont, formatter: (val) => `${formatDecimal(val, 0)}%` }
         }
       }
     },
-    fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', gradientToColors: ['#6366f1'], stops: [0, 100] } },
-    stroke: { lineCap: 'round' },
+    fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', gradientToColors: ['#34d399'], stops: [0, 100] } },
+    stroke: { lineCap: 'round', width: 2 },
     labels: ['Risk Probability'],
-    colors: ['#8b5cf6']
+    colors: [riskColor]
   };
 
   const radarOptions = {
-    chart: { type: 'radar', toolbar: { show: false } },
+    chart: { type: 'radar', toolbar: { show: false }, background: 'transparent' },
     xaxis: { 
-      categories: Object.keys(feature_importance).slice(0, 8),
-      labels: { style: { colors: Array(8).fill('#fff'), fontSize: '12px', fontWeight: 600 } }
+      categories: featureLabels,
+      labels: { style: { colors: Array(featureLabels.length).fill('rgba(226,232,240,0.72)'), fontSize: '10px', fontFamily: monoFont, fontWeight: 600 } }
     },
-    yaxis: { show: false },
-    fill: { opacity: 0.3 },
-    stroke: { show: true, width: 2 },
-    colors: ['#22c55e'],
-    markers: { size: 4, colors: ['#22c55e'], strokeColor: '#fff', strokeWidth: 2 },
+    yaxis: { show: false, min: 0, max: Math.max(...featureValues, 1) },
+    fill: { opacity: 0.16 },
+    stroke: { show: true, width: 2, curve: 'straight' },
+    colors: ['#2dd4bf'],
+    markers: { size: 3, colors: ['#2dd4bf'], strokeColor: '#0f172a', strokeWidth: 2 },
     legend: { show: false },
-    plotOptions: { radar: { polygons: { strokeColors: 'rgba(255,255,255,0.1)', fill: { colors: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } } } }
+    grid: { borderColor: 'rgba(255,255,255,0.03)' },
+    tooltip: { theme: 'dark', y: { formatter: (val) => formatDecimal(val, 2) } },
+    plotOptions: { radar: { polygons: { strokeColors: 'rgba(255,255,255,0.045)', connectorColors: 'rgba(255,255,255,0.045)', fill: { colors: ['rgba(255,255,255,0.012)', 'rgba(255,255,255,0.024)'] } } } }
   };
 
   const barHorizontalOptions = {
-    chart: { type: 'bar', toolbar: { show: false } },
-    plotOptions: { bar: { borderRadius: 8, horizontal: true, distributed: true, barHeight: '75%' } },
-    colors: ['#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#10b981', '#ec4899', '#f97316', '#14b8a6'],
-    dataLabels: { enabled: true, style: { fontSize: '13px', fontWeight: 900, colors: ['#fff'] }, offsetX: 10 },
+    chart: { type: 'bar', toolbar: { show: false }, background: 'transparent' },
+    plotOptions: { bar: { borderRadius: 3, horizontal: true, distributed: false, barHeight: '58%' } },
+    colors: ['#38bdf8'],
+    dataLabels: { enabled: true, formatter: (val) => formatDecimal(val, 2), style: { fontSize: '11px', fontWeight: 700, colors: ['#e2e8f0'], fontFamily: monoFont }, offsetX: 8 },
     xaxis: { 
-      categories: Object.keys(feature_importance).slice(0, 8),
-      labels: { style: { colors: '#ffffff', fontSize: '13px', fontWeight: 600 } }
+      categories: featureLabels,
+      labels: { formatter: (val) => formatDecimal(val, 2), style: { colors: 'rgba(226,232,240,0.58)', fontSize: '10px', fontFamily: monoFont } },
+      axisBorder: { color: 'rgba(255,255,255,0.06)' },
+      axisTicks: { color: 'rgba(255,255,255,0.06)' }
     },
-    yaxis: { labels: { style: { colors: '#ffffff', fontSize: '12px', fontWeight: 600 } } },
-    grid: { borderColor: 'rgba(255,255,255,0.08)', strokeDashArray: 4 },
-    tooltip: { theme: 'dark', y: { formatter: (val) => val?.toFixed(4) || '0.0000' } },
+    yaxis: { labels: { style: { colors: '#f8fafc', fontSize: '11px', fontWeight: 600, fontFamily: monoFont } } },
+    grid: { borderColor: 'rgba(255,255,255,0.03)', strokeDashArray: 3 },
+    tooltip: { theme: 'dark', y: { formatter: (val) => formatDecimal(val, 2) } },
     legend: { show: false }
   };
 
   const donutOptions = {
-    chart: { type: 'donut' },
+    chart: { type: 'donut', background: 'transparent' },
     labels: ['Present', 'Absent'],
-    colors: ['#10b981', 'rgba(255,255,255,0.08)'],
-    legend: { show: true, position: 'bottom', labels: { colors: '#ffffff' }, fontSize: '14px', fontWeight: 700 },
-    dataLabels: { enabled: true, style: { fontSize: '16px', fontWeight: 'bold' } },
+    colors: ['#34d399', 'rgba(148,163,184,0.12)'],
+    legend: { show: true, position: 'bottom', labels: { colors: '#cbd5e1' }, fontSize: '11px', fontFamily: monoFont, fontWeight: 600 },
+    dataLabels: { enabled: true, formatter: (val) => `${formatDecimal(val, 0)}%`, style: { fontSize: '11px', fontWeight: 'bold', fontFamily: monoFont } },
     plotOptions: {
       pie: {
         donut: {
-          size: '72%',
+          size: '78%',
           labels: {
             show: true,
-            name: { fontSize: '18px', color: '#ffffff', fontWeight: 700 },
-            value: { fontSize: '28px', color: '#ffffff', fontWeight: 900 },
-            total: { show: true, label: 'Total', fontSize: '16px', color: '#ffffff', fontWeight: 700, formatter: () => '14' }
+            name: { fontSize: '12px', color: '#94a3b8', fontWeight: 700, fontFamily: monoFont },
+            value: { fontSize: '26px', color: '#f8fafc', fontWeight: 800, fontFamily: monoFont },
+            total: { show: true, label: 'Evaluated', fontSize: '11px', color: '#94a3b8', fontWeight: 700, fontFamily: monoFont, formatter: () => String(evaluatedCount) }
           }
         }
       }
@@ -311,12 +376,12 @@ const Assessment = () => {
 
   // Series data
   const gaugeSeries = [Math.round(probability * 100)];
-  const radarSeries = [{ name: 'Feature Impact', data: Object.values(feature_importance).slice(0, 8).map(v => (v * 100).toFixed(1)) }];
-  const barHorizontalSeries = [{ name: 'Importance', data: Object.values(feature_importance).slice(0, 8) }];
-  const donutSeries = [symptoms_present.length, 14 - symptoms_present.length];
+  const radarSeries = [{ name: 'Feature Impact', data: featureValues.map((value) => Number(formatDecimal(value, 2))) }];
+  const barHorizontalSeries = [{ name: 'Importance', data: featureValues.map((value) => Number(formatDecimal(value, 2))) }];
+  const donutSeries = [presentCount, absentCount];
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%)' }}>
+    <Box sx={{ minHeight: '100vh', background: 'radial-gradient(circle at 18% 0%, rgba(45,212,191,0.08), transparent 28%), linear-gradient(135deg, #050816 0%, #090f1f 48%, #050816 100%)' }}>
       {/* Fixed Header */}
       <Box
         sx={{
@@ -327,8 +392,8 @@ const Assessment = () => {
           zIndex: 1200,
           background: 'rgba(10, 14, 39, 0.95)',
           backdropFilter: 'blur(20px)',
-          borderBottom: '2px solid rgba(139, 92, 246, 0.2)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.42)'
         }}
       >
         <Container maxWidth={false}>
@@ -344,19 +409,20 @@ const Assessment = () => {
             >
               Dashboard
             </Button>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: 'white', letterSpacing: -0.3 }}>
-              Comprehensive Analytics Dashboard
+            <Typography variant="h6" sx={{ fontWeight: 800, color: 'white', letterSpacing: 0, fontFamily: monoFont }}>
+              MEDICAL TELEMETRY COMMAND
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
                 startIcon={<Refresh />}
                 onClick={() => fetchAssessmentData(false)}
                 sx={{
-                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  background: '#111827',
                   color: 'white',
-                  fontWeight: 800,
+                  fontWeight: 700,
                   px: 3,
-                  '&:hover': { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  '&:hover': { background: '#172033', borderColor: 'rgba(45,212,191,0.35)' }
                 }}
               >
                 Refresh
@@ -366,375 +432,126 @@ const Assessment = () => {
         </Container>
       </Box>
 
-      {/* Main Content */}
-      <Box sx={{ pt: 12, pb: 8 }}>
-        <Container maxWidth="xxl" sx={{ px: { xs: 4, md: 8, lg: 12 } }}>
-
-          {/* Full-Width Banner */}
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <Paper
-              sx={{
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%)',
-                backdropFilter: 'blur(20px)',
-                borderRadius: 4,
-                border: '2px solid rgba(139, 92, 246, 0.25)',
-                p: 5,
-                mb: 6,
-                boxShadow: '0 16px 48px rgba(99, 102, 241, 0.2)'
-              }}
-            >
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                    <Box
-                      sx={{
-                        width: 70,
-                        height: 70,
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 12px 32px rgba(139, 92, 246, 0.4)'
-                      }}
-                    >
-                      <AssessmentIcon sx={{ fontSize: 38, color: 'white' }} />
+      <Box sx={{ pt: 11, pb: 6 }}>
+        <Container maxWidth={false} sx={{ px: { xs: 2, md: 3, xl: 5 } }}>
+          <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+            <Paper sx={{ bgcolor: '#111827', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 1.5, p: { xs: 2, md: 3 }, mb: 2.5, boxShadow: '0 24px 70px rgba(0,0,0,0.34)' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(340px, 0.9fr) minmax(520px, 1.1fr)' }, gap: 2.5, alignItems: 'center' }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ width: 46, height: 46, borderRadius: 1.25, display: 'grid', placeItems: 'center', bgcolor: 'rgba(45,212,191,0.08)', border: '1px solid rgba(45,212,191,0.18)' }}>
+                      <AssessmentIcon sx={{ color: '#5eead4' }} />
                     </Box>
                     <Box>
-                      <Typography variant="h4" sx={{ fontWeight: 900, color: 'white', letterSpacing: -0.5 }}>
-                        Diabetes Risk Assessment Dashboard
+                      <Typography sx={{ color: '#f8fafc', fontWeight: 800, letterSpacing: 0, fontSize: { xs: '1.2rem', md: '1.45rem' } }}>
+                        Diabetes Risk Assessment Report
                       </Typography>
-                      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, mt: 0.5 }}>
-                        Comprehensive AI-Powered Health Analytics & Visualization
+                      <Typography sx={{ color: 'rgba(203,213,225,0.72)', fontSize: '0.88rem' }}>
+                        Assessment based on your questionnaire answers and AI risk model output
                       </Typography>
                     </Box>
                   </Box>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: { xs: 'flex-start', md: 'flex-end' }, flexWrap: 'wrap' }}>
-                    <Chip
-                      icon={<TrendingUp />}
-                      label="Live Analysis"
-                      sx={{
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        color: '#6ee7b7',
-                        fontWeight: 800,
-                        border: '1.5px solid rgba(16, 185, 129, 0.4)',
-                        fontSize: '0.95rem',
-                        height: 38
-                      }}
-                    />
-                    <Chip
-                      icon={<CheckCircle />}
-                      label={`${symptoms_present.length} Symptoms`}
-                      sx={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: '#f9a8d4',
-                        fontWeight: 800,
-                        border: '1.5px solid rgba(244, 114, 182, 0.4)',
-                        fontSize: '0.95rem',
-                        height: 38
-                      }}
-                    />
-                    <Chip
-                      label={`${Math.round(confidence * 100)}% Confident`}
-                      sx={{
-                        background: 'rgba(6, 182, 212, 0.2)',
-                        color: '#67e8f9',
-                        fontWeight: 800,
-                        border: '1.5px solid rgba(6, 182, 212, 0.4)',
-                        fontSize: '0.95rem',
-                        height: 38
-                      }}
-                    />
+                </Box>
+                <Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '1.2fr repeat(3, 1fr)' }, gap: 1.25 }}>
+                    <Box sx={{ p: 1.5, bgcolor: 'rgba(15,23,42,0.78)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1 }}>
+                      <Typography sx={{ color: 'rgba(148,163,184,0.82)', fontFamily: monoFont, fontSize: '0.68rem', fontWeight: 700 }}>RISK LEVEL</Typography>
+                      <Typography sx={{ color: '#6ee7b7', fontFamily: monoFont, fontWeight: 900, fontSize: '1.2rem', textShadow: '0 0 18px rgba(52,211,153,0.34)' }}>{risk_level.toUpperCase()} RISK</Typography>
+                    </Box>
+                    {[
+                      ['PROBABILITY', formatPercent(probability, 0)],
+                      ['CONFIDENCE', formatPercent(confidence, 0)],
+                      ['SYMPTOMS', `${presentCount}/${evaluatedCount}`],
+                    ].map(([label, value]) => (
+                      <Box key={label} sx={{ p: 1.5, bgcolor: 'rgba(15,23,42,0.58)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 1 }}>
+                        <Typography sx={{ color: 'rgba(148,163,184,0.82)', fontFamily: monoFont, fontSize: '0.68rem', fontWeight: 700 }}>{label}</Typography>
+                        <Typography sx={{ color: '#f8fafc', fontFamily: monoFont, fontWeight: 800, fontSize: '1.16rem' }}>{value}</Typography>
+                      </Box>
+                    ))}
                   </Box>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             </Paper>
           </motion.div>
 
-          {/* Main Risk Card */}
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }}>
-            <Card
-              sx={{
-                mb: 6,
-                borderRadius: 4,
-                overflow: 'hidden',
-                background: getRiskGradient(risk_level),
-                border: '2px solid rgba(255,255,255,0.3)',
-                boxShadow: '0 32px 80px rgba(0,0,0,0.5)'
-              }}
-            >
-              <CardContent sx={{ p: 6 }}>
-                <Grid container spacing={3} alignItems="center">
-                  <Grid item xs={12} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 120,
-                          height: 120,
-                          borderRadius: '50%',
-                          background: 'rgba(255,255,255,0.25)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mx: 'auto',
-                          mb: 2,
-                          border: '3px solid rgba(255,255,255,0.4)'
-                        }}
-                      >
-                        {risk_level === 'High' ? <Warning sx={{ fontSize: 50, color: '#fff' }} /> : 
-                         risk_level === 'Medium' ? <TrendingUp sx={{ fontSize: 50, color: '#fff' }} /> :
-                         <Assignment sx={{ fontSize: 50, color: '#fff' }} />}
-                      </Box>
-                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                        RISK LEVEL
-                      </Typography>
-                      <Typography variant="h2" sx={{ fontWeight: 900, color: '#fff', letterSpacing: -1 }}>
-                        {risk_level}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
-                        PROBABILITY
-                      </Typography>
-                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', mb: 2 }}>
-                        {Math.round(probability * 100)}%
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={probability * 100}
-                        sx={{
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: 'rgba(255,255,255,0.2)',
-                          '& .MuiLinearProgress-bar': { backgroundColor: '#fff', borderRadius: 4 }
-                        }}
-                      />
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
-                        CONFIDENCE
-                      </Typography>
-                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', mb: 2 }}>
-                        {Math.round(confidence * 100)}%
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={confidence * 100}
-                        sx={{
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: 'rgba(255,255,255,0.2)',
-                          '& .MuiLinearProgress-bar': { backgroundColor: '#fff', borderRadius: 4 }
-                        }}
-                      />
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
-                        SYMPTOMS
-                      </Typography>
-                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff' }}>
-                        {symptoms_present.length}/14
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2.5, alignItems: 'stretch' }}>
+            <Box>
+              <StackPanel title="Risk Telemetry" subtitle="Probability and symptom distribution">
+                <Box sx={{ position: 'relative', display: 'grid', placeItems: 'center', minHeight: 276, '&:before': { content: '""', position: 'absolute', width: 232, height: 232, borderRadius: '50%', background: 'repeating-conic-gradient(from -150deg, rgba(94,234,212,0.34) 0deg 1deg, transparent 1deg 8deg)', opacity: 0.5, mask: 'radial-gradient(circle, transparent 59%, #000 60%, #000 64%, transparent 65%)' } }}>
+                  <Chart options={gaugeOptions} series={gaugeSeries} type="radialBar" height={260} />
+                </Box>
+                <Box sx={{ height: 1, bgcolor: 'rgba(255,255,255,0.06)', my: 1.5 }} />
+                <Chart options={donutOptions} series={donutSeries} type="donut" height={250} />
+              </StackPanel>
+            </Box>
 
-          {/* Three Chart Row */}
-          <Grid container spacing={6} sx={{ mb: 6 }}>
-            <Grid item xs={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)',
-                  border: '2px solid rgba(139, 92, 246, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px rgba(139, 92, 246, 0.25)',
-                  height: '100%'
-                }}
-              >
-                <CardContent sx={{ p: 5 }}>
-                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
-                    Risk Probability Gauge
-                  </Typography>
-                  <Chart options={gaugeOptions} series={gaugeSeries} type="radialBar" height={320} />
-                </CardContent>
-              </Card>
-            </Grid>
+            <Box>
+              <StackPanel title="AI Model Interpretability" subtitle="Feature impact and weighted importance">
+                <Chart options={radarOptions} series={radarSeries} type="radar" height={278} />
+                <Box sx={{ height: 1, bgcolor: 'rgba(255,255,255,0.06)', my: 1.5 }} />
+                <Chart options={barHorizontalOptions} series={barHorizontalSeries} type="bar" height={275} />
+              </StackPanel>
+            </Box>
 
-            <Grid item xs={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(52, 211, 153, 0.1) 100%)',
-                  border: '2px solid rgba(16, 185, 129, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px rgba(16, 185, 129, 0.25)',
-                  height: '100%'
-                }}
-              >
-                <CardContent sx={{ p: 5 }}>
-                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
-                    Symptoms Distribution
-                  </Typography>
-                  <Chart options={donutOptions} series={donutSeries} type="donut" height={320} />
-                </CardContent>
-              </Card>
-            </Grid>
+            <Box>
+              <StackPanel title="Present Symptoms Logs" subtitle={`${presentCount} symptoms reported - ${evaluatedCount} symptoms evaluated`}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.2, mb: 2 }}>
+                  <TelemetryTile label="Reported" value={presentCount} tone="#5eead4" />
+                  <TelemetryTile label="Evaluated" value={evaluatedCount} tone="#93c5fd" />
+                  <TelemetryTile label="Absent" value={absentCount} tone="#cbd5e1" />
+                  <TelemetryTile label="Status" value={presentCount === 0 ? 'CLEAR' : 'VERIFY'} tone={presentCount === 0 ? '#86efac' : '#fbbf24'} />
+                </Box>
+                <Box sx={{ flex: 1, maxHeight: { xs: 480, lg: 430 }, overflowY: 'auto', pr: 0.5 }}>
+                  {presentCount === 0 ? (
+                    evaluatedSymptoms.map((symptom) => (
+                      <ClinicalLogRow key={symptom} title={formatClinicalLabel(symptom)} detail="No positive response was recorded for this symptom." status="Not reported" />
+                    ))
+                  ) : (
+                    symptoms_present.map((symptom) => (
+                      <ClinicalLogRow key={symptom} title={formatClinicalLabel(symptom)} detail="Positive response recorded for this symptom during the questionnaire." status="Present" active />
+                    ))
+                  )}
+                </Box>
+              </StackPanel>
+            </Box>
+          </Box>
 
-            <Grid item xs={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.1) 100%)',
-                  border: '2px solid rgba(34, 197, 94, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px rgba(34, 197, 94, 0.25)',
-                  height: '100%'
-                }}
-              >
-                <CardContent sx={{ p: 5 }}>
-                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
-                    Feature Impact Radar
-                  </Typography>
-                  <Chart options={radarOptions} series={radarSeries} type="radar" height={320} />
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Three Column Section: Feature Importance, Present Symptoms, Recommendations */}
-          <Grid container spacing={6} sx={{ alignItems: 'stretch' }}>
-            <Grid item xs={12} sm={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 146, 60, 0.08) 100%)',
-                  border: '2px solid rgba(245, 158, 11, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(20px)',
-                  boxShadow: '0 16px 48px rgba(245, 158, 11, 0.25)',
-                  height: 380,
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
-                    Feature Importance
-                  </Typography>
-                  <Box sx={{ flex: 1 }}>
-                    <Chart options={barHorizontalOptions} series={barHorizontalSeries} type="bar" height={280} />
+          <Paper sx={{ mt: 2.5, bgcolor: 'rgba(17,24,39,0.92)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 1.5, p: { xs: 2, md: 2.75 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
+              <Box>
+                <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '1.1rem' }}>Recommendations Matrix</Typography>
+                <Typography sx={{ color: 'rgba(203,213,225,0.72)', fontSize: '0.82rem' }}>{careGuidance.length} practical next-step guidance items based on your answers</Typography>
+              </Box>
+              <Chip label="CLINICAL REVIEW ADVISED" sx={{ bgcolor: 'rgba(45,212,191,0.08)', color: '#99f6e4', border: '1px solid rgba(45,212,191,0.2)', fontFamily: monoFont, fontWeight: 700 }} />
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
+              {(careGuidance.length ? careGuidance : ['Maintain regular health monitoring and follow up with a qualified clinician.']).map((rec, i) => (
+                <Box
+                  key={`${rec}-${i}`}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '14px 1fr',
+                    columnGap: 1.4,
+                    p: { xs: 2, md: 2.25 },
+                    bgcolor: 'rgba(15,23,42,0.72)',
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    borderRadius: 1.5,
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'center', pt: '0.42rem' }}>
+                    <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#2dd4bf', boxShadow: '0 0 14px rgba(45,212,191,0.72)' }} />
                   </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(34, 211, 238, 0.1) 100%)',
-                  border: '2px solid rgba(6, 182, 212, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px rgba(6, 182, 212, 0.25)',
-                  height: 380,
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
-                    Present Symptoms ({symptoms_present.length})
-                  </Typography>
-                  <Box sx={{ flex: 1, overflowY: 'auto' }}>
-                    {symptoms_present.slice(0, 8).map((symptom, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          p: 1.5,
-                          mb: 1,
-                          background: 'rgba(6, 182, 212, 0.1)',
-                          border: '1px solid rgba(6, 182, 212, 0.2)',
-                          borderRadius: 1.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.5
-                        }}
-                      >
-                        <CheckCircle sx={{ color: '#67e8f9', fontSize: 16 }} />
-                        <Typography sx={{ color: 'white', fontWeight: 600, fontSize: '0.8rem' }}>{symptom}</Typography>
-                      </Box>
-                    ))}
+                  <Box>
+                    <Typography sx={{ color: '#ffffff', fontWeight: 800, lineHeight: 1.42, mb: 0.8, fontSize: '0.98rem' }}>{rec}</Typography>
+                    <Typography sx={{ color: 'rgba(226,232,240,0.78)', fontSize: '0.86rem', lineHeight: 1.65 }}>
+                      {recommendationDetails[i % recommendationDetails.length]}
+                    </Typography>
                   </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={12} md={4}>
-              <Card
-                sx={{
-                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(192, 132, 252, 0.1) 100%)',
-                  border: '2px solid rgba(168, 85, 247, 0.2)',
-                  borderRadius: 4,
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px rgba(168, 85, 247, 0.25)',
-                  height: 380,
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
-                    Recommendations ({recommendations.length})
-                  </Typography>
-                  <Box sx={{ flex: 1, overflowY: 'auto' }}>
-                    {recommendations.slice(0, 6).map((rec, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          p: 1.5,
-                          mb: 1,
-                          background: 'rgba(168, 85, 247, 0.1)',
-                          border: '1px solid rgba(168, 85, 247, 0.2)',
-                          borderRadius: 1.5,
-                          display: 'flex',
-                          gap: 1
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
-                        >
-                          <Typography sx={{ color: 'white', fontWeight: 900, fontSize: '0.65rem' }}>
-                            {i + 1}
-                          </Typography>
-                        </Box>
-                        <Typography sx={{ color: 'white', fontWeight: 600, lineHeight: 1.4, fontSize: '0.8rem' }}>{rec}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                </Box>
+              ))}
+            </Box>
+          </Paper>
         </Container>
       </Box>
     </Box>
